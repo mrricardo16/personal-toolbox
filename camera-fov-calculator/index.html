@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>相机视场范围计算器</title>
+  <style>
+    :root { color-scheme: light; --blue-900: #0b2a6f; --blue-700: #1558c0; --blue-600: #1e73e8; --blue-100: #eaf3ff; --ink: #17233c; --muted: #64748b; --line: #dbe5f2; --surface: #fff; --page: #f3f7fc; --danger: #b42318; --danger-bg: #fff1f0; --margin: #eff6ff; --tray: #2878d4; --shadow: 0 24px 70px rgba(22, 62, 125, .12); }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: radial-gradient(circle at 10% 0%, rgba(51,132,255,.14), transparent 32rem), var(--page); color: var(--ink); font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; line-height: 1.6; }
+    .page-shell { width: min(1080px, calc(100% - 32px)); margin: 36px auto 48px; }
+    .hero { padding: 38px 44px 42px; border-radius: 28px 28px 12px 12px; color: #fff; background: linear-gradient(135deg, var(--blue-900), var(--blue-600)); box-shadow: 0 18px 45px rgba(20,86,192,.25); }
+    .eyebrow { margin: 0 0 8px; font-size: .85rem; letter-spacing: .16em; opacity: .78; }
+    h1 { margin: 0; font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.18; }
+    .hero-description { max-width: 680px; margin: 16px 0 0; color: rgba(255,255,255,.86); }
+    .card { margin-top: 18px; padding: clamp(22px,4vw,42px); border: 1px solid rgba(219,229,242,.9); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+    .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+    h2, h3 { margin: 0; color: var(--blue-900); } h2 { font-size: 1.45rem; } h3 { font-size: 1.05rem; }
+    .section-heading p, .subsection-heading p, .hint, .footer-note { margin: 0; color: var(--muted); font-size: .9rem; }
+    .input-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 16px; }
+    .tray-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+    .subsection-heading { margin: 26px 0 12px; padding-top: 22px; border-top: 1px solid var(--line); }
+    .field { display: flex; flex-direction: column; gap: 8px; } label { font-weight: 700; font-size: .95rem; } label span { color: var(--muted); font-weight: 400; font-size: .86rem; }
+    input { width: 100%; padding: 13px 14px; border: 1px solid var(--line); border-radius: 10px; outline: none; color: var(--ink); background: #fbfdff; font: inherit; }
+    input:focus { border-color: var(--blue-600); background: #fff; box-shadow: 0 0 0 4px rgba(30,115,232,.14); }
+    .actions { display: flex; align-items: center; gap: 16px; margin-top: 22px; } button { min-width: 150px; padding: 13px 22px; border: 0; border-radius: 10px; color: #fff; background: linear-gradient(135deg,var(--blue-700),var(--blue-600)); box-shadow: 0 9px 20px rgba(30,115,232,.2); cursor: pointer; font: inherit; font-weight: 700; } button:hover { transform: translateY(-1px); }
+    .error { display: none; margin: 16px 0 0; padding: 11px 14px; border: 1px solid #f3c0bb; border-radius: 10px; color: var(--danger); background: var(--danger-bg); font-size: .92rem; }.error.is-visible { display: block; }
+    .formula { margin-top: 18px; padding: 16px 18px; border-left: 4px solid var(--blue-600); border-radius: 8px; color: #3e5877; background: var(--blue-100); font-size: .93rem; }.formula strong { color: var(--blue-900); }
+    .results { display: none; margin-top: 18px; }.results.is-visible { display: block; }.result-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 16px; }.result-item { min-height: 140px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: linear-gradient(180deg,#fff,#f7faff); }.result-item.primary { border-color: #b7d2fa; background: linear-gradient(145deg,#edf5ff,#fff); }.result-label { margin: 0; color: var(--muted); font-size: .92rem; }.result-value { margin: 18px 0 0; color: var(--blue-900); font-size: clamp(1.7rem,4vw,2.35rem); font-weight: 800; line-height: 1; }.result-value small { margin-left: 4px; color: var(--blue-700); font-size: .9rem; }
+    .layout-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin: 26px 0 16px; }.layout-stat { padding: 12px; border-radius: 10px; background: #f7faff; color: var(--muted); font-size: .86rem; }.layout-stat strong { display: block; margin-top: 4px; color: var(--blue-900); font-size: 1rem; }.layout-canvas { position: relative; width: 100%; min-height: 260px; overflow: hidden; border: 2px solid var(--blue-900); border-radius: 12px; background: var(--margin); aspect-ratio: var(--field-ratio, 1.7); }.layout-usable { position: absolute; left: var(--margin-x, 0%); top: var(--margin-y, 0%); width: var(--usable-width, 100%); height: var(--usable-height, 100%); border: 2px dashed #6d9ee8; background: rgba(255,255,255,.52); }.layout-tray { position: absolute; left: var(--tray-left); top: var(--tray-top); width: var(--tray-width); height: var(--tray-height); display: grid; place-items: center; overflow: hidden; border: 1px solid rgba(8,55,125,.65); border-radius: 3px; color: #fff; background: var(--tray); font-size: clamp(.56rem,1.5vw,.84rem); font-weight: 700; line-height: 1; }.layout-notice { display: none; place-items: center; min-height: 200px; padding: 24px; color: var(--muted); text-align: center; }.layout-notice.is-visible { display: grid; }
+    @media (max-width:720px) { .page-shell { width: min(100% - 20px,600px); margin-top: 16px; }.hero { padding: 30px 24px 32px; border-radius: 20px 20px 10px 10px; }.input-grid,.tray-grid,.result-grid,.layout-summary { grid-template-columns: 1fr; }.section-heading,.actions { align-items: stretch; flex-direction: column; } button { width: 100%; }.layout-canvas { min-height: 210px; } }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="hero"><p class="eyebrow">CAMERA FIELD OF VIEW</p><h1>相机视场范围计算器</h1><p class="hero-description">输入相机高度、视场角和托盘规格，计算视野范围、可用区域及实际排布数量。</p></header>
+    <section class="card" aria-labelledby="input-title">
+      <div class="section-heading"><h2 id="input-title">输入参数</h2><p>所有角度均按度数输入</p></div>
+      <form id="calculator-form" novalidate>
+        <div class="input-grid">
+          <div class="field"><label for="height">相机高度 <span>（m）</span></label><input id="height" name="height" type="number" inputmode="decimal" min="0" step="any" value="4.5"></div>
+          <div class="field"><label for="horizontalFov">水平视场角 <span>（度）</span></label><input id="horizontalFov" name="horizontalFov" type="number" inputmode="decimal" min="0" max="180" step="any" value="90"></div>
+          <div class="field"><label for="verticalFov">垂直视场角 <span>（度）</span></label><input id="verticalFov" name="verticalFov" type="number" inputmode="decimal" min="0" max="180" step="any" value="61"></div>
+        </div>
+        <div class="subsection-heading"><h3>托盘与排布参数</h3><p>误差余量表示视野四周每一边各扣除的距离；间隔同时用于横向和纵向。</p></div>
+        <div class="input-grid">
+          <div class="field"><label for="trayLength">托盘长度 <span>（m）</span></label><input id="trayLength" name="trayLength" type="number" inputmode="decimal" min="0" step="any" value="1"></div>
+          <div class="field"><label for="trayWidth">托盘宽度 <span>（m）</span></label><input id="trayWidth" name="trayWidth" type="number" inputmode="decimal" min="0" step="any" value="1"></div>
+          <div class="field"><label for="trayGap">托盘间隔 <span>（m）</span></label><input id="trayGap" name="trayGap" type="number" inputmode="decimal" min="0" step="any" value="0.05"></div>
+          <div class="field"><label for="marginLength">长方向误差余量（每边） <span>（m）</span></label><input id="marginLength" name="marginLength" type="number" inputmode="decimal" min="0" step="any" value="0.2"></div>
+          <div class="field"><label for="marginWidth">宽方向误差余量（每边） <span>（m）</span></label><input id="marginWidth" name="marginWidth" type="number" inputmode="decimal" min="0" step="any" value="0.2"></div>
+        </div>
+        <div class="actions"><button type="submit">确定计算</button><p class="hint">输入完成后点击按钮查看计算结果。</p></div><p id="error-message" class="error" role="alert"></p>
+      </form>
+      <div class="formula"><strong>计算公式：</strong>视野边长 = 2 × 高度 × tan（视场角 ÷ 2）；可用长度 = 视野宽度 − 2 × 长方向余量；可用宽度 = 视野高度 − 2 × 宽方向余量。每行/列仅在相邻托盘之间加入间隔。</div>
+    </section>
+    <section id="results" class="card results" aria-labelledby="result-title" aria-live="polite">
+      <div class="section-heading"><h2 id="result-title">计算结果</h2><p>相机垂直向下正对被测平面</p></div>
+      <div class="result-grid">
+        <article class="result-item primary"><p class="result-label">水平视野宽度</p><p class="result-value"><span id="width-result">—</span><small>m</small></p></article>
+        <article class="result-item"><p class="result-label">垂直视野高度</p><p class="result-value"><span id="height-result">—</span><small>m</small></p></article>
+        <article class="result-item"><p class="result-label">视野覆盖面积</p><p class="result-value"><span id="area-result">—</span><small>m²</small></p></article>
+        <article class="result-item"><p class="result-label">可放托盘数量</p><p class="result-value"><span id="tray-count-result">—</span><small>个</small></p></article>
+      </div>
+      <div class="layout-summary">
+        <div class="layout-stat">可用长度<strong id="usable-length-result">—</strong></div><div class="layout-stat">可用宽度<strong id="usable-width-result">—</strong></div><div class="layout-stat">列数 / 行数<strong id="grid-result">—</strong></div><div class="layout-stat">采用方向<strong id="orientation-result">—</strong></div>
+      </div>
+      <div id="layout-canvas" class="layout-canvas" aria-label="托盘排布示意图"><div id="layout-usable" class="layout-usable"></div><div id="layout-notice" class="layout-notice">扣除误差余量后，当前托盘尺寸和间隔无法放入一个托盘。</div></div>
+      <p class="footer-note">外框为完整视野，浅色区域为四周误差余量，虚线框为可用区域；编号矩形按实际数量、尺寸比例和间隔绘制。</p>
+    </section>
+  </main>
+  <script>
+    const form = document.getElementById("calculator-form");
+    const results = document.getElementById("results");
+    const errorMessage = document.getElementById("error-message");
+    const resultElements = { width: document.getElementById("width-result"), height: document.getElementById("height-result"), area: document.getElementById("area-result"), count: document.getElementById("tray-count-result"), usableLength: document.getElementById("usable-length-result"), usableWidth: document.getElementById("usable-width-result"), grid: document.getElementById("grid-result"), orientation: document.getElementById("orientation-result") };
+    const layoutCanvas = document.getElementById("layout-canvas");
+    const layoutUsable = document.getElementById("layout-usable");
+    const layoutNotice = document.getElementById("layout-notice");
+
+    function toRadians(degrees) { return degrees * Math.PI / 180; }
+    function calculateFov(height, fovDegrees) { return 2 * height * Math.tan(toRadians(fovDegrees / 2)); }
+    function clearLayout() { layoutCanvas.querySelectorAll(".layout-tray").forEach((tray) => tray.remove()); layoutCanvas.style.removeProperty("--field-ratio"); layoutUsable.style.display = "none"; layoutNotice.classList.remove("is-visible"); }
+    function clearResults() { Object.values(resultElements).forEach((element) => { element.textContent = "—"; }); clearLayout(); results.classList.remove("is-visible"); }
+    function showError(message) { errorMessage.textContent = message; errorMessage.classList.add("is-visible"); clearResults(); }
+    function getLayoutCandidate(usableLength, usableWidth, trayLength, trayWidth, trayGap, orientation) {
+      const columns = Math.floor((usableLength + trayGap) / (trayLength + trayGap));
+      const rows = Math.floor((usableWidth + trayGap) / (trayWidth + trayGap));
+      return { trayLength, trayWidth, columns: Math.max(0, columns), rows: Math.max(0, rows), count: Math.max(0, columns) * Math.max(0, rows), orientation };
+    }
+    function renderLayout(width, visibleHeight, marginLength, marginWidth, trayGap, layout) {
+      clearLayout();
+      layoutCanvas.style.setProperty("--field-ratio", `${width} / ${visibleHeight}`);
+      if (layout.count === 0) { layoutNotice.classList.add("is-visible"); return; }
+      layoutUsable.style.display = "block";
+      layoutCanvas.style.setProperty("--margin-x", `${marginLength / width * 100}%`);
+      layoutCanvas.style.setProperty("--margin-y", `${marginWidth / visibleHeight * 100}%`);
+      layoutCanvas.style.setProperty("--usable-width", `${(width - 2 * marginLength) / width * 100}%`);
+      layoutCanvas.style.setProperty("--usable-height", `${(visibleHeight - 2 * marginWidth) / visibleHeight * 100}%`);
+      for (let row = 0; row < layout.rows; row += 1) {
+        for (let column = 0; column < layout.columns; column += 1) {
+          const tray = document.createElement("div");
+          tray.className = "layout-tray";
+          tray.textContent = (row * layout.columns + column + 1).toString();
+          tray.style.setProperty("--tray-left", `${column * (layout.trayLength + trayGap) / (width - 2 * marginLength) * 100}%`);
+          tray.style.setProperty("--tray-top", `${row * (layout.trayWidth + trayGap) / (visibleHeight - 2 * marginWidth) * 100}%`);
+          tray.style.setProperty("--tray-width", `${layout.trayLength / (width - 2 * marginLength) * 100}%`);
+          tray.style.setProperty("--tray-height", `${layout.trayWidth / (visibleHeight - 2 * marginWidth) * 100}%`);
+          layoutUsable.appendChild(tray);
+        }
+      }
+    }
+    function renderResults(width, visibleHeight, area, usableLength, usableWidth, layout, margins, trayGap) {
+      resultElements.width.textContent = width.toFixed(2); resultElements.height.textContent = visibleHeight.toFixed(2); resultElements.area.textContent = area.toFixed(2); resultElements.count.textContent = layout.count.toString();
+      resultElements.usableLength.textContent = `${usableLength.toFixed(2)} m`; resultElements.usableWidth.textContent = `${usableWidth.toFixed(2)} m`; resultElements.grid.textContent = `${layout.columns} 列 / ${layout.rows} 行`; resultElements.orientation.textContent = layout.orientation;
+      renderLayout(width, visibleHeight, margins.length, margins.width, trayGap, layout); errorMessage.textContent = ""; errorMessage.classList.remove("is-visible"); results.classList.add("is-visible");
+    }
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const values = ["height", "horizontalFov", "verticalFov", "trayLength", "trayWidth", "marginLength", "marginWidth", "trayGap"].reduce((result, name) => ({ ...result, [name]: Number(form.elements[name].value) }), {});
+      const { height, horizontalFov, verticalFov, trayLength, trayWidth, marginLength, marginWidth, trayGap } = values;
+      if (!Object.values(values).every(Number.isFinite)) return showError("请输入有效的数字。");
+      if (height <= 0) return showError("相机高度必须大于 0 米。");
+      if (horizontalFov <= 0 || horizontalFov >= 180 || verticalFov <= 0 || verticalFov >= 180) return showError("水平和垂直视场角必须大于 0° 且小于 180°。");
+      if (trayLength <= 0 || trayWidth <= 0) return showError("托盘长度和宽度必须大于 0 米。");
+      if (marginLength < 0 || marginWidth < 0 || trayGap < 0) return showError("误差余量和托盘间隔必须大于或等于 0 米。");
+      const width = calculateFov(height, horizontalFov); const visibleHeight = calculateFov(height, verticalFov); const usableLength = width - 2 * marginLength; const usableWidth = visibleHeight - 2 * marginWidth;
+      if (usableLength <= 0 || usableWidth <= 0) return showError("扣除四周误差余量后，可用长度和宽度必须大于 0 米。");
+      const normal = getLayoutCandidate(usableLength, usableWidth, trayLength, trayWidth, trayGap, "正常方向");
+      const rotated = getLayoutCandidate(usableLength, usableWidth, trayWidth, trayLength, trayGap, "旋转 90°");
+      const layout = rotated.count > normal.count ? rotated : normal;
+      renderResults(width, visibleHeight, width * visibleHeight, usableLength, usableWidth, layout, { length: marginLength, width: marginWidth }, trayGap);
+    });
+  </script>
+</body>
+</html>

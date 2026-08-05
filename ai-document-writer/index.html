@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DeepSeek 严谨文档助手</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #f3f5f7;
+      color: #222;
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+    }
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px;
+      background: #fff;
+      border: 1px solid #d9dde3;
+      border-radius: 8px;
+    }
+    h1 { margin: 0 0 8px; font-size: 26px; }
+    h2 {
+      margin: 28px 0 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e5e9;
+      font-size: 18px;
+    }
+    .notice {
+      margin: 12px 0 20px;
+      padding: 12px 14px;
+      background: #fff8e6;
+      border: 1px solid #ead28a;
+      border-radius: 5px;
+      line-height: 1.7;
+      font-size: 14px;
+    }
+    .row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .field { flex: 1; min-width: 260px; }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    input, select, textarea, button { font: inherit; }
+    input[type="text"], input[type="password"], select, textarea {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid #b9c0c8;
+      border-radius: 4px;
+      background: #fff;
+      color: #222;
+    }
+    textarea {
+      resize: vertical;
+      line-height: 1.65;
+    }
+    .hint {
+      margin-top: 5px;
+      color: #6a717b;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .checkbox-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 8px 0;
+      line-height: 1.5;
+    }
+    .checkbox-line input { margin-top: 4px; }
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    button {
+      padding: 9px 18px;
+      border: 1px solid #aab1ba;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+    }
+    button.primary {
+      color: #fff;
+      background: #1769d2;
+      border-color: #1769d2;
+    }
+    button.danger { color: #b42318; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status {
+      min-height: 24px;
+      margin: 16px 0 8px;
+      color: #505761;
+      line-height: 1.6;
+    }
+    #termAudit {
+      display: none;
+      margin: 10px 0;
+      padding: 10px 12px;
+      border: 1px solid #d9dde3;
+      border-radius: 4px;
+      background: #fafbfc;
+      line-height: 1.7;
+      white-space: pre-wrap;
+    }
+    #result {
+      min-height: 360px;
+      max-height: 760px;
+      overflow: auto;
+      margin: 0;
+      padding: 16px;
+      border: 1px solid #d9dde3;
+      border-radius: 4px;
+      background: #f8f9fb;
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.75;
+    }
+    .small { font-size: 13px; color: #6a717b; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>DeepSeek 严谨文档助手</h1>
+  <div class="small">适用于通知、报告、总结、方案、简报、纪要、请示、讲话稿、润色和校对。</div>
+
+  <div class="notice">
+    仅用于一般办公材料。不得输入涉密信息、未公开敏感信息或不允许上传至外部服务的内部材料。
+    本页会把填写的内容发送至 DeepSeek API。API Key 只保存在当前页面内存，不写入浏览器本地存储。
+  </div>
+
+  <h2>一、API 配置</h2>
+  <div class="row">
+    <div class="field">
+      <label for="apiKey">API Key</label>
+      <input id="apiKey" type="password" autocomplete="off" placeholder="sk-...">
+    </div>
+    <div class="field">
+      <label for="model">模型</label>
+      <select id="model" onchange="syncReasoningEffort()">
+        <option value="deepseek-v4-flash">deepseek-v4-flash（快速、经济）</option>
+        <option value="deepseek-v4-pro">deepseek-v4-pro（复杂材料）</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="field">
+      <label for="thinkingType">思考模式</label>
+      <select id="thinkingType" onchange="syncReasoningEffort()">
+        <option value="disabled" selected>关闭（普通写作推荐）</option>
+        <option value="enabled">开启（复杂梳理、分析型材料）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="reasoningEffort">思考强度</label>
+      <select id="reasoningEffort" disabled>
+        <option value="low">low</option>
+        <option value="high" selected>high</option>
+        <option value="max">max</option>
+      </select>
+    </div>
+  </div>
+
+  <h2>二、文档技能</h2>
+  <div class="row">
+    <div class="field">
+      <label for="skillSelect">文档类型</label>
+      <select id="skillSelect" onchange="switchSkill()">
+        <option value="general">通用正式材料</option>
+        <option value="notice">通知</option>
+        <option value="report">工作报告</option>
+        <option value="summary">工作总结</option>
+        <option value="plan">工作方案</option>
+        <option value="briefing">工作简报</option>
+        <option value="meeting">会议纪要</option>
+        <option value="request">请示</option>
+        <option value="speech">讲话稿</option>
+        <option value="research">调研报告</option>
+        <option value="polish">忠实润色</option>
+        <option value="proofread">校对纠错</option>
+        <option value="outline">提纲整理</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="lengthLevel">篇幅</label>
+      <select id="lengthLevel">
+        <option value="简洁">简洁</option>
+        <option value="标准" selected>标准</option>
+        <option value="详细">详细</option>
+      </select>
+    </div>
+  </div>
+
+  <label for="systemPrompt">系统指令（可手工修改）</label>
+  <textarea id="systemPrompt" rows="18"></textarea>
+  <div class="hint">切换文档类型会重新载入对应技能。核心规则是：事实不补造、专有名词不改、缺失内容明确标记。</div>
+
+  <h2>三、写作信息</h2>
+  <div class="row">
+    <div class="field">
+      <label for="docTitle">文档标题</label>
+      <input id="docTitle" type="text" placeholder="未确定时可留空">
+    </div>
+    <div class="field">
+      <label for="audience">使用对象 / 报送对象</label>
+      <input id="audience" type="text" placeholder="例如：各科室、上级主管部门、参会人员">
+    </div>
+  </div>
+
+  <label for="protectedTerms">必须原样保留的名称、名词、数据和表述</label>
+  <textarea id="protectedTerms" rows="5" placeholder="每行一个，例如：\nXX市政务服务管理局\n“高效办成一件事”\n2026年8月5日\n23.6%"></textarea>
+  <div class="hint">生成后会进行本地逐项检查。大小写、数字、符号和引号都按原文本核验。</div>
+
+  <label for="sourceMaterial">事实材料 / 原文 / 会议记录</label>
+  <textarea id="sourceMaterial" rows="12" placeholder="粘贴可确认的事实、数据、原文、会议记录或已有草稿。模型不得把这里没有的信息写成确定事实。"></textarea>
+
+  <label for="taskRequirement">具体要求</label>
+  <textarea id="taskRequirement" rows="7" placeholder="例如：根据以上材料起草一份工作总结，重点写已完成事项、存在问题和下一步计划；不增加材料外的数据。"></textarea>
+
+  <label for="extraInstruction">附加要求</label>
+  <textarea id="extraInstruction" rows="4" placeholder="例如：不使用口号式表达；标题层级使用“一、”“（一）”“1.”；控制在1500字左右。"></textarea>
+
+  <div class="row">
+    <div class="field">
+      <label class="checkbox-line">
+        <input id="strictFacts" type="checkbox" checked>
+        <span>严格事实模式：无依据内容用“【待补充】”或“【需核实】”，不得自行补齐。</span>
+      </label>
+      <label class="checkbox-line">
+        <input id="appendReview" type="checkbox" checked>
+        <span>文末附“待补充与核验事项”。</span>
+      </label>
+    </div>
+    <div class="field">
+      <label class="checkbox-line">
+        <input id="autoReview" type="checkbox" checked>
+        <span>生成后自动进行一次忠实审校（会增加一次 API 调用）。</span>
+      </label>
+      <label class="checkbox-line">
+        <input id="allowGeneralSuggestions" type="checkbox">
+        <span>允许补充一般性建议，但必须明确标记为“建议”，不能伪装成既有事实。</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button id="generateBtn" class="primary" onclick="generateDocument()">生成文档</button>
+    <button id="cancelBtn" class="danger" onclick="cancelGeneration()" disabled>停止</button>
+    <button onclick="copyResult()">复制结果</button>
+    <button onclick="downloadResult('md')">下载 Markdown</button>
+    <button onclick="downloadResult('txt')">下载 TXT</button>
+    <button onclick="clearResult()">清空结果</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="termAudit"></div>
+  <pre id="result"></pre>
+</div>
+
+<script>
+  var API_URL = 'https://api.deepseek.com/chat/completions';
+  var currentController = null;
+
+  var baseRules = [
+    '你是严谨的中文政务与办公文档助手。你的首要目标不是把文章写得华丽，而是保证事实边界清楚、名称准确、结构适合、表达克制。',
+    '',
+    '【信息优先级】',
+    '1. “必须原样保留的内容”优先级最高。',
+    '2. 用户提供的事实材料、原文和会议记录是确定事实的唯一来源。',
+    '3. 用户的具体任务决定文种、结构和篇幅。',
+    '4. 文档技能只决定组织方式和语言风格，不得覆盖事实材料。',
+    '',
+    '【事实规则】',
+    '1. 不得虚构或擅自补充人名、职务、机构、部门、时间、地点、数据、比例、金额、项目、政策、文件名称、文件文号、会议决定、领导要求、工作成果、问题原因和责任主体。',
+    '2. 材料未说明的事实不得凭常识补齐，不得为了文章完整而编造。',
+    '3. 缺失但必须出现的信息，使用“【待补充：具体内容】”。存在冲突或不确定时，使用“【需核实：具体问题】”。',
+    '4. 必须区分“已完成”“正在推进”“计划开展”“建议采取”，不得改变事项状态。',
+    '5. 不得把个别情况扩大为普遍结论，不得把相关关系写成因果关系。',
+    '6. 未提供政策依据时，不得自行写“根据某文件”“按照有关规定”等表述。',
+    '',
+    '【名词保护规则】',
+    '1. 用户给出的人名、地名、机构名、部门名、项目名、政策名、文件名、会议名、系统名、专有名词、简称、英文缩写、数字、日期、单位和带引号表述必须原样保留。',
+    '2. 不得擅自改字、换词、扩写、缩写、翻译、调整大小写或改变数字格式。',
+    '3. 即使怀疑存在错别字，也不得直接修改正文；应保留原文，并在核验事项中提示。',
+    '4. 同一名称在全文中必须保持一致。',
+    '',
+    '【表达规则】',
+    '1. 使用正式、准确、克制、清晰的中文书面语。',
+    '2. 优先写清责任主体、具体动作、对象、时间和结果，避免含义空泛。',
+    '3. 不得无依据使用“成效显著”“全面提升”“得到一致好评”“圆满完成”等评价。',
+    '4. 少用“进一步、持续、全面、切实、有效、扎实”等泛化词；使用时必须有具体对象。',
+    '5. 不堆砌口号，不重复同一观点，不为追求篇幅添加无信息量段落。',
+    '6. 保持原事实关系、责任关系、时间顺序和因果关系。',
+    '',
+    '【输出规则】',
+    '1. 直接输出可使用的完整文稿，不解释思考过程。',
+    '2. 标题、层级、编号和段落应统一。',
+    '3. 除非用户明确要求，不虚构落款、日期、主送机关、联系人、文号和附件。'
+  ].join('\n');
+
+  var skillRules = {
+    general: [
+      '当前文种：通用正式材料。',
+      '根据任务自行选择合适结构，不机械套用固定模板。',
+      '常见结构可包括背景、基本情况、主要工作、存在问题、下一步安排，但仅在材料支持时使用。',
+      '先归并同类事项，再按重要程度或时间顺序组织。'
+    ].join('\n'),
+
+    notice: [
+      '当前文种：通知。',
+      '重点写清通知对象、事项、时间、地点、办理要求、责任部门和反馈方式。',
+      '行动要求必须明确，避免“做好相关工作”等无具体动作的表达。',
+      '未提供截止时间、联系人、地点或责任部门时，使用待补充标记。',
+      '不得擅自增加处罚、考核、强制要求或发文权限。'
+    ].join('\n'),
+
+    report: [
+      '当前文种：工作报告。',
+      '按事实材料组织“基本情况—主要工作—存在问题—下一步安排”等内容。',
+      '工作成效必须有材料依据；没有数据时不得自行量化。',
+      '问题、原因和措施要一一对应，不能把推测写成结论。'
+    ].join('\n'),
+
+    summary: [
+      '当前文种：工作总结。',
+      '准确区分已完成事项、阶段性进展、未完成事项和后续计划。',
+      '按工作板块归纳，避免简单复述流水账。',
+      '总结成效时必须保留原始数据口径，不得拔高。',
+      '存在问题应具体、可核验，不写空泛自我批评。'
+    ].join('\n'),
+
+    plan: [
+      '当前文种：工作方案。',
+      '重点组织目标、任务、步骤、时间安排、责任分工、保障措施和验收方式。',
+      '未提供责任单位、完成时限或验收标准时，明确标记待补充。',
+      '计划事项一律使用将来或任务性表述，不得写成已经完成。',
+      '不得自行增加预算、权限、考核或纪律要求。'
+    ].join('\n'),
+
+    briefing: [
+      '当前文种：工作简报。',
+      '突出最新进展、关键数据、典型做法、当前问题和下一步动态。',
+      '标题简明，正文信息密度高，避免长篇背景铺垫。',
+      '不得把单次活动夸大为长期机制或普遍成效。'
+    ].join('\n'),
+
+    meeting: [
+      '当前文种：会议纪要。',
+      '严格依据会议记录整理，不补造发言、决定、责任人和完成时限。',
+      '区分会议讨论、形成共识、明确决定和待研究事项。',
+      '对责任部门、完成时间和任务内容逐项对应。',
+      '口语可压缩，但不得改变发言原意和责任归属。'
+    ].join('\n'),
+
+    request: [
+      '当前文种：请示。',
+      '坚持一事一请示，结构通常包括请示缘由、基本情况、需要解决的问题和具体请示事项。',
+      '请示事项必须明确、可答复，避免同时夹带报告性或无关内容。',
+      '不得擅自补写政策依据、预算金额、审批权限和上级态度。',
+      '结尾用语保持规范克制，不代替发文机关作决定。'
+    ].join('\n'),
+
+    speech: [
+      '当前文种：讲话稿。',
+      '语言可适度口语化，但必须保持正式、清楚和符合发言场景。',
+      '围绕主题组织开场、主体和结语，不编造领导经历、现场情况、成绩数据和指示要求。',
+      '不堆砌口号，不大量使用排比，不擅自提高政治或政策表述强度。'
+    ].join('\n'),
+
+    research: [
+      '当前文种：调研报告。',
+      '结构可包括调研背景、调研方法、现状、问题、原因分析和建议。',
+      '仅在材料明确提供时写调研样本、时间、对象和数据。',
+      '事实、判断和建议必须分开表达。',
+      '材料不足以支持原因结论时，改写为“可能因素”或列入需核实事项。'
+    ].join('\n'),
+
+    polish: [
+      '当前任务：忠实润色。',
+      '只优化语病、重复、衔接、层级和表达准确性。',
+      '不得新增事实、观点、政策依据、数据、评价和结论。',
+      '不得改变原文立场、语气强度、责任主体、事项状态和时间顺序。',
+      '专有名词和用户指定表述必须逐字保留。'
+    ].join('\n'),
+
+    proofread: [
+      '当前任务：校对纠错。',
+      '检查错别字、标点、病句、数字格式、名称不一致、前后矛盾和层级编号。',
+      '确定无误的语言问题可以修正；涉及名称、数字、政策、事实或含义变化的内容不得擅自修改。',
+      '输出“修订稿”，并在文末列出“需人工核实的问题”。',
+      '不得借校对之名重写或扩充原文。'
+    ].join('\n'),
+
+    outline: [
+      '当前任务：提纲整理。',
+      '从材料中提取主题、一级标题、二级标题和各部分要点。',
+      '不补造材料外内容，不把建议当事实。',
+      '标题应概括准确、相互并列、层级一致。',
+      '信息不足的部分用待补充标记。'
+    ].join('\n')
+  };
+
+  function getValue(id) {
+    return document.getElementById(id).value.trim();
+  }
+
+  function switchSkill() {
+    var key = document.getElementById('skillSelect').value;
+    document.getElementById('systemPrompt').value = baseRules + '\n\n【当前技能】\n' + skillRules[key];
+  }
+
+  function syncReasoningEffort() {
+    var thinking = document.getElementById('thinkingType').value;
+    var effort = document.getElementById('reasoningEffort');
+    effort.disabled = thinking !== 'enabled';
+
+    if (document.getElementById('model').value === 'deepseek-v4-pro' && effort.value === 'low') {
+      effort.value = 'high';
+    }
+  }
+
+  function buildUserPrompt() {
+    var title = getValue('docTitle') || '【未提供标题】';
+    var audience = getValue('audience') || '【未提供使用对象】';
+    var protectedTerms = getValue('protectedTerms') || '无单独列出的保护项；仍须保留事实材料中的全部专有名词、数字、日期和单位。';
+    var source = getValue('sourceMaterial') || '【未提供事实材料】';
+    var task = getValue('taskRequirement') || '【未提供具体任务】';
+    var extra = getValue('extraInstruction') || '无';
+    var lengthLevel = document.getElementById('lengthLevel').value;
+    var strictFacts = document.getElementById('strictFacts').checked;
+    var appendReview = document.getElementById('appendReview').checked;
+    var allowSuggestions = document.getElementById('allowGeneralSuggestions').checked;
+
+    var factRule = strictFacts
+      ? '启用严格事实模式。材料没有明确给出的事实必须使用【待补充】或【需核实】，不得补造。'
+      : '仍不得虚构事实；对一般结构性内容可适度补全，但必须避免形成新的事实判断。';
+
+    var suggestionRule = allowSuggestions
+      ? '允许提出一般性建议，但所有补充内容必须明确标注为“建议”，不得写成既有决定、既有制度或已完成事项。'
+      : '不允许补充材料外建议，只能依据材料写作。';
+
+    var reviewRule = appendReview
+      ? '正文之后增加“待补充与核验事项”，只列真正需要人工补充或确认的内容；没有则写“无”。'
+      : '只输出正文，不附额外说明；但正文中的待补充和需核实标记必须保留。';
+
+    return [
+      '请按照系统规则完成以下任务。',
+      '',
+      '【文档标题】', title,
+      '',
+      '【使用对象 / 报送对象】', audience,
+      '',
+      '【篇幅要求】', lengthLevel,
+      '',
+      '【必须原样保留的内容】', protectedTerms,
+      '',
+      '【事实材料 / 原文】', source,
+      '',
+      '【具体任务】', task,
+      '',
+      '【附加要求】', extra,
+      '',
+      '【本次执行规则】',
+      '1. ' + factRule,
+      '2. ' + suggestionRule,
+      '3. ' + reviewRule,
+      '4. 直接输出完整文稿，不解释写作过程。'
+    ].join('\n');
+  }
+
+  function buildReviewPrompt(draft) {
+    var protectedTerms = getValue('protectedTerms') || '无单独列出的保护项；仍须保护原始材料中的名称、数字、日期和单位。';
+    var source = getValue('sourceMaterial') || '【未提供事实材料】';
+    var task = getValue('taskRequirement') || '【未提供具体任务】';
+
+    return [
+      '你现在进行第二轮“忠实审校”。请直接输出审校后的完整终稿，不要输出审校过程。',
+      '',
+      '审校目标：',
+      '1. 修正语病、重复、逻辑跳跃、层级混乱和不准确的泛化表达。',
+      '2. 删除或改为【待补充】/【需核实】的无依据事实。',
+      '3. 绝对不得新增人名、机构、政策、文件文号、日期、数据、成果、决定、责任主体或原因结论。',
+      '4. 不得改变已完成、进行中、计划中、建议等事项状态。',
+      '5. 下列保护内容必须原样保留，不得改字、改数字、改符号或调整大小写。',
+      '',
+      '【保护内容】', protectedTerms,
+      '',
+      '【原始事实材料】', source,
+      '',
+      '【原始任务】', task,
+      '',
+      '【待审校初稿】', draft
+    ].join('\n');
+  }
+
+  async function callDeepSeek(systemPrompt, userPrompt) {
+    var apiKey = getValue('apiKey');
+    var model = document.getElementById('model').value;
+    var thinkingType = document.getElementById('thinkingType').value;
+    var reasoningEffort = document.getElementById('reasoningEffort').value;
+
+    if (!apiKey) {
+      throw new Error('请先填写 API Key。');
+    }
+
+    var payload = {
+      model: model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt }
+      ],
+      temperature: 0.2,
+      max_tokens: 8192,
+      stream: false,
+      thinking: {
+        type: thinkingType
+      },
+      reasoning_effort: reasoningEffort
+    };
+
+    var options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify(payload)
+    };
+
+    if (currentController) {
+      options.signal = currentController.signal;
+    }
+
+    var response = await fetch(API_URL, options);
+    var rawText = await response.text();
+    var data;
+
+    try {
+      data = JSON.parse(rawText);
+    } catch (parseError) {
+      throw new Error('接口返回了无法解析的内容：' + rawText.slice(0, 500));
+    }
+
+    if (!response.ok) {
+      var apiMessage = data && data.error && data.error.message
+        ? data.error.message
+        : rawText;
+      throw new Error('API 请求失败（HTTP ' + response.status + '）：' + apiMessage);
+    }
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('接口返回结构异常：' + rawText.slice(0, 500));
+    }
+
+    return {
+      content: data.choices[0].message.content || '',
+      usage: data.usage || null,
+      finishReason: data.choices[0].finish_reason || ''
+    };
+  }
+
+  async function generateDocument() {
+    var result = document.getElementById('result');
+    var status = document.getElementById('status');
+    var generateBtn = document.getElementById('generateBtn');
+    var cancelBtn = document.getElementById('cancelBtn');
+
+    if (!getValue('taskRequirement') && !getValue('sourceMaterial')) {
+      status.textContent = '请至少填写“事实材料”或“具体要求”。';
+      return;
+    }
+
+    generateBtn.disabled = true;
+    cancelBtn.disabled = false;
+    document.getElementById('termAudit').style.display = 'none';
+    result.textContent = '';
+
+    currentController = window.AbortController ? new AbortController() : null;
+
+    try {
+      status.textContent = '正在生成初稿……';
+      var first = await callDeepSeek(getValue('systemPrompt'), buildUserPrompt());
+      var finalText = first.content;
+
+      result.textContent = finalText;
+
+      if (document.getElementById('autoReview').checked) {
+        status.textContent = '初稿已完成，正在进行忠实审校……';
+        var reviewSystem = baseRules + '\n\n当前任务是忠实审校。不得扩大、补造或改写事实。';
+        var reviewed = await callDeepSeek(reviewSystem, buildReviewPrompt(finalText));
+        finalText = reviewed.content;
+        result.textContent = finalText;
+      }
+
+      var auditMessage = auditProtectedTerms(finalText);
+      status.textContent = '生成完成。' + auditMessage;
+    } catch (error) {
+      if (error && error.name === 'AbortError') {
+        status.textContent = '已停止生成。';
+      } else {
+        status.textContent = '生成失败：' + (error && error.message ? error.message : String(error));
+      }
+    } finally {
+      generateBtn.disabled = false;
+      cancelBtn.disabled = true;
+      currentController = null;
+    }
+  }
+
+  function auditProtectedTerms(text) {
+    var raw = getValue('protectedTerms');
+    var box = document.getElementById('termAudit');
+
+    if (!raw) {
+      box.style.display = 'none';
+      return '';
+    }
+
+    var terms = raw.split(/\r?\n/).map(function (item) {
+      return item.trim();
+    }).filter(function (item) {
+      return item.length > 0;
+    });
+
+    var missing = [];
+    for (var i = 0; i < terms.length; i++) {
+      if (text.indexOf(terms[i]) === -1) {
+        missing.push(terms[i]);
+      }
+    }
+
+    box.style.display = 'block';
+
+    if (missing.length === 0) {
+      box.textContent = '名词核验：所有指定保护项均在输出中原样出现。';
+      return ' 名词核验通过。';
+    }
+
+    box.textContent = '名词核验未通过，以下保护项未在输出中原样出现：\n- ' + missing.join('\n- ');
+    return ' 有 ' + missing.length + ' 个保护项未通过本地核验，请检查。';
+  }
+
+  function cancelGeneration() {
+    if (currentController) {
+      currentController.abort();
+    } else {
+      document.getElementById('status').textContent = '当前浏览器不支持主动中止请求，请等待请求结束。';
+    }
+  }
+
+  async function copyResult() {
+    var text = document.getElementById('result').textContent;
+    var status = document.getElementById('status');
+
+    if (!text) {
+      status.textContent = '当前没有可复制的内容。';
+      return;
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        var temp = document.createElement('textarea');
+        temp.value = text;
+        temp.style.position = 'fixed';
+        temp.style.left = '-9999px';
+        document.body.appendChild(temp);
+        temp.select();
+        document.execCommand('copy');
+        document.body.removeChild(temp);
+      }
+      status.textContent = '已复制到剪贴板。';
+    } catch (error) {
+      status.textContent = '复制失败，请手工选择结果复制。';
+    }
+  }
+
+  function downloadResult(extension) {
+    var text = document.getElementById('result').textContent;
+    var status = document.getElementById('status');
+
+    if (!text) {
+      status.textContent = '当前没有可下载的内容。';
+      return;
+    }
+
+    var title = getValue('docTitle') || '生成文档';
+    var safeName = title.replace(/[\\/:*?"<>|]/g, '_').slice(0, 80);
+    var mime = extension === 'md' ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8';
+    var blob = new Blob(['\uFEFF' + text], { type: mime });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+
+    link.href = url;
+    link.download = safeName + '.' + extension;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    status.textContent = '文件已生成。';
+  }
+
+  function clearResult() {
+    document.getElementById('result').textContent = '';
+    document.getElementById('status').textContent = '';
+    document.getElementById('termAudit').style.display = 'none';
+  }
+
+  switchSkill();
+  syncReasoningEffort();
+</script>
+</body>
+</html>
