@@ -1,10 +1,10 @@
 # TRPG AI 主持助手 v1.4.2
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。当前目录中的 `index.html` 始终是最新版，当前版本为 v1.4.2。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.4.2。
 
 ## 快速开始
 
-1. 双击打开 index.html。
+1. 双击打开 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)。
 2. 选择跑团系统、运行模式和剧本。
 3. COC 角色选择“天命五选一（.coc5）”或“480 点购点（不含幸运）”。
 4. 创建角色后阅读预设剧本前情提要。
@@ -62,7 +62,7 @@
 - v1.3.2：加入明骰/暗骰、节点驱动检定、SAN Check 保护、严格状态协议和安全错误恢复。
 - v1.2：完成 COC 创角、预设剧本、前情提要、浏览器骰点、节点确认和本地存档闭环。
 
-版本以 `index.html` 内置的 `APP_VERSION` 为准；本目录只保留一个产品入口，不同时提供多个版本页面。
+版本以 `outputs/trpg-dm-assistant.html` 内置的 `APP_VERSION` 为准；本目录只保留一个产品入口，不同时提供多个版本页面。
 
 ## API 配置
 
@@ -72,10 +72,27 @@
 
 ## 文件说明
 
-- index.html：完整单文件应用，包含 HTML、CSS、JavaScript、默认剧本和中文文案。
+- src/：v1.4.2 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
+- src/shell.html：单文件产品的 HTML 外壳。
+- build/build-single-html.js：无依赖 Node 构建脚本，将源码拼接为唯一正式产品。
+- outputs/trpg-dm-assistant.html：完整、可直接双击打开的单文件应用。
 - v1.4.2-test-report.md：当前版本功能与自动化测试报告。
 - v1.4.1-test-report.md：上一版本测试记录。
 - v1.3.2-test-report.md、v1.2-test-report.md：历史版本测试记录。
+
+## 模块化构建
+
+无需安装 npm 或任何依赖。在本目录执行：
+
+```powershell
+node build/build-single-html.js
+```
+
+构建会稳定生成 `outputs/trpg-dm-assistant.html`，不使用 CDN、外部资源或运行时模块加载。可使用以下聚焦验证：
+
+```powershell
+node build/verify-single-html.js
+```
 
 ## 当前边界
 

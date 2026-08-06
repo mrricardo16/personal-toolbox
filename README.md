@@ -8,7 +8,7 @@
 
 ### TRPG AI 主持助手（最新版 v1.4.2）
 
-路径：[trpg-dm-assistant/index.html](trpg-dm-assistant/index.html)
+路径：[trpg-dm-assistant/outputs/trpg-dm-assistant.html](trpg-dm-assistant/outputs/trpg-dm-assistant.html)
 
 单人使用的浏览器跑团小游戏。页面负责保存角色、剧本节点、线索、状态和骰点，AI 负责主持叙事、NPC 和剧情推进。
 
@@ -39,7 +39,7 @@
 - v1.3.2：加入明骰/暗骰与节点检定触发，强化 SAN Check，修复非法 stateChanges 导致的卡死，并增加安全重试。
 - v1.2：完成 COC 创角、预设剧本、浏览器骰点、节点确认和本地存档闭环。
 
-本仓库始终只保留一个 TRPG 产品入口；`trpg-dm-assistant/index.html` 始终指向最新版。
+本仓库始终只保留一个 TRPG 产品入口：[trpg-dm-assistant/outputs/trpg-dm-assistant.html](trpg-dm-assistant/outputs/trpg-dm-assistant.html)。它由模块化源码稳定构建，始终指向最新版。
 
 ### AI 文档助手
 

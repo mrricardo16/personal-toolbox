@@ -1,0 +1,70 @@
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+const vm = require("vm");
+
+const root = path.resolve(__dirname, "..");
+const output = path.join(root, "outputs", "trpg-dm-assistant.html");
+const requiredSources = [
+  "src/state.js",
+  "src/check-engine.js",
+  "src/ai-protocol.js",
+  "src/scenario-engine.js",
+  "src/memory.js",
+  "src/saves.js",
+  "src/ui.js",
+  "src/scenarios/library.js",
+  "src/styles.css",
+  "src/shell.html"
+];
+
+function fail(message) {
+  throw new Error(message);
+}
+
+for (const relativePath of requiredSources) {
+  if (!fs.existsSync(path.join(root, relativePath))) fail(`缺少模块化源码：${relativePath}`);
+}
+if (fs.existsSync(path.join(root, "index.html"))) fail("旧 index.html 会形成第二个 TRPG 产品入口");
+if (!fs.existsSync(output)) fail("缺少构建产物：outputs/trpg-dm-assistant.html");
+
+for (const relativePath of [...requiredSources, "outputs/trpg-dm-assistant.html"]) {
+  const filePath = path.join(root, relativePath);
+  const bytes = fs.readFileSync(filePath);
+  let text;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    fail(`不是严格 UTF-8：${relativePath}`);
+  }
+  if (text.includes("\uFFFD")) fail(`包含替换字符：${relativePath}`);
+}
+
+const html = fs.readFileSync(output, "utf8");
+if (!html.includes('const APP_VERSION = "1.4.2";')) fail("输出版本号不是 1.4.2");
+if (!html.includes("const SCHEMA_VERSION = 8;")) fail("输出 Schema 不是 8");
+if (/\b(?:eval|Function)\s*\(/.test(html)) fail("输出包含 eval/new Function 风险调用");
+if (/<script\b[^>]+\bsrc\s*=|<link\b[^>]+\bhref\s*=\s*["']https?:\/\//i.test(html)) fail("输出包含外部运行时资源");
+if (/(?:https?:)?\/\/(?:cdn|unpkg|jsdelivr)\./i.test(html)) fail("输出包含 CDN 依赖");
+
+const inlineScripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gi)];
+if (inlineScripts.length !== 1) fail(`输出必须恰好包含一个内联脚本，实际为 ${inlineScripts.length}`);
+try {
+  new vm.Script(inlineScripts[0][1], { filename: "trpg-dm-assistant.html:inline-script" });
+} catch (error) {
+  fail(`输出内联脚本语法错误：${error.message}`);
+}
+
+const symbols = new Map();
+for (const relativePath of requiredSources.filter(file => file.endsWith(".js"))) {
+  const source = fs.readFileSync(path.join(root, relativePath), "utf8");
+  for (const match of source.matchAll(/^(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(/gm)) {
+    const name = match[1];
+    if (symbols.has(name)) fail(`源模块存在重复正式函数：${name} (${symbols.get(name)} / ${relativePath})`);
+    symbols.set(name, relativePath);
+  }
+  if (/\b(?:TODO|FIXME)\b/.test(source)) fail(`源模块存在旧残留标记：${relativePath}`);
+}
+
+console.log("VERIFY_SINGLE_HTML:PASS");
