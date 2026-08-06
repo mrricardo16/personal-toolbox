@@ -23,6 +23,22 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Correct patch target
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('trpg-dm-assistant/build/apply-v1.4.4.py')
+          text = path.read_text(encoding='utf-8')
+          old_head = "scenario_path = ROOT / 'src/scenario-engine.js'\nscenario = read(scenario_path)"
+          new_head = "memory_path = ROOT / 'src/memory.js'\nmemory = read(memory_path)"
+          old_tail = "scenario = replace_between(scenario, 'async function runApiProtocolSelfCheck(', 'function applyEnding', selfcheck, '真实 API 协议自检')\nwrite(scenario_path, scenario)"
+          new_tail = "memory = replace_between(memory, 'async function runApiProtocolSelfCheck(', 'function applyEnding', selfcheck, '真实 API 协议自检')\nwrite(memory_path, memory)"
+          if old_head not in text or old_tail not in text:
+              raise RuntimeError('无法定位协议自检补丁目标')
+          path.write_text(text.replace(old_head,new_head,1).replace(old_tail,new_tail,1),encoding='utf-8')
+          PY
+
       - name: Apply strict hardening patch
         run: python3 trpg-dm-assistant/build/apply-v1.4.4.py
 
