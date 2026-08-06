@@ -1,0 +1,212 @@
+name: TRPG protocol stability hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/trpg-protocol-hotfix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Apply protocol stability patch
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          function replaceBetween(source, startMarker, endMarker, replacement, label) {
+            const start = source.indexOf(startMarker);
+            const end = source.indexOf(endMarker, start + startMarker.length);
+            if (start < 0 || end < 0) throw new Error(`无法定位 ${label}`);
+            return source.slice(0, start) + replacement.trimEnd() + '\n' + source.slice(end);
+          }
+
+          function replaceOnce(source, search, replacement, label) {
+            const index = source.indexOf(search);
+            if (index < 0) throw new Error(`无法定位 ${label}`);
+            return source.slice(0, index) + replacement + source.slice(index + search.length);
+          }
+
+          const protocolPath = 'trpg-dm-assistant/src/ai-protocol.js';
+          let source = fs.readFileSync(protocolPath, 'utf8');
+
+          const helpers = String.raw`
+          const AI_PROTOCOL_VERSION="1.3";
+          function normalizeAiProtocolVersion(value){
+            const text=String(value??"").trim(),match=text.match(/^(\d+)\.(\d+)(?:\.\d+)?$/);
+            return match?`${Number(match[1])}.${Number(match[2])}`:text;
+          }
+          function isCompatibleAiProtocolVersion(value){return /^1\.\d+$/.test(normalizeAiProtocolVersion(value))}
+          function normalizeAiProtocolShape(input,{stage=""}={}){
+            if(!isPlainObject(input))return input;const obj=deepClone(input);obj.protocolVersion=normalizeAiProtocolVersion(obj.protocolVersion);
+            if(obj.stateChanges===undefined)obj.stateChanges=[];if(obj.campaignChanges===undefined)obj.campaignChanges=[];if(obj.locationEffect===undefined)obj.locationEffect={type:"stay",targetNodeId:null};if(obj.nodeProposal===undefined)obj.nodeProposal=null;if(obj.endingProposal===undefined)obj.endingProposal=null;if(obj.actionSuggestions===undefined)obj.actionSuggestions=[];
+            const amountOperations=new Set(["adjustHp","adjustSan","adjustResource","adjustTension","adjustProgress","advanceClock"]);
+            for(const list of [obj.stateChanges,obj.campaignChanges])if(Array.isArray(list))for(const item of list){if(!isPlainObject(item)||!amountOperations.has(item.operation)||item.amount!==undefined)continue;for(const alias of ["by","delta"]){if(item[alias]!==undefined&&Number.isFinite(Number(item[alias]))){item.amount=Number(item[alias]);break}}}
+            if(stage==="action_adjudication"&&obj.decision==="check"&&isPlainObject(obj.check))obj.check.required=true;
+            if(stage==="action_adjudication"&&obj.decision==="no_check"&&obj.check===undefined)obj.check=null;
+            return obj;
+          }
+          const AI_OPERATION_PARAMETER_EXAMPLES={
+            adjustHp:{operation:"adjustHp",amount:-1,reason:"受到伤害"},
+            adjustSan:{operation:"adjustSan",amount:-1,reason:"理智损失"},
+            adjustResource:{operation:"adjustResource",resource:"资源名",amount:-1,reason:"消耗资源"},
+            addItem:{operation:"addItem",itemId:"item-id",name:"物品名",quantity:1,description:"说明"},
+            removeItem:{operation:"removeItem",itemId:"item-id"},
+            addStatus:{operation:"addStatus",statusId:"status-id",name:"状态名",description:"说明"},
+            removeStatus:{operation:"removeStatus",statusId:"status-id"},
+            revealClue:{operation:"revealClue",clueId:"clue-id",sourceCheckRecordId:"check-record-id",sourceRouteId:null,reason:"合法获取原因"},
+            setScenarioFlag:{operation:"setScenarioFlag",flag:"flagName",value:true},
+            advanceTime:{operation:"advanceTime",value:"20 分钟后"},
+            addLead:{operation:"addLead",leadId:"lead-id",text:"调查方向"},
+            resolveLead:{operation:"resolveLead",leadId:"lead-id"},
+            addQuestion:{operation:"addQuestion",questionId:"question-id",text:"未解决问题"},
+            resolveQuestion:{operation:"resolveQuestion",questionId:"question-id"},
+            adjustTension:{operation:"adjustTension",amount:1},
+            adjustProgress:{operation:"adjustProgress",amount:1},
+            advanceClock:{operation:"advanceClock",clockId:"clock-primary",amount:1,reason:"时间或压力推进"},
+            resolveClock:{operation:"resolveClock",clockId:"clock-primary"},
+            setOutcome:{operation:"setOutcome",key:"truth",value:"partial"}
+          };
+          `;
+          source = replaceOnce(source, 'function serializeTrueState(){', helpers + '\nfunction serializeTrueState(){', '协议辅助函数插入点');
+          source = source.replace('payload={protocolVersion:"1.2",', 'payload={protocolVersion:AI_PROTOCOL_VERSION,');
+          if (!source.includes('payload={protocolVersion:AI_PROTOCOL_VERSION,')) throw new Error('请求协议版本替换失败');
+
+          const userPromptFunction = String.raw`
+          function buildUserPrompt(payload){
+            const checkSchema={type:"skill | attribute | san | luck",system:"coc7 | dnd5e | custom",skillId:"角色卡中的技能或属性 ID",label:"显示名称",difficulty:"regular | hard | extreme",mandatory:false,visibility:"public | secret",reason:"为什么需要检定",purpose:"检定试图达成什么",exposureKey:"仅 SAN 使用的稳定刺激 ID",bonusDice:0,penaltyDice:0};
+            const schema={protocolVersion:AI_PROTOCOL_VERSION,requestId:payload.requestId,baseRevision:payload.baseRevision,decision:payload.stage==="action_adjudication"?"no_check":"resolution",narrative:"",check:null,stateChanges:[],campaignChanges:[],locationEffect:{type:"stay",targetNodeId:null},nodeProposal:null,endingProposal:null,actionSuggestions:[]};
+            return `严格返回 JSON。阶段：${payload.stage}\n结构：${JSON.stringify(schema)}\n需要检定时返回 decision=check 和完整 check 对象，check 不需要 required 字段，页面会根据 decision 自动派生 required=true；mandatory 只表示玩家是否允许跳过。\n检定对象格式：${JSON.stringify(checkSchema)}\n操作参数示例（字段名必须一致，数值增减统一使用 amount，不要使用 by 或 delta）：${JSON.stringify(AI_OPERATION_PARAMETER_EXAMPLES)}\n允许的普通状态操作：${Array.from(ALLOWED_STATE_OPERATIONS).join(", ")}\n允许的剧情操作：${Array.from(ALLOWED_CAMPAIGN_OPERATIONS).join(", ")}\naction_adjudication 若 decision=check，所有变化数组必须为空且不得推进节点/结局。revealClue 必须引用合法 sourceCheckRecordId 或 sourceRouteId。地点变化必须使用 locationEffect + nodeProposal；普通回合 actionSuggestions 必须为 []。\n输入：${JSON.stringify(payload)}`
+          }
+          `;
+          source = replaceBetween(source, 'function buildUserPrompt(payload){', 'async function callChatCompletion', userPromptFunction, 'buildUserPrompt');
+
+          const validateFunction = String.raw`
+          function validateAiResponse(input,{requestId,baseRevision,stage}){
+            const obj=normalizeAiProtocolShape(input,{stage});
+            if(!isPlainObject(obj))throw protocolError("AI_RESPONSE_INVALID_OBJECT","AI 响应顶层必须是对象");if(hasDangerousKeys(obj))throw protocolError("AI_RESPONSE_DANGEROUS_KEYS","AI 响应包含危险键名");if(!isCompatibleAiProtocolVersion(obj.protocolVersion))throw protocolError("AI_RESPONSE_PROTOCOL_VERSION",`不支持的协议版本：${String(obj.protocolVersion||"未提供")}`);if(obj.requestId!==requestId)throw protocolError("REQUEST_ID_MISMATCH","requestId 不匹配",{expected:requestId,actual:obj.requestId});if(Number(obj.baseRevision)!==Number(baseRevision))throw protocolError("BASE_REVISION_CONFLICT","baseRevision 冲突",{expected:baseRevision,actual:obj.baseRevision});if(typeof obj.narrative!=="string")throw protocolError("AI_RESPONSE_NARRATIVE_INVALID","narrative 必须是字符串");
+            const stateChanges=validateOperationArray(obj.stateChanges,{fieldName:"stateChanges",label:"状态变化",allowed:ALLOWED_STATE_OPERATIONS,max:40}),campaignChanges=validateOperationArray(obj.campaignChanges,{fieldName:"campaignChanges",label:"剧情变化",allowed:ALLOWED_CAMPAIGN_OPERATIONS,max:30});let decision=asString(obj.decision,40),checkInput=null;
+            if(stage==="action_adjudication"){
+              if(!["check","no_check"].includes(decision))throw protocolError("AI_DECISION_INVALID","action_adjudication 必须返回 decision=check 或 decision=no_check");
+              if(decision==="check"){if(!isPlainObject(obj.check))throw protocolError("AI_DECISION_INVALID","decision=check 时必须返回 check 对象");checkInput={...deepClone(obj.check),required:true}}
+              else{if(isPlainObject(obj.check)&&Boolean(obj.check.required))throw protocolError("AI_DECISION_INVALID","decision=no_check 时不得返回 required check");checkInput=null}
+            }else{
+              if(!decision)decision=isPlainObject(obj.check)?"check":"resolution";
+              if(!["check","resolution"].includes(decision))throw protocolError("AI_DECISION_INVALID","续写阶段 decision 只能是 check 或 resolution");
+              if(decision==="check"){if(!isPlainObject(obj.check))throw protocolError("AI_DECISION_INVALID","decision=check 时必须返回 check 对象");checkInput={...deepClone(obj.check),required:true}}
+              else{if(isPlainObject(obj.check)&&Boolean(obj.check.required))throw protocolError("AI_DECISION_INVALID","decision=resolution 时不得返回 required check");checkInput=null}
+            }
+            const check=normalizeCheck(checkInput);if(check?.suppressedDuplicateExposure&&decision==="check")decision=stage==="action_adjudication"?"no_check":"resolution";
+            const out={protocolVersion:AI_PROTOCOL_VERSION,requestId,baseRevision,decision,narrative:asString(obj.narrative,12000),stateChanges,campaignChanges,check,locationEffect:normalizeLocationEffect(obj.locationEffect),nodeProposal:obj.nodeProposal||null,endingProposal:obj.endingProposal||null,actionSuggestions:[]};
+            if(stage==="action_adjudication"&&narrativeRequiresSanCheck(out.narrative)&&!(out.check?.required&&out.check.type==="san")&&!processedExposure(out.check?.exposureKey))throw protocolError("SAN_CHECK_REQUIRED","叙事包含首次直接目睹的明显理智冲击场面，但未返回强制 SAN 明骰");const protectedMentions=narrativeProtectedClueIds(out.narrative);if(protectedMentions.length){const proposed=new Set(out.stateChanges.filter(x=>x.operation==="revealClue").map(x=>x.clueId));const missing=protectedMentions.filter(id=>!proposed.has(id));if(missing.length)throw protocolError("PROTECTED_CLUE_NARRATIVE_LEAK",`叙事提前揭示受保护线索：${missing.join(", ")}`)}
+            if(out.decision==="check"&&(out.stateChanges.length||out.campaignChanges.length||out.nodeProposal!==null||out.endingProposal!==null))throw protocolError("CHECK_PREMATURE_EFFECTS","请求检定时不得同时提交状态变化、剧情变化、节点或结局");
+            if(out.nodeProposal!==null){if(!isPlainObject(out.nodeProposal))throw protocolError("NODE_PROPOSAL_INVALID","nodeProposal 必须是对象或 null");out.nodeProposal={targetNodeId:asString(out.nodeProposal.targetNodeId,120),title:asString(out.nodeProposal.title,120),reason:asString(out.nodeProposal.reason,500),temporaryNode:out.nodeProposal.temporaryNode||null}}
+            if(out.endingProposal!==null){if(!isPlainObject(out.endingProposal))throw protocolError("ENDING_PROPOSAL_INVALID","endingProposal 必须是对象或 null");out.endingProposal={endingId:asString(out.endingProposal.endingId,120),reason:asString(out.endingProposal.reason,500)}}return out
+          }
+          `;
+          source = replaceBetween(source, 'function validateAiResponse(obj,{requestId,baseRevision,stage}){', 'async function parseAndRepairAiResponse', validateFunction, 'validateAiResponse');
+
+          source = replaceOnce(
+            source,
+            'const reqNumber=(raw,key,index,label)=>{const value=Number(raw[key]);if(!Number.isFinite(value))throw protocolError("STATE_CHANGE_PARAMETER_INVALID",`第 ${index+1} 项${label}操作参数缺失或不是有效数字：${key}`,{index:index+1,key});return value};',
+            'const reqNumber=(raw,key,index,label)=>{const candidates=key==="amount"?[key,"by","delta"]:[key];for(const candidate of candidates){if(raw[candidate]===undefined||raw[candidate]===null||raw[candidate]==="")continue;const value=Number(raw[candidate]);if(Number.isFinite(value))return value}throw protocolError("STATE_CHANGE_PARAMETER_INVALID",`第 ${index+1} 项${label}操作参数缺失或不是有效数字：${key}`,{index:index+1,key});};',
+            'reqNumber'
+          );
+
+          fs.writeFileSync(protocolPath, source, 'utf8');
+
+          const libraryPath = 'trpg-dm-assistant/src/scenarios/library.js';
+          let library = fs.readFileSync(libraryPath, 'utf8');
+          library = replaceOnce(library, 'const APP_VERSION = "1.4.2";', 'const APP_VERSION = "1.4.3";', 'APP_VERSION');
+          fs.writeFileSync(libraryPath, library, 'utf8');
+
+          const uiPath = 'trpg-dm-assistant/src/ui.js';
+          let ui = fs.readFileSync(uiPath, 'utf8');
+          ui = replaceOnce(ui, 'validateOperationArray,validateAiResponse,prepareStateChanges', 'validateOperationArray,validateAiResponse,normalizeAiProtocolShape,normalizeAiProtocolVersion,AI_PROTOCOL_VERSION,prepareStateChanges', '测试 API 导出');
+          fs.writeFileSync(uiPath, ui, 'utf8');
+
+          const readmePath = 'trpg-dm-assistant/README.md';
+          let readme = fs.readFileSync(readmePath, 'utf8');
+          readme = readme.replace(/^# TRPG AI 主持助手 v1\.4\.2/m, '# TRPG AI 主持助手 v1.4.3');
+          readme = readme.replace('当前版本为 v1.4.2。', '当前版本为 v1.4.3。');
+          readme = readme.replace('## v1.4.2 更新内容', `## v1.4.3 更新内容\n\n- 修复自由行动被脆弱裁决协议阻断的问题：decision=check 时由页面自动派生 required，不再要求模型重复返回该字段。\n- 统一请求、响应示例和校验器的 AI 协议版本；兼容数字版本、1.3.0 等同一主版本格式。\n- 对 amount 的安全别名 by / delta 做确定性规范化，修复 advanceClock 等合法操作被误拒绝。\n- 请求提示加入完整 check 与常用 operation 参数示例，同时继续严格拒绝未知操作、缺失 operation、无凭证线索和越权状态修改。\n- 增加真实模型常见格式漂移回归测试。\n\n## v1.4.2 更新内容`);
+          readme = readme.replace('- v1.4.2：修复 Schema 8 存档导入，统一威胁时钟，加入回合撤销、协议自检、诊断包、长聊天分批渲染和存储管理。', '- v1.4.3：修复裁决协议字段冗余、版本格式漂移和 amount 参数别名导致的自由行动阻断。\n- v1.4.2：修复 Schema 8 存档导入，统一威胁时钟，加入回合撤销、协议自检、诊断包、长聊天分批渲染和存储管理。');
+          readme = readme.replace('- src/：v1.4.2 的模块化源码', '- src/：v1.4.3 的模块化源码');
+          readme = readme.replace('- v1.4.2-test-report.md：当前版本功能与自动化测试报告。', '- v1.4.3-test-report.md：当前版本功能与自动化测试报告。\n- v1.4.2-test-report.md：上一补丁版本测试记录。');
+          fs.writeFileSync(readmePath, readme, 'utf8');
+
+          const testSource = String.raw`"use strict";
+          const fs=require("fs"),vm=require("vm"),assert=require("assert");
+          const source=fs.readFileSync(require("path").join(__dirname,"../src/ai-protocol.js"),"utf8");
+          const plain=v=>!!v&&typeof v==="object"&&!Array.isArray(v)&&Object.getPrototypeOf(v)===Object.prototype;
+          const sandbox={console,Set,Map,JSON,Number,String,Boolean,Array,Object,Math,RegExp,Date,Error,TypeError,Promise,
+            APP_SESSION_STORAGE:{getItem(){return null},setItem(){},removeItem(){}},APP_LOCAL_STORAGE:{getItem(){return null},setItem(){},removeItem(){}},STORAGE_API_KEY:"key",apiKeyMemory:"",activeAbortController:null,
+            isPlainObject:plain,deepClone:v=>JSON.parse(JSON.stringify(v)),asString:(v,m=2000)=>typeof v==="string"?v.slice(0,m):"",clamp:(n,min,max)=>Math.min(max,Math.max(min,n)),listStrings:(v,l=30,m=500)=>Array.isArray(v)?v.map(x=>String(x).slice(0,m)).slice(0,l):[],
+            hasDangerousKeys:()=>false,normalizeLocationEffect:raw=>raw||{type:"stay",targetNodeId:null},processedExposure:()=>false,allScenarioNodes:()=>[],ALLOWED_STATE_OPERATIONS:new Set(["adjustHp","adjustSan","adjustResource","addItem","removeItem","updateItemQuantity","addStatus","removeStatus","addClue","revealClue","updateClue","addNpc","updateNpc","setLocation","advanceTime","setScenarioFlag","clearScenarioFlag"]),ALLOWED_CAMPAIGN_OPERATIONS:new Set(["addLead","resolveLead","addQuestion","resolveQuestion","adjustTension","adjustProgress","addThreat","removeThreat","addRevealedTruth","addPinnedFact","setDirectorNote","setOutcome","advanceClock","resolveClock"]),
+            state:{config:{system:"coc7",timeoutMs:60000,temperature:.45,contentBoundaries:"",narrativeStyle:""},character:{system:"coc7",san:60,luck:50,attributes:{str:50},skills:[{id:"spot_hidden",name:"侦查",value:55}]},campaign:{currentNodeId:"node",processedExposureKeys:[]},clues:[],checkRecords:[],runtime:{pendingSecretResults:[]},scenario:{chapters:[]}},
+            fetch(){throw new Error("not used")},AbortController:function(){},setTimeout,clearTimeout,addLog(){},buildContextSnapshot(){return{}},pacingDirective(){return""}
+          };sandbox.globalThis=sandbox;
+          vm.runInNewContext(source+"\n;globalThis.__protocolTest={AI_PROTOCOL_VERSION,normalizeAiProtocolVersion,normalizeAiProtocolShape,validateAiResponse};",sandbox,{filename:"ai-protocol.js"});
+          const api=sandbox.__protocolTest;
+          let passed=0;const test=(name,fn)=>{fn();passed++;console.log(`PASS ${name}`)};
+          const base=()=>({protocolVersion:"1.3",requestId:"req",baseRevision:7,decision:"no_check",narrative:"你围绕大厅走了一圈，没有立即发现需要检定的障碍。",check:null,stateChanges:[],campaignChanges:[],locationEffect:{type:"stay",targetNodeId:null},nodeProposal:null,endingProposal:null,actionSuggestions:[]});
+          test("数字协议版本规范化",()=>assert.equal(api.normalizeAiProtocolVersion(1.3),"1.3"));
+          test("补丁协议版本规范化",()=>assert.equal(api.normalizeAiProtocolVersion("1.3.0"),"1.3"));
+          test("decision check 自动派生 required",()=>{const raw=base();raw.protocolVersion=1.3;raw.decision="check";raw.check={type:"skill",skillId:"spot_hidden",label:"侦查",mandatory:false,visibility:"public",reason:"观察大厅"};const out=api.validateAiResponse(raw,{requestId:"req",baseRevision:7,stage:"action_adjudication"});assert.equal(out.check.required,true);assert.equal(out.decision,"check")});
+          test("自由行动 no_check 正常通过",()=>{const raw=base();raw.protocolVersion="1.3.0";const out=api.validateAiResponse(raw,{requestId:"req",baseRevision:7,stage:"action_adjudication"});assert.equal(out.decision,"no_check");assert.match(out.narrative,/围绕大厅/)});
+          test("advanceClock by 规范化为 amount",()=>{const raw=base();raw.campaignChanges=[{operation:"advanceClock",clockId:"clock-primary",by:1,reason:"耗时"}];const out=api.validateAiResponse(raw,{requestId:"req",baseRevision:7,stage:"action_adjudication"});assert.equal(out.campaignChanges[0].amount,1)});
+          test("adjustProgress delta 规范化为 amount",()=>{const raw=base();raw.campaignChanges=[{operation:"adjustProgress",delta:1}];const out=api.validateAiResponse(raw,{requestId:"req",baseRevision:7,stage:"action_adjudication"});assert.equal(out.campaignChanges[0].amount,1)});
+          test("未知 operation 仍被拒绝",()=>{const raw=base();raw.stateChanges=[{operation:"doAnything"}];assert.throws(()=>api.validateAiResponse(raw,{requestId:"req",baseRevision:7,stage:"action_adjudication"}),/非法操作/)});
+          test("缺少 operation 仍被拒绝",()=>{const raw=base();raw.stateChanges=[{description:"自然语言变化"}];assert.throws(()=>api.validateAiResponse(raw,{requestId:"req",baseRevision:7,stage:"action_adjudication"}),/缺少 operation/)});
+          test("check 阶段禁止提前状态变化",()=>{const raw=base();raw.decision="check";raw.check={type:"skill",skillId:"spot_hidden",label:"侦查"};raw.stateChanges=[{operation:"setScenarioFlag",flag:"x",value:true}];assert.throws(()=>api.validateAiResponse(raw,{requestId:"req",baseRevision:7,stage:"action_adjudication"}),/不得同时提交/)});
+          console.log(`Protocol stability tests: ${passed} passed, 0 failed`);
+          `;
+          fs.writeFileSync('trpg-dm-assistant/build/test-protocol-stability.js', testSource, 'utf8');
+
+          const report = `# TRPG DM Assistant v1.4.3 测试报告\n\n## 修复范围\n\n- decision=check 不再要求模型重复返回 required；required 由页面根据 decision 派生。\n- 请求与响应统一使用 AI_PROTOCOL_VERSION = 1.3。\n- 兼容数值 1.3、字符串 1.3.0 等同一主版本格式。\n- amount 支持确定性安全别名 by / delta，但未知 operation 和缺失 operation 仍严格拒绝。\n- 提示词补充检定结构与常用状态/剧情操作参数示例。\n\n## 回归用例\n\n1. 数字协议版本 1.3。\n2. 字符串协议版本 1.3.0。\n3. decision=check 且 check 缺少 required。\n4. 普通自由行动 decision=no_check。\n5. advanceClock 使用 by。\n6. adjustProgress 使用 delta。\n7. 未知 operation 拒绝。\n8. 缺少 operation 拒绝。\n9. 检定前状态变化拒绝。\n\n## 执行命令\n\n- node trpg-dm-assistant/build/test-protocol-stability.js\n- node trpg-dm-assistant/build/build-single-html.js\n- node trpg-dm-assistant/build/verify-single-html.js\n- node --check（全部源码与构建脚本）\n- 连续两次构建 SHA-256 一致性校验\n- git diff --check\n`;
+          fs.writeFileSync('trpg-dm-assistant/v1.4.3-test-report.md', report, 'utf8');
+          NODE
+
+      - name: Run protocol regression tests
+        run: node trpg-dm-assistant/build/test-protocol-stability.js
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+
+      - name: Build and verify single HTML
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
+
+      - name: Commit hotfix to main
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add trpg-dm-assistant/src trpg-dm-assistant/build trpg-dm-assistant/outputs/trpg-dm-assistant.html trpg-dm-assistant/README.md trpg-dm-assistant/v1.4.3-test-report.md
+          git commit -m 'Fix TRPG AI protocol stability'
+          git push origin HEAD:main
