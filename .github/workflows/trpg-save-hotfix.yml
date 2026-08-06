@@ -1,0 +1,166 @@
+name: One-shot TRPG save controls hotfix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/trpg-save-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build-test-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Patch structured source and tests
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+
+          function replaceOnce(source, search, replacement, label) {
+            const index = source.indexOf(search);
+            if (index < 0) throw new Error(`无法定位：${label}`);
+            return source.slice(0, index) + replacement + source.slice(index + search.length);
+          }
+
+          function replaceBetween(source, startMarker, endMarker, replacement, label) {
+            const start = source.indexOf(startMarker);
+            const end = source.indexOf(endMarker, start + startMarker.length);
+            if (start < 0 || end < 0) throw new Error(`无法定位：${label}`);
+            return source.slice(0, start) + replacement.trimEnd() + '\n' + source.slice(end);
+          }
+
+          const uiPath = 'trpg-dm-assistant/src/ui.js';
+          let ui = fs.readFileSync(uiPath, 'utf8');
+
+          const saveUi = String.raw`
+          function renderSaves(){
+            const view=$("#view-saves");if(!view)return;const index=getSaveIndex(),stats=appStorageStats(),sizeById=Object.fromEntries(stats.slots.map(item=>[item.slotId,item.bytes])),currentId=state.saveMeta.slotId,lastSaved=state.saveMeta.updatedAt?formatTime(state.saveMeta.updatedAt):"尚未保存";
+            view.innerHTML=\`<div class="hero"><h1>存档管理</h1><div class="card"><div class="row"><div class="field grow"><label>当前槽位名称</label><input id="slotNameInput" value="\${escapeHtml(state.saveMeta.slotName||"未命名调查")}"></div><button id="saveNowBtn" class="btn primary" type="button">保存当前槽位</button><button id="newSlotBtn" class="btn" type="button">另存为新槽位</button><button id="exportSaveBtn" class="btn" type="button">导出当前 JSON</button><button id="importSaveBtn" class="btn" type="button">导入 JSON 为新槽位</button></div><div class="notice">保存会覆盖当前槽位；另存为会复制当前进度并创建新槽位。导入会先预览，然后创建新槽位，不覆盖当前存档。API Key 不进入存档。</div><div class="kv" style="margin-top:10px"><span>当前槽位</span><b>\${escapeHtml(currentId?(state.saveMeta.slotName||"未命名调查"):"未建档")}</b><span>最后保存</span><b>\${escapeHtml(lastSaved)}</b><span>未保存变更</span><b>\${state.runtime.isDirty?"有":"无"}</b></div></div><div class="card" style="margin-top:14px"><h2>存储与诊断</h2><div class="kv"><span>当前存档估算</span><b>\${formatBytes(stats.currentBytes)}</b><span>本工具本地占用</span><b>\${formatBytes(stats.total)}</b><span>当前消息 / 审计</span><b>\${state.messages.length} / \${state.logs.length}</b></div><div class="row"><button id="exportDiagnosticBtn" class="btn" type="button">导出诊断包</button><button id="clearOldLogsBtn" class="btn warn" type="button">清理旧审计日志</button></div></div><div class="card" style="margin-top:14px"><h2>本地槽位</h2><table class="table"><thead><tr><th>名称</th><th>更新时间</th><th>大小</th><th>状态</th><th>操作</th></tr></thead><tbody>\${index.map(x=>{const active=x.slotId===currentId;return\`<tr><td>\${escapeHtml(x.slotName)}</td><td>\${escapeHtml(formatTime(x.updatedAt))}</td><td>\${formatBytes(sizeById[x.slotId]||0)}</td><td>\${active?'<span class="chip">当前使用</span>':'<span class="muted">-</span>'}</td><td><button class="btn" data-load-slot="\${escapeHtml(x.slotId)}" \${active?'disabled':''}>\${active?'当前槽位':'载入'}</button> <button class="btn danger" data-delete-slot="\${escapeHtml(x.slotId)}">删除</button></td></tr>\`}).join("")||\`<tr><td colspan="5" class="muted">暂无存档</td></tr>\`}</tbody></table></div></div>\`;
+            bindSaveEvents();
+          }
+          function readSaveSlotName(){return asString($("#slotNameInput")?.value,80).trim()||"未命名调查"}
+          function uniqueNewSlotName(base){const clean=asString(base,80).trim()||"未命名调查",names=new Set(getSaveIndex().map(item=>String(item.slotName||"")));if(!names.has(clean))return clean;let index=2,candidate=\`\${clean} (\${index})\`;while(names.has(candidate)&&index<999){index++;candidate=\`\${clean} (\${index})\`}return candidate}
+          function bindSaveEvents(){
+            const slotNameInput=$("#slotNameInput");if(slotNameInput)slotNameInput.onkeydown=event=>{if(event.key==="Enter"){event.preventDefault();$("#saveNowBtn")?.click()}};
+            const saveBtn=$("#saveNowBtn");if(saveBtn)saveBtn.onclick=()=>{state.saveMeta.slotName=readSaveSlotName();saveCurrentSlot()};
+            const newSlot=$("#newSlotBtn");if(newSlot)newSlot.onclick=()=>{const previousName=state.saveMeta.slotName||"未命名调查",requested=readSaveSlotName(),base=requested===previousName?\`\${requested} 副本\`:requested;state.saveMeta.slotId=null;state.saveMeta.slotName=uniqueNewSlotName(base);state.saveMeta.createdAt=null;saveCurrentSlot();toast(\`已创建新槽位：\${state.saveMeta.slotName}\`,"ok")};
+            const exportBtn=$("#exportSaveBtn");if(exportBtn)exportBtn.onclick=()=>{state.saveMeta.slotName=readSaveSlotName();exportCurrentSave()};
+            const importSave=$("#importSaveBtn");if(importSave)importSave.onclick=()=>$("#saveFileInput")?.click();
+            const diagnosticBtn=$("#exportDiagnosticBtn");if(diagnosticBtn)diagnosticBtn.onclick=showDiagnosticExportModal;
+            const clearLogsBtn=$("#clearOldLogsBtn");if(clearLogsBtn)clearLogsBtn.onclick=()=>{if(confirm("仅保留最近 300 条审计日志。聊天、检定和游戏状态不会删除。继续吗？"))clearOldAuditLogs()};
+            $$('[data-load-slot]').forEach(button=>button.onclick=()=>{try{loadSlot(button.dataset.loadSlot)}catch(error){toast(error.message,"danger")}});
+            $$('[data-delete-slot]').forEach(button=>button.onclick=()=>{if(confirm("删除后无法恢复，确认删除？"))deleteSlot(button.dataset.deleteSlot)});
+          }
+          `;
+
+          ui = replaceBetween(ui, 'function renderSaves(){', 'function renderAll(){', saveUi, '存档页面与专用事件绑定');
+
+          const oldBindings = String.raw`  const saveBtn=$("#saveNowBtn");if(saveBtn)saveBtn.onclick=()=>{state.saveMeta.slotName=asString($("#slotNameInput").value,80)||"未命名调查";saveCurrentSlot()};
+            const newSlot=$("#newSlotBtn");if(newSlot)newSlot.onclick=()=>{state.saveMeta.slotId=null;state.saveMeta.slotName=asString($("#slotNameInput").value,80)||\`${state.saveMeta.slotName} 副本\`;state.saveMeta.createdAt=null;saveCurrentSlot();renderAll()};
+            const exportBtn=$("#exportSaveBtn");if(exportBtn)exportBtn.onclick=exportCurrentSave;const importSave=$("#importSaveBtn");if(importSave)importSave.onclick=()=>$("#saveFileInput").click();const diagnosticBtn=$("#exportDiagnosticBtn");if(diagnosticBtn)diagnosticBtn.onclick=showDiagnosticExportModal;const clearLogsBtn=$("#clearOldLogsBtn");if(clearLogsBtn)clearLogsBtn.onclick=()=>{if(confirm("仅保留最近 300 条审计日志。聊天、检定和游戏状态不会删除。继续吗？"))clearOldAuditLogs()};
+            $$('[data-load-slot]').forEach(b=>b.onclick=()=>{try{loadSlot(b.dataset.loadSlot)}catch(e){toast(e.message,"danger")}});$$('[data-delete-slot]').forEach(b=>b.onclick=()=>{if(confirm("删除后无法恢复，确认删除？"))deleteSlot(b.dataset.deleteSlot)});`;
+          ui = replaceOnce(ui, oldBindings, '  bindSaveEvents();', 'bindDynamicEvents 中旧存档绑定');
+          fs.writeFileSync(uiPath, ui, 'utf8');
+
+          const libraryPath = 'trpg-dm-assistant/src/scenarios/library.js';
+          let library = fs.readFileSync(libraryPath, 'utf8');
+          library = replaceOnce(library, 'const APP_VERSION = "1.4.4";', 'const APP_VERSION = "1.4.5";', 'APP_VERSION');
+          fs.writeFileSync(libraryPath, library, 'utf8');
+
+          const ciPath = '.github/workflows/trpg-ci.yml';
+          let ci = fs.readFileSync(ciPath, 'utf8');
+          const ciMarker = '      - name: JavaScript syntax\n';
+          if (!ci.includes('Save management interaction regression')) {
+            ci = replaceOnce(ci, ciMarker, '      - name: Save management interaction regression\n        run: node trpg-dm-assistant/build/test-save-ui.js\n\n' + ciMarker, 'CI 存档交互测试插入点');
+          }
+          fs.writeFileSync(ciPath, ci, 'utf8');
+
+          const testSource = String.raw`"use strict";
+          const fs=require("fs"),path=require("path"),vm=require("vm"),assert=require("assert");
+          const ui=fs.readFileSync(path.resolve(__dirname,"../src/ui.js"),"utf8");
+          assert.match(ui,/function renderSaves\(\)[\s\S]*?bindSaveEvents\(\);\n\}/,"renderSaves 必须在每次重绘后重新绑定存档事件");
+          const start=ui.indexOf("function readSaveSlotName(){"),end=ui.indexOf("function renderAll(){",start);assert.ok(start>=0&&end>start,"无法提取存档事件函数");
+          const elements={slotNameInput:{value:"回归槽位",onkeydown:null},saveNowBtn:{onclick:null,click(){this.onclick?.()}},newSlotBtn:{onclick:null,click(){this.onclick?.()}},exportSaveBtn:{onclick:null,click(){this.onclick?.()}},importSaveBtn:{onclick:null,click(){this.onclick?.()}},exportDiagnosticBtn:{onclick:null,click(){this.onclick?.()}},clearOldLogsBtn:{onclick:null,click(){this.onclick?.()}},saveFileInput:{clicks:0,click(){this.clicks++}}};
+          const loadButton={dataset:{loadSlot:"slot-load"},onclick:null},deleteButton={dataset:{deleteSlot:"slot-delete"},onclick:null};
+          const calls={save:0,export:0,diagnostic:0,clear:0,load:[],delete:[],toast:[]};
+          const sandbox={console,state:{saveMeta:{slotId:"slot-current",slotName:"回归槽位",createdAt:"x"}},asString:(v,max)=>typeof v==="string"?v.slice(0,max):"",getSaveIndex:()=>[{slotId:"slot-current",slotName:"回归槽位"},{slotId:"slot-old",slotName:"回归槽位 副本"}],$:(selector)=>elements[selector.replace(/^#/,"")]||null,$$:(selector)=>selector==="[data-load-slot]"?[loadButton]:selector==="[data-delete-slot]"?[deleteButton]:[],saveCurrentSlot:()=>{calls.save++},exportCurrentSave:()=>{calls.export++},showDiagnosticExportModal:()=>{calls.diagnostic++},clearOldAuditLogs:()=>{calls.clear++},loadSlot:id=>calls.load.push(id),deleteSlot:id=>calls.delete.push(id),toast:(message,type)=>calls.toast.push([message,type]),confirm:()=>true};sandbox.globalThis=sandbox;
+          vm.runInNewContext(ui.slice(start,end)+"\n;globalThis.bindSaveEvents=bindSaveEvents;",sandbox,{filename:"save-ui-functions.js"});
+          sandbox.bindSaveEvents();
+          assert.equal(typeof elements.saveNowBtn.onclick,"function");elements.saveNowBtn.click();assert.equal(calls.save,1);assert.equal(sandbox.state.saveMeta.slotName,"回归槽位");
+          elements.newSlotBtn.click();assert.equal(calls.save,2);assert.equal(sandbox.state.saveMeta.slotId,null);assert.equal(sandbox.state.saveMeta.slotName,"回归槽位 副本 (2)");
+          elements.exportSaveBtn.click();assert.equal(calls.export,1);elements.importSaveBtn.click();assert.equal(elements.saveFileInput.clicks,1);
+          elements.exportDiagnosticBtn.click();assert.equal(calls.diagnostic,1);elements.clearOldLogsBtn.click();assert.equal(calls.clear,1);
+          loadButton.onclick();deleteButton.onclick();assert.deepEqual(calls.load,["slot-load"]);assert.deepEqual(calls.delete,["slot-delete"]);
+          const replacement={onclick:null,click(){this.onclick?.()}};elements.saveNowBtn=replacement;sandbox.bindSaveEvents();replacement.click();assert.equal(calls.save,3,"重绘后的新按钮必须重新绑定");
+          console.log("SAVE_UI_TESTS:9:PASS");
+          `;
+          fs.writeFileSync('trpg-dm-assistant/build/test-save-ui.js', testSource, 'utf8');
+
+          const projectReadmePath = 'trpg-dm-assistant/README.md';
+          let projectReadme = fs.readFileSync(projectReadmePath, 'utf8');
+          projectReadme = projectReadme.replace(/^# TRPG AI 主持助手 v1\.4\.4/m, '# TRPG AI 主持助手 v1.4.5');
+          projectReadme = projectReadme.replace('当前版本为 v1.4.4。', '当前版本为 v1.4.5。');
+          projectReadme = projectReadme.replace('## v1.4.4 更新内容', '## v1.4.5 更新内容\n\n- 修复存档页面重绘后按钮事件丢失的问题。自动保存、手动保存或删除槽位引发页面重绘后，保存、另存为、导入、导出、诊断和槽位操作仍可继续使用。\n- 将存档交互抽离为专用 `bindSaveEvents()`，并由 `renderSaves()` 在每次重绘后立即重新绑定。\n- 增加当前槽位、最后保存时间和未保存变更提示；当前槽位的重复载入按钮会禁用。\n- 新增存档交互回归测试，并纳入永久 CI。\n\n## v1.4.4 更新内容');
+          projectReadme = projectReadme.replace('## 版本记录\n\n- v1.4.4：', '## 版本记录\n\n- v1.4.5：修复存档页面重绘后按钮失效，增加专用事件重绑定与存档交互回归测试。\n- v1.4.4：');
+          projectReadme = projectReadme.replace('- `src/`：v1.4.4 的模块化源码', '- `src/`：v1.4.5 的模块化源码');
+          projectReadme = projectReadme.replace('- `build/test-security-hardening.js`：运行 API、安全、存档导入和正式协议行为测试。', '- `build/test-security-hardening.js`：运行 API、安全、存档导入和正式协议行为测试。\n- `build/test-save-ui.js`：验证存档页面重绘后的按钮重绑定和主要操作。');
+          projectReadme = projectReadme.replace('- `v1.4.4-test-report.md`：当前版本测试报告。', '- `v1.4.5-test-report.md`：当前版本测试报告。\n- `v1.4.4-test-report.md`：上一版本测试报告。');
+          fs.writeFileSync(projectReadmePath, projectReadme, 'utf8');
+
+          const rootReadmePath = 'README.md';
+          let rootReadme = fs.readFileSync(rootReadmePath, 'utf8');
+          rootReadme = rootReadme.replace('### TRPG AI 主持助手（最新版 v1.4.4）', '### TRPG AI 主持助手（最新版 v1.4.5）');
+          rootReadme = rootReadme.replace('- 支持本地多槽位存档、导入和导出。', '- 修复存档页面重绘后按钮事件丢失，保存、另存为、导入、导出和槽位操作可持续使用。\n- 支持本地多槽位存档、导入和导出。');
+          rootReadme = rootReadme.replace('版本记录：\n\n- v1.4.4：', '版本记录：\n\n- v1.4.5：修复存档页面重绘后按钮失效，并新增存档交互回归测试。\n- v1.4.4：');
+          fs.writeFileSync(rootReadmePath, rootReadme, 'utf8');
+
+          const report = `# TRPG DM Assistant v1.4.5 测试报告\n\n## 缺陷原因\n\n存档页按钮最初由 \`bindDynamicEvents()\` 绑定，但 \`saveCurrentSlot()\`、自动保存和删除槽位会单独调用 \`renderSaves()\` 重建页面 DOM。重建后的新按钮没有重新绑定事件，因此表现为按钮可见但点击无反应。\n\n## 修复\n\n- 新增专用 \`bindSaveEvents()\`。\n- \`renderSaves()\` 每次重绘后立即调用 \`bindSaveEvents()\`。\n- 保存、另存为、导出、导入、诊断、清理日志、载入和删除槽位统一由该函数绑定。\n- 当前槽位禁止重复载入，并显示保存状态。\n\n## 回归测试\n\n- 初始按钮绑定。\n- 页面重绘后新按钮重新绑定。\n- 保存当前槽位。\n- 另存为新槽位及重名处理。\n- 导出当前存档。\n- 触发导入文件选择。\n- 导出诊断包。\n- 清理审计日志。\n- 载入和删除槽位。\n\n## 执行命令\n\n- \`node trpg-dm-assistant/build/test-security-hardening.js\`\n- \`node trpg-dm-assistant/build/test-save-ui.js\`\n- \`node trpg-dm-assistant/build/build-single-html.js\`\n- \`node trpg-dm-assistant/build/verify-single-html.js\`\n- 全部 JavaScript \`node --check\`\n- 连续两次构建 SHA-256 一致性校验\n- 唯一产品 HTML 检查\n- \`git diff --check\`\n`;
+          fs.writeFileSync('trpg-dm-assistant/v1.4.5-test-report.md', report, 'utf8');
+          NODE
+
+      - name: Runtime security and protocol tests
+        run: node trpg-dm-assistant/build/test-security-hardening.js
+
+      - name: Save management interaction regression
+        run: node trpg-dm-assistant/build/test-save-ui.js
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+
+      - name: Build and verify single HTML
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
+
+      - name: Commit hotfix to main
+        shell: bash
+        run: |
+          rm .github/workflows/trpg-save-hotfix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md .github/workflows/trpg-ci.yml .github/workflows/trpg-save-hotfix.yml trpg-dm-assistant
+          git commit -m 'Fix TRPG save management controls'
+          git push origin HEAD:main
