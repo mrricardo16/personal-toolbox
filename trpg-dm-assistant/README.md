@@ -73,7 +73,7 @@
 ## 文件说明
 
 - src/：v1.4.2 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
-- src/shell.html：单文件产品的 HTML 外壳。
+- src/shell.template：单文件产品的 HTML 外壳模板。
 - build/build-single-html.js：无依赖 Node 构建脚本，将源码拼接为唯一正式产品。
 - outputs/trpg-dm-assistant.html：完整、可直接双击打开的单文件应用。
 - v1.4.2-test-report.md：当前版本功能与自动化测试报告。

@@ -28,7 +28,7 @@ function readSource(relativePath) {
   return readUtf8(filePath);
 }
 
-const shell = readSource("shell.html");
+const shell = readSource("shell.template");
 const styles = readSource("styles.css").trimEnd();
 const scripts = moduleFiles.map(relativePath => {
   const source = readSource(relativePath).trimEnd();
@@ -36,7 +36,7 @@ const scripts = moduleFiles.map(relativePath => {
 }).join("\n\n");
 
 if (!shell.includes("<!-- STYLES -->") || !shell.includes("<!-- SCRIPTS -->")) {
-  throw new Error("src/shell.html 必须包含 STYLES 与 SCRIPTS 占位符");
+  throw new Error("src/shell.template 必须包含 STYLES 与 SCRIPTS 占位符");
 }
 
 const output = shell

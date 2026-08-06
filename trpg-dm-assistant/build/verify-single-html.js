@@ -16,7 +16,7 @@ const requiredSources = [
   "src/ui.js",
   "src/scenarios/library.js",
   "src/styles.css",
-  "src/shell.html"
+  "src/shell.template"
 ];
 
 function fail(message) {
