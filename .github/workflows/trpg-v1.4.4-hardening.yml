@@ -42,6 +42,20 @@ jobs:
       - name: Apply strict hardening patch
         run: python3 trpg-dm-assistant/build/apply-v1.4.4.py
 
+      - name: Align VM test realm
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          path = Path('trpg-dm-assistant/build/test-security-hardening.js')
+          text = path.read_text(encoding='utf-8')
+          old = 'sandbox={console,crypto:'
+          new = 'sandbox={Object,Array,JSON,Map,Set,console,crypto:'
+          if old not in text:
+              raise RuntimeError('无法定位 VM 测试沙箱')
+          path.write_text(text.replace(old,new,1),encoding='utf-8')
+          PY
+
       - name: Run real behavior tests
         run: node trpg-dm-assistant/build/test-security-hardening.js
 
