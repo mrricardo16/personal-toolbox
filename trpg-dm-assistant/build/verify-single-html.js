@@ -42,9 +42,13 @@ for (const relativePath of [...requiredSources, "outputs/trpg-dm-assistant.html"
 }
 
 const html = fs.readFileSync(output, "utf8");
-if (!html.includes('const APP_VERSION = "1.4.3";')) fail("输出版本号不是 1.4.3");
-if (!html.includes("const SCHEMA_VERSION = 8;")) fail("输出 Schema 不是 8");
+const librarySource = fs.readFileSync(path.join(root, "src/scenarios/library.js"), "utf8");
+const appVersion = librarySource.match(/const APP_VERSION = "([^"]+)";/)?.[1];
+const schemaVersion = librarySource.match(/const SCHEMA_VERSION = (\d+);/)?.[1];
+if (!appVersion || !html.includes(`const APP_VERSION = "${appVersion}";`)) fail("输出版本号与源码不一致");
+if (!schemaVersion || !html.includes(`const SCHEMA_VERSION = ${schemaVersion};`)) fail("输出 Schema 与源码不一致");
 if (/\b(?:eval|Function)\s*\(/.test(html)) fail("输出包含 eval/new Function 风险调用");
+if (html.includes("window.__TRPG_TEST_API__")) fail("生产输出暴露测试接口");
 if (/<script\b[^>]+\bsrc\s*=|<link\b[^>]+\bhref\s*=\s*["']https?:\/\//i.test(html)) fail("输出包含外部运行时资源");
 if (/(?:https?:)?\/\/(?:cdn|unpkg|jsdelivr)\./i.test(html)) fail("输出包含 CDN 依赖");
 

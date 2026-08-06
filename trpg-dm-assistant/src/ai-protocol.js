@@ -1,7 +1,22 @@
 /* AI ????????????????????? */
-function getApiKey(){return apiKeyMemory||APP_SESSION_STORAGE.getItem(STORAGE_API_KEY)||APP_LOCAL_STORAGE.getItem(STORAGE_API_KEY)||""}
-function saveApiKey(value,persist){apiKeyMemory=value;if(persist){APP_LOCAL_STORAGE.setItem(STORAGE_API_KEY,value);APP_SESSION_STORAGE.removeItem(STORAGE_API_KEY)}else{APP_SESSION_STORAGE.setItem(STORAGE_API_KEY,value);APP_LOCAL_STORAGE.removeItem(STORAGE_API_KEY)}}
-function redactSecrets(text){const key=getApiKey();return key?String(text).split(key).join("[REDACTED]"):String(text)}
+
+function getApiKey(apiUrl=state.config.apiUrl){
+  const normalized=normalizeApiUrl(apiUrl),host=apiStorageHost(normalized),storageKey=apiKeyStorageKey(normalized);
+  if(apiKeyMemory.host===host&&apiKeyMemory.value)return apiKeyMemory.value;
+  let value=APP_SESSION_STORAGE.getItem(storageKey)||APP_LOCAL_STORAGE.getItem(storageKey)||"";
+  if(!value&&host==="https://api.deepseek.com"){
+    const legacy=APP_SESSION_STORAGE.getItem(STORAGE_API_KEY_LEGACY)||APP_LOCAL_STORAGE.getItem(STORAGE_API_KEY_LEGACY)||"";
+    if(legacy){value=legacy;APP_SESSION_STORAGE.setItem(storageKey,legacy);APP_SESSION_STORAGE.removeItem(STORAGE_API_KEY_LEGACY);APP_LOCAL_STORAGE.removeItem(STORAGE_API_KEY_LEGACY)}
+  }
+  return value
+}
+function saveApiKey(value,persist,{apiUrl=state.config.apiUrl}={}){
+  const normalized=normalizeApiUrl(apiUrl),host=apiStorageHost(normalized),storageKey=apiKeyStorageKey(normalized),clean=String(value||"").trim();
+  apiKeyMemory={host,value:clean};APP_SESSION_STORAGE.removeItem(STORAGE_API_KEY_LEGACY);APP_LOCAL_STORAGE.removeItem(STORAGE_API_KEY_LEGACY);
+  if(!clean){APP_SESSION_STORAGE.removeItem(storageKey);APP_LOCAL_STORAGE.removeItem(storageKey);return}
+  if(persist){APP_LOCAL_STORAGE.setItem(storageKey,clean);APP_SESSION_STORAGE.removeItem(storageKey)}else{APP_SESSION_STORAGE.setItem(storageKey,clean);APP_LOCAL_STORAGE.removeItem(storageKey)}
+}
+function redactSecrets(text){const secrets=new Set([apiKeyMemory.value,getApiKey()].filter(Boolean));let output=String(text);for(const secret of secrets)output=output.split(secret).join("[REDACTED]");return output}
 function protocolError(code,message,details={}){const error=new Error(message);error.name="AiProtocolError";error.code=code;error.details=details;return error}
 function withRawResponse(error,raw,stage){if(error&&typeof error==="object"){error.rawResponse=asString(raw,24000);error.stage=stage||error.stage||"unknown"}return error}
 function isStaleRequestError(error){return ["STALE_RESPONSE","REQUEST_ID_MISMATCH","BASE_REVISION_CONFLICT"].includes(error?.code)}
@@ -9,7 +24,15 @@ function failureTitle(failed){const code=failed?.errorCode||"UNKNOWN";const map=
 
 const AI_PROTOCOL_VERSION="1.3";
 function normalizeAiProtocolVersion(value){const text=String(value??"").trim(),match=text.match(/^(\d+)\.(\d+)(?:\.\d+)?$/);return match?`${Number(match[1])}.${Number(match[2])}`:text}
-function normalizeAiProtocolShape(input,{stage=""}={}){if(!isPlainObject(input))return input;const obj=deepClone(input);obj.protocolVersion=normalizeAiProtocolVersion(obj.protocolVersion);if(obj.stateChanges===undefined)obj.stateChanges=[];if(obj.campaignChanges===undefined)obj.campaignChanges=[];if(obj.locationEffect===undefined)obj.locationEffect={type:"stay",targetNodeId:null};if(obj.nodeProposal===undefined)obj.nodeProposal=null;if(obj.endingProposal===undefined)obj.endingProposal=null;if(obj.actionSuggestions===undefined)obj.actionSuggestions=[];const amountOps=new Set(["adjustHp","adjustSan","adjustResource","adjustTension","adjustProgress","advanceClock"]);for(const list of [obj.stateChanges,obj.campaignChanges])if(Array.isArray(list))for(const item of list){if(!isPlainObject(item)||!amountOps.has(item.operation)||item.amount!==undefined)continue;for(const alias of ["by","delta"]){if(item[alias]!==undefined&&Number.isFinite(Number(item[alias]))){item.amount=Number(item[alias]);break}}}return obj}
+
+function normalizeAiProtocolShape(input,{stage=""}={}){
+  if(!isPlainObject(input))return input;const obj=deepClone(input);obj.protocolVersion=normalizeAiProtocolVersion(obj.protocolVersion);obj.decision=normalizeEnum(obj.decision);
+  if(obj.stateChanges===undefined)obj.stateChanges=[];if(obj.campaignChanges===undefined)obj.campaignChanges=[];if(obj.locationEffect===undefined)obj.locationEffect={type:"stay",targetNodeId:null};if(obj.nodeProposal===undefined)obj.nodeProposal=null;if(obj.endingProposal===undefined)obj.endingProposal=null;if(obj.actionSuggestions===undefined)obj.actionSuggestions=[];
+  if(isPlainObject(obj.check)){for(const key of ["type","system","difficulty","visibility","trigger","origin"])if(obj.check[key]!==undefined)obj.check[key]=normalizeEnum(obj.check[key]);if(obj.check.skillId!==undefined)obj.check.skillId=String(obj.check.skillId).trim()}
+  if(isPlainObject(obj.locationEffect)&&obj.locationEffect.type!==undefined)obj.locationEffect.type=normalizeEnum(obj.locationEffect.type);
+  const amountOps=new Set(["adjustHp","adjustSan","adjustResource","adjustTension","adjustProgress","advanceClock"]);for(const list of [obj.stateChanges,obj.campaignChanges])if(Array.isArray(list))for(const item of list){if(!isPlainObject(item))continue;if(typeof item.operation==="string")item.operation=item.operation.trim();if(!amountOps.has(item.operation)||item.amount!==undefined)continue;for(const alias of ["by","delta"]){if(item[alias]!==undefined&&Number.isFinite(Number(item[alias]))){item.amount=Number(item[alias]);break}}}
+  return obj
+}
 function serializeTrueState(){
   return {revision:state.revision,system:state.config.system,character:state.character,campaign:state.campaign,clues:state.clues,npcs:state.npcs,items:state.items,statuses:state.statuses,resources:state.resources,recentCheckRecords:state.checkRecords.slice(-12),pendingSecretResults:(state.runtime.pendingSecretResults||[]).slice(-6),scenarioMetadata:state.scenario?.metadata||null,scenarioBriefing:state.scenario?.briefing||null,scenarioDirector:state.scenario?.director||null,scenarioEndings:(state.scenario?.endings||[]).map(e=>({id:e.id,title:e.title,requiredFlags:e.requiredFlags||[],minClues:e.minClues||0,alwaysAvailable:Boolean(e.alwaysAvailable)})),currentNode:getCurrentNode()};
 }
@@ -32,7 +55,7 @@ function buildSystemPrompt(){return `你是单人调查型 TRPG 的 KP 裁决者
 15. 内容边界：${state.config.contentBoundaries||"无额外说明"}。叙事风格：${state.config.narrativeStyle||"克制、调查优先"}。
 16. ${pacingDirective()}` }
 function buildRequestPayload(stage,requestId,baseRevision,extra={}){const contextMemory=buildContextSnapshot(extra.playerAction||"",{debug:true}),payload={protocolVersion:AI_PROTOCOL_VERSION,requestId,baseRevision,stage,trueState:serializeTrueState(),scenarioMode:state.scenario?.mode||state.config.scenarioMode,memory:contextMemory,directorEvent:state.runtime.pendingDirectorEvent,...extra};state.runtime.lastContextEnvelope=deepClone(payload);return payload}
-function buildUserPrompt(payload){const schema={protocolVersion:"1.3",requestId:payload.requestId,baseRevision:payload.baseRevision,decision:payload.stage==="action_adjudication"?"no_check":"resolution",narrative:"",check:null,stateChanges:[],campaignChanges:[],locationEffect:{type:"stay",targetNodeId:null},nodeProposal:null,endingProposal:null,actionSuggestions:[]};return `严格返回 JSON。阶段：${payload.stage}
+function buildUserPrompt(payload){const schema={protocolVersion:AI_PROTOCOL_VERSION,requestId:payload.requestId,baseRevision:payload.baseRevision,decision:payload.stage==="action_adjudication"?"no_check":"resolution",narrative:"",check:null,stateChanges:[],campaignChanges:[],locationEffect:{type:"stay",targetNodeId:null},nodeProposal:null,endingProposal:null,actionSuggestions:[]};return `严格返回 JSON。阶段：${payload.stage}
 结构：${JSON.stringify(schema)}
 普通状态操作：${Array.from(ALLOWED_STATE_OPERATIONS).join(", ")}
 剧情操作：${Array.from(ALLOWED_CAMPAIGN_OPERATIONS).join(", ")}
@@ -40,15 +63,21 @@ function buildUserPrompt(payload){const schema={protocolVersion:"1.3",requestId:
 数值变化统一使用 amount；advanceClock 必须包含 clockId。
 action_adjudication 若 decision=check，所有变化数组必须为空且不得推进节点/结局。revealClue 必须引用合法 sourceCheckRecordId 或 sourceRouteId。地点变化必须使用 locationEffect + nodeProposal；普通回合 actionSuggestions 必须为 []。
 输入：${JSON.stringify(payload)}` }
+
+async function readResponseTextLimited(response,limit=MAX_API_RESPONSE_BYTES){
+  const declared=Number(response.headers?.get?.("content-length")||0);if(declared>limit)throw protocolError("API_RESPONSE_TOO_LARGE",`API 响应超过 ${limit} 字节上限`);
+  const text=await response.text();if(utf8Bytes(text)>limit)throw protocolError("API_RESPONSE_TOO_LARGE",`API 响应超过 ${limit} 字节上限`);return text
+}
+function parseChatCompletionBody(text){let data;try{data=JSON.parse(text)}catch{throw new Error("API 返回体不是有效 JSON")};const content=data?.choices?.[0]?.message?.content;if(typeof content!=="string")throw new Error("返回格式不是兼容的 Chat Completions 结构");if(utf8Bytes(content)>MAX_API_RESPONSE_BYTES)throw protocolError("API_RESPONSE_TOO_LARGE","模型输出内容超过安全上限");return content}
 async function callChatCompletion(messages,{timeoutMs=state.config.timeoutMs,jsonMode=true,temperature=null}={}){
-  const apiUrl=state.config.apiUrl.trim(),model=state.config.model.trim(),key=getApiKey();if(!apiUrl)throw new Error("API 地址为空");if(!model)throw new Error("模型名称为空");if(!key)throw new Error("API Key 为空");
+  const apiUrl=normalizeApiUrl(state.config.apiUrl),model=state.config.model.trim(),key=getApiKey(apiUrl);if(!model)throw new Error("模型名称为空");if(!key)throw new Error("API Key 为空");
   const controller=new AbortController();activeAbortController=controller;const timeout=setTimeout(()=>controller.abort("timeout"),clamp(Number(timeoutMs)||60000,5000,180000));
   const structuredTemperature=temperature===null?(jsonMode?Math.min(clamp(Number(state.config.temperature)||0.7,0,2),0.5):clamp(Number(state.config.temperature)||0.7,0,2)):clamp(Number(temperature),0,2);
-  const requestOnce=async includeJsonMode=>{const body={model,messages,temperature:structuredTemperature};if(includeJsonMode)body.response_format={type:"json_object"};return fetch(apiUrl,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},body:JSON.stringify(body),signal:controller.signal})};
+  const requestOnce=async includeJsonMode=>{const body={model,messages,temperature:structuredTemperature};if(includeJsonMode)body.response_format={type:"json_object"};const response=await fetch(apiUrl,{method:"POST",headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},body:JSON.stringify(body),signal:controller.signal});return{response,text:await readResponseTextLimited(response)}};
   try{
-    let response=await requestOnce(Boolean(jsonMode));
-    if(!response.ok){let body=redactSecrets(await response.text());const unsupported=Boolean(jsonMode)&&[400,404,415,422].includes(response.status)&&/response[_ -]?format|json[_ -]?object|json mode|unsupported/i.test(body);if(unsupported){addLog("api","当前兼容接口不支持 response_format，已安全回退为普通 JSON 提示请求");response=await requestOnce(false);if(!response.ok)body=redactSecrets(await response.text());else body=""}if(!response.ok){const map={401:"API Key 无效或未授权",403:"API 无权限",404:"API 地址或模型路径错误",429:"请求频率过高或额度不足"};throw new Error(`${map[response.status]||`API 返回 ${response.status}`}：${body.slice(0,500)}`)}}
-    const data=await response.json();const content=data?.choices?.[0]?.message?.content;if(typeof content!=="string")throw new Error("返回格式不是兼容的 Chat Completions 结构");return content;
+    let attempt=await requestOnce(Boolean(jsonMode));
+    if(!attempt.response.ok){let body=redactSecrets(attempt.text),unsupported=Boolean(jsonMode)&&[400,404,415,422].includes(attempt.response.status)&&/response[_ -]?format|json[_ -]?object|json mode|unsupported/i.test(body);if(unsupported){addLog("api","当前兼容接口不支持 response_format，已安全回退为普通 JSON 提示请求");attempt=await requestOnce(false);body=redactSecrets(attempt.text)}if(!attempt.response.ok){const map={401:"API Key 无效或未授权",403:"API 无权限",404:"API 地址或模型路径错误",429:"请求频率过高或额度不足"};throw new Error(`${map[attempt.response.status]||`API 返回 ${attempt.response.status}`}：${body.slice(0,500)}`)}}
+    return parseChatCompletionBody(attempt.text)
   }catch(error){if(error.name==="AbortError")throw new Error("请求已取消或超时");if(error instanceof TypeError)throw new Error("网络请求失败，可能是 CORS、网络不可达或本地 file:// 来源被服务端拒绝");throw error}
   finally{clearTimeout(timeout);if(activeAbortController===controller)activeAbortController=null}
 }
@@ -89,13 +118,18 @@ function validateAiResponse(obj,{requestId,baseRevision,stage}){
   if(out.nodeProposal!==null){if(!isPlainObject(out.nodeProposal))throw protocolError("NODE_PROPOSAL_INVALID","nodeProposal 必须是对象或 null");out.nodeProposal={targetNodeId:asString(out.nodeProposal.targetNodeId,120),title:asString(out.nodeProposal.title,120),reason:asString(out.nodeProposal.reason,500),temporaryNode:out.nodeProposal.temporaryNode||null}}
   if(out.endingProposal!==null){if(!isPlainObject(out.endingProposal))throw protocolError("ENDING_PROPOSAL_INVALID","endingProposal 必须是对象或 null");out.endingProposal={endingId:asString(out.endingProposal.endingId,120),reason:asString(out.endingProposal.reason,500)}}return out
 }
-async function parseAndRepairAiResponse(raw,meta){
-  const extracted=extractFirstJsonObject(raw),first=safeJsonParse(extracted);
-  if(first.ok){try{return validateAiResponse(first.value,meta)}catch(error){throw withRawResponse(error,raw,meta.stage)}}
-  const prompt=`只修复下面响应的 JSON 语法（括号、引号、逗号和代码围栏），不得猜测、补写或改写任何状态操作，不得把 action、type、description 转换成 operation，不得新增剧情，不得改变 requestId 或 baseRevision。只返回一个 JSON 对象。\n目标 requestId=${meta.requestId}\n目标 baseRevision=${meta.baseRevision}\n阶段=${meta.stage}\n原始响应：\n${raw}`;
-  try{const repairedRaw=await callChatCompletion([{role:"system",content:"你是 JSON 语法修复器，只修复语法，不推断业务语义。"},{role:"user",content:prompt}],{timeoutMs:Math.min(state.config.timeoutMs,45000),jsonMode:true,temperature:0.3}),repaired=safeJsonParse(extractFirstJsonObject(repairedRaw));if(!repaired.ok)throw protocolError("AI_RESPONSE_JSON_PARSE_FAILED","AI 响应 JSON 解析失败，自动修复后仍无法解析");return validateAiResponse(repaired.value,meta)}catch(error){if(!error.code)error=protocolError("AI_RESPONSE_JSON_PARSE_FAILED",`AI 响应 JSON 解析失败：${error.message}`);throw withRawResponse(error,raw,meta.stage)}
-}
 
+function repairJsonSyntaxLocally(raw){
+  let text=extractFirstJsonObject(raw).replace(/^\uFEFF/,"").trim();if(!text)return text;text=text.replace(/,\s*([}\]])/g,"$1");
+  let depthCurly=0,depthSquare=0,inString=false,escape=false;for(const char of text){if(inString){if(escape)escape=false;else if(char==="\\")escape=true;else if(char==='"')inString=false;continue}if(char==='"'){inString=true;continue}if(char==="{")depthCurly++;else if(char==="}")depthCurly--;else if(char==="[")depthSquare++;else if(char==="]")depthSquare--}
+  if(inString||depthCurly<0||depthSquare<0)return text;return text+"]".repeat(depthSquare)+"}".repeat(depthCurly)
+}
+async function parseAndRepairAiResponse(raw,meta){
+  if(utf8Bytes(raw)>MAX_API_RESPONSE_BYTES)throw withRawResponse(protocolError("API_RESPONSE_TOO_LARGE","AI 响应超过安全上限"),"",meta.stage);
+  const extracted=extractFirstJsonObject(raw),first=safeJsonParse(extracted);if(first.ok){try{return validateAiResponse(first.value,meta)}catch(error){throw withRawResponse(error,raw,meta.stage)}}
+  const repairedText=repairJsonSyntaxLocally(raw),repaired=safeJsonParse(repairedText);if(!repaired.ok)throw withRawResponse(protocolError("AI_RESPONSE_JSON_PARSE_FAILED","AI 响应 JSON 解析失败，本地安全修复后仍无法解析"),raw,meta.stage);
+  try{return validateAiResponse(repaired.value,meta)}catch(error){throw withRawResponse(error,raw,meta.stage)}
+}
 /* =========================
    状态变化事务
 ========================= */

@@ -6,12 +6,14 @@
 /* =========================
    常量与默认数据
 ========================= */
-const APP_VERSION = "1.4.3";
+const APP_VERSION = "1.4.4";
 const SCHEMA_VERSION = 8;
 const STORAGE_INDEX_KEY = "trpg-dm-assistant:index:v1";
 const STORAGE_SLOT_PREFIX = "trpg-dm-assistant:slot:";
-const STORAGE_API_KEY = "trpg-dm-assistant:api-key";
-const STORAGE_PREFS_KEY = "trpg-dm-assistant:prefs:v1";
+const STORAGE_API_KEY_PREFIX = "trpg-dm-assistant:api-key:";
+const STORAGE_API_KEY_LEGACY = "trpg-dm-assistant:api-key";
+const STORAGE_PREFS_KEY = "trpg-dm-assistant:prefs:v2";
+const STORAGE_PREFS_KEY_LEGACY = "trpg-dm-assistant:prefs:v1";
 const PHASES = new Set([
   "setup","character_ready","scenario_ready","awaiting_player_action","requesting_ai",
   "awaiting_check","rolling","requesting_ai_continuation","awaiting_node_confirmation","awaiting_ending_confirmation","campaign_ended","error"
@@ -53,6 +55,13 @@ const OFFICIAL_MODEL_OPTIONS = [
   {value:"deepseek-v4-pro",label:"DeepSeek V4 Pro（更强，成本更高）"}
 ];
 const RECOMMENDED_TEMPERATURE = 0.45;
+const API_TRANSPORT_CONFIG_KEYS = Object.freeze(["apiUrl","model","temperature","timeoutMs"]);
+const MAX_API_RESPONSE_BYTES = 200000;
+const MAX_IMPORT_DEPTH = 32;
+const MAX_IMPORT_NODES = 50000;
+const MAX_IMPORT_STRING_LENGTH = 2000000;
+const MAX_IMPORTED_SCENARIO_NODES = 500;
+const MAX_IMPORTED_SCENARIO_CLUES = 3000;
 const MAX_TEMPORARY_NODES_TOTAL = 6;
 const MAX_TEMPORARY_NODES_PER_SCENE = 2;
 const MAX_CONSECUTIVE_SPATIAL_MOVES = 2;

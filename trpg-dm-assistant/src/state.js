@@ -6,10 +6,27 @@ const uid = prefix => `${prefix}_${Date.now().toString(36)}_${randomInt(100000,9
 const clamp = (n,min,max)=>Math.min(max,Math.max(min,n));
 const deepClone = value => JSON.parse(JSON.stringify(value));
 const asString = (v,max=2000)=>typeof v==="string"?v.slice(0,max):"";
-const isPlainObject = v => !!v && typeof v==="object" && !Array.isArray(v) && Object.getPrototypeOf(v)===Object.prototype;
+const isPlainObject = v => {if(!v||typeof v!=="object"||Array.isArray(v))return false;const proto=Object.getPrototypeOf(v);return proto===null||Object.getPrototypeOf(proto)===null;};
 function memoryStorage(){const map=new Map();return{getItem:key=>map.has(String(key))?map.get(String(key)):null,setItem:(key,value)=>map.set(String(key),String(value)),removeItem:key=>map.delete(String(key)),clear:()=>map.clear(),key:index=>Array.from(map.keys())[index]??null,get length(){return map.size}}}
 function safeBrowserStorage(name){try{const storage=window[name],probe=`__trpg_probe_${name}`;storage.setItem(probe,"1");storage.removeItem(probe);return storage}catch{return memoryStorage()}}
 const APP_LOCAL_STORAGE=safeBrowserStorage("localStorage"),APP_SESSION_STORAGE=safeBrowserStorage("sessionStorage");
+function normalizeEnum(value){return String(value??"").trim().toLowerCase()}
+function normalizeApiUrl(value){
+  let url;try{url=new URL(String(value||"").trim())}catch{throw new Error("API 地址不是有效 URL")}
+  const local=["localhost","127.0.0.1","::1"].includes(url.hostname);
+  if(url.username||url.password)throw new Error("API 地址不得包含用户名或密码");
+  if(url.protocol!=="https:"&&!(url.protocol==="http:"&&local))throw new Error("API 地址必须使用 HTTPS；仅 localhost 允许 HTTP");
+  url.hash="";return url.toString()
+}
+function apiStorageHost(apiUrl){return new URL(normalizeApiUrl(apiUrl)).origin.toLowerCase()}
+function apiKeyStorageKey(apiUrl){return STORAGE_API_KEY_PREFIX+encodeURIComponent(apiStorageHost(apiUrl))}
+function stripApiTransportConfig(config){const source=isPlainObject(config)?deepClone(config):{};for(const key of API_TRANSPORT_CONFIG_KEYS)delete source[key];delete source.apiKey;delete source.persistKey;return source}
+function pickApiTransportConfig(config){const source=isPlainObject(config)?config:{};return{apiUrl:normalizeApiUrl(source.apiUrl||DEFAULT_CONFIG.apiUrl),model:normalizeConfiguredModel(source.model||DEFAULT_CONFIG.model),temperature:clamp(Number(source.temperature??RECOMMENDED_TEMPERATURE),0,2),timeoutMs:clamp(Number(source.timeoutMs||DEFAULT_CONFIG.timeoutMs),5000,180000)}}
+function readApiPreferences(){try{const raw=APP_LOCAL_STORAGE.getItem(STORAGE_PREFS_KEY)||APP_LOCAL_STORAGE.getItem(STORAGE_PREFS_KEY_LEGACY);if(!raw)return pickApiTransportConfig(DEFAULT_CONFIG);const parsed=JSON.parse(raw),safe=pickApiTransportConfig({...DEFAULT_CONFIG,...(isPlainObject(parsed)?parsed:{})});APP_LOCAL_STORAGE.setItem(STORAGE_PREFS_KEY,JSON.stringify(safe));APP_LOCAL_STORAGE.removeItem(STORAGE_PREFS_KEY_LEGACY);return safe}catch{return pickApiTransportConfig(DEFAULT_CONFIG)}}
+function writeApiPreferences(config){const safe=pickApiTransportConfig(config);APP_LOCAL_STORAGE.setItem(STORAGE_PREFS_KEY,JSON.stringify(safe));APP_LOCAL_STORAGE.removeItem(STORAGE_PREFS_KEY_LEGACY);return safe}
+function applyStoredApiPreferences(config){return{...(isPlainObject(config)?config:{}),...readApiPreferences()}}
+function hasPersistedApiKey(apiUrl=state?.config?.apiUrl||DEFAULT_CONFIG.apiUrl){try{return Boolean(APP_LOCAL_STORAGE.getItem(apiKeyStorageKey(apiUrl)))}catch{return false}}
+function clearApiKeyForUrl(apiUrl){try{const key=apiKeyStorageKey(apiUrl);APP_LOCAL_STORAGE.removeItem(key);APP_SESSION_STORAGE.removeItem(key)}catch{}}
 function escapeHtml(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]));}
 function formatTime(iso){try{return new Date(iso).toLocaleString("zh-CN",{hour12:false});}catch{return iso||"";}}
 function normalizeConfiguredModel(model){const value=asString(model,200).trim();if(value==="deepseek-chat"||value==="deepseek-reasoner")return "deepseek-v4-flash";return value||"deepseek-v4-flash"}
@@ -25,7 +42,7 @@ function genericSpatialPattern(value){const text=String(value||"");return SPATIA
 function narrativeImpliesLocationTransition(value){const text=String(value||"").replace(/\s+/g," ");if(!text)return false;const patterns=[/你(?:推开|拉开).{0,18}(?:门).{0,14}(?:走进|进入|来到|踏入|抵达)/u,/你(?:穿过|越过).{0,18}(?:门|走廊|楼梯|地道|通道).{0,18}(?:来到|进入|抵达|踏入|下到)/u,/你(?:来到|进入|走进|踏入|抵达)(?:了)?(?:另一|下一|新的|更深的|一间|一条).{0,24}(?:房间|走廊|地道|地下室|大厅|仓库|密室|通道)/u,/你(?:顺着|沿着).{0,18}(?:楼梯|地道|走廊|通道).{0,20}(?:下去|前进|来到|进入|抵达)/u];return patterns.some(pattern=>pattern.test(text))}
 function spatialLoopPattern(value){const text=String(value||"");const sequence=[];for(const term of SPATIAL_GENERIC_TERMS){let index=text.indexOf(term);while(index>=0){sequence.push({term,index});index=text.indexOf(term,index+term.length)}}sequence.sort((a,b)=>a.index-b.index);return sequence.map(item=>item.term).slice(0,10).join(">")}
 function recentSpatialLoopDetected(narrative){const pattern=spatialLoopPattern(narrative);if(!pattern||pattern.split(">").length<3)return false;const recent=state.messages.filter(m=>m.role==="ai").slice(-5).map(m=>spatialLoopPattern(m.content)).filter(Boolean);return recent.filter(item=>item===pattern||setSimilarity(item,pattern)>=0.7).length>=2}
-function normalizeLocationEffect(raw){if(raw===null||raw===undefined)return{type:"stay",targetNodeId:null};if(!isPlainObject(raw)||hasDangerousKeys(raw))throw protocolError("LOCATION_EFFECT_INVALID","locationEffect 必须是对象");const type=asString(raw.type,40);if(!["stay","transition_proposal"].includes(type))throw protocolError("LOCATION_EFFECT_INVALID","locationEffect.type 只能是 stay 或 transition_proposal");return{type,targetNodeId:asString(raw.targetNodeId,120)||null}}
+function normalizeLocationEffect(raw){if(raw===null||raw===undefined)return{type:"stay",targetNodeId:null};if(!isPlainObject(raw)||hasDangerousKeys(raw))throw protocolError("LOCATION_EFFECT_INVALID","locationEffect 必须是对象");const type=normalizeEnum(asString(raw.type,40));if(!["stay","transition_proposal"].includes(type))throw protocolError("LOCATION_EFFECT_INVALID","locationEffect.type 只能是 stay 或 transition_proposal");return{type,targetNodeId:asString(raw.targetNodeId,120).trim()||null}}
 function transactionHasMeaningfulProgress(parsed){const meaningfulState=new Set(["addClue","revealClue","addNpc"]),meaningfulCampaign=new Set(["addLead","resolveLead","resolveQuestion","addThreat","removeThreat","addRevealedTruth","setOutcome","advanceClock","resolveClock"]);if((parsed.stateChanges||[]).some(x=>meaningfulState.has(x.operation)))return true;if((parsed.campaignChanges||[]).some(x=>meaningfulCampaign.has(x.operation)||(x.operation==="adjustProgress"&&Number(x.amount)>0)))return true;return false}
 function validateLocationContinuity(parsed,proposal,meaningfulProgress){const effect=parsed.locationEffect||{type:"stay",targetNodeId:null},implies=narrativeImpliesLocationTransition(parsed.narrative),setLocation=parsed.stateChanges?.find(change=>change.operation==="setLocation");if(effect.type==="transition_proposal"&&!proposal)throw protocolError("LOCATION_PROPOSAL_REQUIRED","locationEffect 声明地点切换，但缺少合法 nodeProposal");if(effect.type==="stay"&&proposal)throw protocolError("LOCATION_EFFECT_CONFLICT","存在 nodeProposal 时 locationEffect 必须为 transition_proposal");if(proposal&&effect.targetNodeId&&proposal.targetNodeId&&effect.targetNodeId!==proposal.targetNodeId)throw protocolError("LOCATION_EFFECT_CONFLICT","locationEffect 与 nodeProposal 的目标节点不一致");if(implies&&!proposal)throw protocolError("UNDECLARED_LOCATION_TRANSITION","叙事宣布进入新地点，但没有经过合法节点提议；本轮已拒绝");if(setLocation){if(!proposal)throw protocolError("LOCATION_SET_REQUIRES_NODE","地点变更必须通过 nodeProposal，不能单独使用 setLocation");if(asString(setLocation.location,120)!==proposal.title)throw protocolError("LOCATION_SET_CONFLICT","setLocation 必须与节点提议目标一致")}if(recentSpatialLoopDetected(parsed.narrative)&&!meaningfulProgress)throw protocolError("SPATIAL_LOOP_DETECTED","检测到重复的“门—房间—钥匙/通道”空间循环；必须推进线索、威胁、返回已有地点或进入结局") }
 function temporaryNodeSimilarity(raw){const text=[raw?.title,raw?.background,raw?.purpose,...(raw?.novelElements||[])].filter(Boolean).join(" "),tokens=locationSignatureTokens(text),history=state.campaign.navigation?.recentLocationSignatures||[];let max=0;for(const item of history.slice(-6))max=Math.max(max,setSimilarity(tokens,new Set(item.tokens||[])));return max}
@@ -81,7 +98,7 @@ function makeInitialState(){
 let state=makeInitialState();
 let activeAbortController=null;
 let autosaveTimer=null;
-let apiKeyMemory="";
+let apiKeyMemory={host:"",value:""};
 
 function setPhase(next,{force=false}={}){
   if(!PHASES.has(next))throw new Error(`未知阶段：${next}`);const current=state.runtime.phase;
