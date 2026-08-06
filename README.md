@@ -42,8 +42,8 @@
 - v1.4.3：修复自由行动被裁决协议阻断的问题，自动派生检定 `required`，兼容协议版本格式及 `by` / `delta` 数值别名。
 - v1.4.2：修复 Schema 8 存档导入、统一威胁时钟、加入回合撤销、协议自检、诊断包和长聊天优化。
 - v1.4.1：加入请求提示、场景连续性保护、导航历史、模型/温度预设和 Schema 7 存档迁移。
-- v1.3.2：加入明骰/暗骰与节点检定触发，强化 SAN Check，修复非法 stateChanges 导致的卡�E�，并增加安全重试。
-- v1.2：完成 COC 创角、预设剧本、浏览器骰点、节点确认和本��存档闭环。
+- v1.3.2：加入明骰/暗骰与节点检定触发，强化 SAN Check，修复非法 stateChanges 导致的卡死，并增加安全重试。
+- v1.2：完成 COC 创角、预设剧本、浏览器骰点、节点确认和本地存档闭环。
 
 本仓库始终只保留一个 TRPG 产品入口：[trpg-dm-assistant/outputs/trpg-dm-assistant.html](trpg-dm-assistant/outputs/trpg-dm-assistant.html)。它由模块化源码稳定构建，始终指向最新版。
 
