@@ -37,9 +37,10 @@ jobs:
           exec(compile(script, 'trpg-protocol-hotfix.py', 'exec'), {'__name__': '__main__'})
           PY
 
-      - name: Install valid regression test
+      - name: Install valid regression test and update verifier
         shell: bash
         run: |
+          sed -i 's/const APP_VERSION = \"1\.4\.2\";/const APP_VERSION = \"1.4.3\";/g; s/输出版本号不是 1\.4\.2/输出版本号不是 1.4.3/g' trpg-dm-assistant/build/verify-single-html.js
           cat > trpg-dm-assistant/build/test-protocol-stability.js <<'JS'
           "use strict";
           const fs=require("fs"),assert=require("assert"),path=require("path");
