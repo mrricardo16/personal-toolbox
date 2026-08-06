@@ -6,6 +6,24 @@
 
 ## 当前工具
 
+### TRPG AI 主持助手 v1.2
+
+路径：[trpg-dm-assistant/index.html](trpg-dm-assistant/index.html)
+
+单人使用的浏览器跑团小游戏。页面负责保存角色、剧本节点、线索、状态和骰点，AI 负责主持叙事、NPC 和剧情推进。
+
+主要能力：
+
+- COC 7 天命五选一（.coc5）和 480 点购点（不含幸运）。
+- COC HP、SAN、LUCK 派生值和百分骰检定。
+- 强制检定不可跳过，非强制检定可以跳过。
+- 内置多个调查悬疑短剧本，支持前情提要和节点确认。
+- 支持 TXT / Markdown 剧本本地导入。
+- 支持 DeepSeek、OpenAI、通义千问、Moonshot 等 OpenAI 兼容接口。
+- 支持本地多槽位存档、导入和导出。
+
+使用说明：[trpg-dm-assistant/README.md](trpg-dm-assistant/README.md)
+
 ### AI 文档助手
 
 路径：[`ai-document-writer/index.html`](ai-document-writer/index.html)
