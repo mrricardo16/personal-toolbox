@@ -6,6 +6,37 @@
 
 ## 当前工具
 
+### TRPG AI 主持助手（最新版 v1.4.1）
+
+路径：[trpg-dm-assistant/index.html](trpg-dm-assistant/index.html)
+
+单人使用的浏览器跑团小游戏。页面负责保存角色、剧本节点、线索、状态和骰点，AI 负责主持叙事、NPC 和剧情推进。
+
+主要能力：
+
+- COC 7 天命五选一（.coc5）和 480 点购点（不含幸运）。
+- COC HP、SAN、LUCK 派生值和百分骰检定。
+- 支持明骰、暗骰、节点进入检定、行动触发检定和强制/非强制检定。
+- 强制 SAN Check、侦查等节点检定由页面规则驱动，非强制明骰可以跳过。
+- 严格校验 AI 状态变化协议，初始请求失败后可安全重试或返回行动阶段。
+- 支持请求提示、案件方向回顾和一次性 KP 方向提示。
+- 增加场景连续性保护，阻止未经确认的地点跳转和重复门/房间循环。
+- 配置页提供模型下拉选择、跑团温度预设、上下文预算说明和推荐配置。
+- 内置多个调查悬疑短剧本，支持前情提要和节点确认。
+- 支持 TXT / Markdown 剧本本地导入。
+- 支持 DeepSeek、OpenAI、通义千问、Moonshot 等 OpenAI 兼容接口。
+- 支持本地多槽位存档、导入和导出。
+
+使用说明：[trpg-dm-assistant/README.md](trpg-dm-assistant/README.md)
+
+版本记录：
+
+- v1.4.1：加入请求提示、场景连续性保护、导航历史、模型/温度预设和 Schema 7 存档迁移。
+- v1.3.2：加入明骰/暗骰与节点检定触发，强化 SAN Check，修复非法 stateChanges 导致的卡死，并增加安全重试。
+- v1.2：完成 COC 创角、预设剧本、浏览器骰点、节点确认和本地存档闭环。
+
+本仓库始终只保留一个 TRPG 产品入口；`trpg-dm-assistant/index.html` 始终指向最新版。
+
 ### AI 文档助手
 
 路径：[`ai-document-writer/index.html`](ai-document-writer/index.html)
