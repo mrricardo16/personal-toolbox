@@ -17,10 +17,10 @@
 
 - 存档不再保存或恢复 API 地址、模型、温度和超时；API Key 按 API 主机隔离，远程接口强制 HTTPS。
 - 导入存档清空临时运行态，并限制嵌套深度、对象节点、剧本节点和线索数量。
-- API 协议自检改为使用正式 validateAiResponse 检测真实 TRPG no_check 响应。
+- API 协议自检改为使用正式 `validateAiResponse` 检测真实 TRPG `no_check` 响应。
 - JSON 修复改为本地确定性修复，不再让 AI 重写业务响应。
 - API 返回体和模型文本增加 200KB 上限，有限枚举统一规范化。
-- 正式成品不再暴露 window.__TRPG_TEST_API__；新增真实行为测试和永久 CI。
+- 正式成品不再暴露 `window.__TRPG_TEST_API__`；新增真实行为测试和永久 CI。
 - 构建校验器从源码动态读取版本。
 
 ## v1.4.3 更新内容
@@ -74,7 +74,7 @@
 
 ## 版本记录
 
-- v1.4.4：严格隔离 API 密钥与存档，强化导入、响应上限、真实协议测试和 CI。
+- v1.4.4：严格隔离 API 密钥与存档，强化导入、响应上限、本地确定性修复、真实协议测试、生产构建安全和永久 CI。
 - v1.4.3：修复裁决协议稳定性与自由行动阻断。
 - v1.4.2：修复 Schema 8 存档导入，统一威胁时钟，加入回合撤销、协议自检、诊断包、长聊天分批渲染和存储管理。
 - v1.4.1：加入请求提示、场景连续性保护、导航历史、模型/温度预设和 Schema 7 存档迁移。
@@ -91,13 +91,16 @@
 
 ## 文件说明
 
-- src/：v1.4.3 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
-- src/shell.template：单文件产品的 HTML 外壳模板。
-- build/build-single-html.js：无依赖 Node 构建脚本，将源码拼接为唯一正式产品。
-- outputs/trpg-dm-assistant.html：完整、可直接双击打开的单文件应用。
-- v1.4.2-test-report.md：当前版本功能与自动化测试报告。
-- v1.4.1-test-report.md：上一版本测试记录。
-- v1.3.2-test-report.md、v1.2-test-report.md：历史版本测试记录。
+- `src/`：v1.4.4 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
+- `src/shell.template`：单文件产品的 HTML 外壳模板。
+- `build/build-single-html.js`：无依赖 Node 构建脚本，将源码拼接为唯一正式产品。
+- `build/verify-single-html.js`：校验成品结构、版本、依赖和唯一产品 HTML。
+- `build/test-security-hardening.js`：运行 API、安全、存档导入和正式协议行为测试。
+- `outputs/trpg-dm-assistant.html`：完整、可直接双击打开的唯一产品 HTML。
+- `v1.4.4-test-report.md`：当前版本测试报告。
+- `v1.4.3-test-report.md`：上一补丁版本的协议稳定性测试记录。
+- `v1.4.2-test-report.md`、`v1.4.1-test-report.md`、`v1.3.2-test-report.md`、`v1.2-test-report.md`：历史版本测试记录。
+- `../.github/workflows/trpg-ci.yml`：针对 TRPG 项目的持续集成配置。
 
 ## 模块化构建
 
@@ -112,6 +115,14 @@ node build/build-single-html.js
 ```powershell
 node build/verify-single-html.js
 ```
+
+完整安全与协议回归测试：
+
+```powershell
+node build/test-security-hardening.js
+```
+
+GitHub Actions 还会检查所有 JavaScript 语法、连续两次构建结果一致、仓库中仅有一个 TRPG 产品 HTML，以及构建产物与源码同步。
 
 ## 当前边界
 
