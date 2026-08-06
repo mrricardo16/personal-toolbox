@@ -6,7 +6,7 @@
 
 ## 当前工具
 
-### TRPG AI 主持助手 v1.2
+### TRPG AI 主持助手（最新版 v1.3.2）
 
 路径：[trpg-dm-assistant/index.html](trpg-dm-assistant/index.html)
 
@@ -16,13 +16,22 @@
 
 - COC 7 天命五选一（.coc5）和 480 点购点（不含幸运）。
 - COC HP、SAN、LUCK 派生值和百分骰检定。
-- 强制检定不可跳过，非强制检定可以跳过。
+- 支持明骰、暗骰、节点进入检定、行动触发检定和强制/非强制检定。
+- 强制 SAN Check、侦查等节点检定由页面规则驱动，非强制明骰可以跳过。
+- 严格校验 AI 状态变化协议，初始请求失败后可安全重试或返回行动阶段。
 - 内置多个调查悬疑短剧本，支持前情提要和节点确认。
 - 支持 TXT / Markdown 剧本本地导入。
 - 支持 DeepSeek、OpenAI、通义千问、Moonshot 等 OpenAI 兼容接口。
 - 支持本地多槽位存档、导入和导出。
 
 使用说明：[trpg-dm-assistant/README.md](trpg-dm-assistant/README.md)
+
+版本记录：
+
+- v1.3.2：加入明骰/暗骰与节点检定触发，强化 SAN Check，修复非法 stateChanges 导致的卡死，并增加安全重试。
+- v1.2：完成 COC 创角、预设剧本、浏览器骰点、节点确认和本地存档闭环。
+
+本仓库始终只保留一个 TRPG 产品入口；`trpg-dm-assistant/index.html` 始终指向最新版。
 
 ### AI 文档助手
 
