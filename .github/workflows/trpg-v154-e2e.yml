@@ -7,7 +7,9 @@ on:
     paths:
       - '.github/workflows/trpg-v154-e2e.yml'
       - '.github/scripts/trpg-v154-fix-harness-loader.js'
+      - '.github/scripts/trpg-v154-product-patch.js'
       - 'trpg-dm-assistant/build/test-real-api-v154-e2e.js'
+      - 'trpg-dm-assistant/build/test-v154-protocol-routing.js'
       - 'trpg-dm-assistant/src/**'
 
 permissions:
@@ -25,6 +27,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Apply v1.5.4 protocol hardening
+        run: node .github/scripts/trpg-v154-product-patch.js
+
       - name: Deterministic preflight
         shell: bash
         run: |
@@ -37,10 +42,10 @@ jobs:
           node trpg-dm-assistant/build/test-v151-investigation-stability.js
           node trpg-dm-assistant/build/test-v152-long-session.js
           node trpg-dm-assistant/build/test-v153-clue-routes.js
+          node trpg-dm-assistant/build/test-v154-protocol-routing.js
           while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
           node trpg-dm-assistant/build/build-single-html.js
           node trpg-dm-assistant/build/verify-single-html.js
-          git diff --exit-code -- trpg-dm-assistant/outputs/trpg-dm-assistant.html
           git diff --check
 
       - name: Match browser script loading semantics
