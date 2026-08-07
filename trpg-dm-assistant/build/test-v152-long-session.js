@@ -4,7 +4,7 @@ const root=path.resolve(__dirname,"..");
 const scenario=fs.readFileSync(path.join(root,"src/scenario-engine.js"),"utf8"),ai=fs.readFileSync(path.join(root,"src/ai-protocol.js"),"utf8"),stateSource=fs.readFileSync(path.join(root,"src/state.js"),"utf8"),library=fs.readFileSync(path.join(root,"src/scenarios/library.js"),"utf8"),memory=fs.readFileSync(path.join(root,"src/memory.js"),"utf8");
 let passed=0;function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
 function extract(startMarker,endMarker){const start=scenario.indexOf(startMarker),end=scenario.indexOf(endMarker,start);assert.ok(start>=0&&end>start,`无法提取 ${startMarker}`);return scenario.slice(start,end)}
-test("版本为 v1.5.2",()=>assert.ok(library.includes('const APP_VERSION = "1.5.2";')));
+test("版本不低于 v1.5.2",()=>{const match=library.match(/const APP_VERSION = "(\d+)\.(\d+)\.(\d+)";/);assert.ok(match);const [,major,minor,patch]=match.map(Number);assert.ok(major>1||(major===1&&minor>5)||(major===1&&minor===5&&patch>=2))});
 test("Schema 保持 8",()=>assert.ok(library.includes('const SCHEMA_VERSION = 8;')));
 test("运行态记录长团诊断",()=>assert.ok(stateSource.includes("longSessionDiagnostics:null")));
 const helpers=extract("const MAX_WORLD_CONTINUITY_EVENTS=12;","function pacingDirective()");

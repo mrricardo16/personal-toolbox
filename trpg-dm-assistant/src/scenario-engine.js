@@ -42,20 +42,69 @@ function normalizeAcquisitionRoute(raw,index=0){const route=isPlainObject(raw)?r
 
 const CLUE_SKILL_HINTS={spot_hidden:["痕迹","脚印","划痕","钥匙","暗门","隐藏","票根","拖痕","夹层","交接单","货单","草图"],library_use:["档案","账本","账册","记录","日志","图纸","线路图","索引","病历","日记","报告","清单"],listen:["声音","敲击","低语","震动","广播"],psychology:["证词","谎言","态度","动机"],medicine:["药","病","医疗","尸体","伤势","实验协议"],science_pharmacy:["药物","注射剂","镇静剂","用药"],mechanical_repair:["机械","固定架","设备","绞盘","制冷机"],electrical_repair:["电路","供电","灯塔","广播设备"],history:["旧线","事故","历史","火灾"],law:["封条","许可","文件编号"]};
 function scoreCheckForClue(check,clue){const text=`${clue.name||""} ${clue.description||""}`;let score=0;for(const word of CLUE_SKILL_HINTS[check.skillId]||[])if(text.includes(word))score+=2;if(text.includes(check.label||""))score+=1;if(text.includes(check.reason||""))score+=1;return score}
-function normalizeScenarioClueRoutes(scenario){for(const node of allScenarioNodes(scenario)){const checks=[...(node.mandatoryChecks||[]),...(node.optionalChecks||[])];for(const clue of node.clues||[]){clue.protected=clue.protected!==false&&clue.hidden!==false;let routes=Array.isArray(clue.acquisitionRoutes)?clue.acquisitionRoutes.map(normalizeAcquisitionRoute):[];if(!routes.length){let candidates=checks.filter(check=>check.type!=="san").map(check=>({check,score:scoreCheckForClue(check,clue)})).sort((a,b)=>b.score-a.score);if(candidates.some(x=>x.score>0))candidates=candidates.filter(x=>x.score===candidates[0].score&&x.score>0);else candidates=[];routes=candidates.length?candidates.map((item,index)=>normalizeAcquisitionRoute({id:`${clue.id}-check-${index+1}`,type:"check",checkId:item.check.id,minimumRank:item.check.difficulty||"regular"},index)):[normalizeAcquisitionRoute({id:`${clue.id}-automatic`,type:"automatic"},0)];if(clue.protected&&candidates.length)routes.push(normalizeAcquisitionRoute({id:`${clue.id}-failure-forward`,type:"failure_forward",cost:{tension:1}},routes.length))}clue.acquisitionRoutes=routes}for(const check of checks){check.protectedClueIds=(node.clues||[]).filter(clue=>(clue.acquisitionRoutes||[]).some(route=>route.type==="check"&&route.checkId===check.id)).map(clue=>clue.id);if(check.type==="san"&&!check.exposureKey)check.exposureKey=`${node.id}:${check.id||check.reason||"san"}`}}return scenario}
+function normalizeScenarioClueRoutes(scenario){
+  for(const node of allScenarioNodes(scenario)){
+    const checks=[...(node.mandatoryChecks||[]),...(node.optionalChecks||[])];
+    for(const clue of node.clues||[]){
+      clue.protected=clue.protected!==false&&clue.hidden!==false;
+      let routes=Array.isArray(clue.acquisitionRoutes)?clue.acquisitionRoutes.map(normalizeAcquisitionRoute):[];
+      if(!routes.length){
+        let candidates=checks.filter(check=>check.type!=="san").map(check=>({check,score:scoreCheckForClue(check,clue)})).sort((a,b)=>b.score-a.score);
+        if(candidates.some(x=>x.score>0))candidates=candidates.filter(x=>x.score===candidates[0].score&&x.score>0);else candidates=[];
+        routes=candidates.length?candidates.map((item,index)=>normalizeAcquisitionRoute({id:clue.id+"-check-"+(index+1),type:"check",checkId:item.check.id,minimumRank:item.check.difficulty||"regular"},index)):[normalizeAcquisitionRoute({id:clue.id+"-automatic",type:"automatic"},0)];
+        if(clue.protected&&candidates.length)for(let index=0;index<candidates.length;index++){const item=candidates[index];routes.push(normalizeAcquisitionRoute({id:clue.id+"-failure-forward-"+(index+1),type:"failure_forward",checkId:item.check.id,cost:{tension:1}},routes.length))}
+      }
+      clue.acquisitionRoutes=routes
+    }
+    for(const check of checks){check.protectedClueIds=(node.clues||[]).filter(clue=>(clue.acquisitionRoutes||[]).some(route=>route.type==="check"&&route.checkId===check.id)).map(clue=>clue.id);if(check.type==="san"&&!check.exposureKey)check.exposureKey=node.id+":"+(check.id||check.reason||"san")}
+  }
+  return scenario
+}
 function processedExposure(exposureKey){return Boolean(exposureKey&&(state.campaign.processedExposureKeys||[]).includes(exposureKey))}
 function markExposureProcessed(exposureKey){if(!exposureKey)return;state.campaign.processedExposureKeys=Array.isArray(state.campaign.processedExposureKeys)?state.campaign.processedExposureKeys:[];if(!state.campaign.processedExposureKeys.includes(exposureKey))state.campaign.processedExposureKeys.push(exposureKey)}
 function rankSatisfies(actual,required="regular"){return Number(CHECK_RANK_ORDER[actual]||0)>=Number(CHECK_RANK_ORDER[required]||1)}
 function validateClueAcquisition(raw,clue,validationContext={}){
-  if(!clue?.protected)return{routeId:"unprotected",record:null,quality:"automatic",tensionCost:0};const routes=(clue.acquisitionRoutes||[]).map(normalizeAcquisitionRoute),sourceRecordId=asString(raw.sourceCheckRecordId,120)||asString(validationContext.currentCheckRecordId,120),routeId=asString(raw.sourceRouteId,120),route=routes.find(item=>item.id===routeId),record=sourceRecordId?state.checkRecords.find(item=>item.id===sourceRecordId):null;
-  if(route?.type==="failure_forward"){
-    if(!record)throw new Error(`失败前进路线 ${routeId} 必须引用当前失败或跳过的检定记录`);if(record.result===true&&!record.skipped)throw new Error(`检定记录 ${sourceRecordId} 已成功，不能使用失败前进路线`);
-    const quality=clueDiscoveryQuality(record),baseCost=Math.max(1,Number(route.cost?.tension||1)),tensionCost=quality==="fumble"?Math.max(2,baseCost):baseCost;validationContext.failureForwardTension=Math.max(Number(validationContext.failureForwardTension||0),tensionCost);return{routeId,record,quality,tensionCost}
+  if(!clue?.protected)return{routeId:"unprotected",record:null,quality:"automatic",tensionCost:0};
+  const routes=(clue.acquisitionRoutes||[]).map(normalizeAcquisitionRoute),explicitRecordId=asString(raw.sourceCheckRecordId,120),contextualRecordId=asString(validationContext.currentCheckRecordId,120),routeId=asString(raw.sourceRouteId,120),route=routes.find(item=>item.id===routeId),getRecord=recordId=>recordId?state.checkRecords.find(item=>item.id===recordId):null;
+  const authorizeCheck=(selectedRoute,recordId,record)=>{
+    if(!record)throw new Error("线索 "+clue.id+" 引用的检定记录不存在："+recordId);
+    if(selectedRoute.checkId&&selectedRoute.checkId!==record.sourceCheckId)throw new Error("检定记录 "+recordId+" 不属于线索 "+clue.id+" 的获取路线");
+    if(record.skipped||record.result!==true||!rankSatisfies(record.rank||"regular",selectedRoute.minimumRank))throw new Error("检定记录 "+recordId+" 未达到线索 "+clue.id+" 的获取条件");
+    return{routeId:selectedRoute.id,record,quality:clueDiscoveryQuality(record),tensionCost:0}
+  };
+  const passiveAuthorization=selectedRoute=>{
+    if(selectedRoute.type==="automatic")return{routeId:selectedRoute.id,record:null,quality:"automatic",tensionCost:0};
+    if(selectedRoute.type==="flag"&&state.campaign.flags?.[selectedRoute.requiredFlag]===true)return{routeId:selectedRoute.id,record:null,quality:"automatic",tensionCost:0};
+    if(selectedRoute.type==="clue"&&state.clues.some(item=>item.id===selectedRoute.requiredClueId))return{routeId:selectedRoute.id,record:null,quality:"automatic",tensionCost:0};
+    if(selectedRoute.type==="npc"&&state.npcs.some(item=>item.id===selectedRoute.npcId)&&(!selectedRoute.requiredFlag||state.campaign.flags?.[selectedRoute.requiredFlag]===true))return{routeId:selectedRoute.id,record:null,quality:"automatic",tensionCost:0};
+    return null
+  };
+  if(routeId){
+    if(!route)throw new Error("线索 "+clue.id+" 不存在获取路线 "+routeId);
+    if(route.type==="failure_forward"){
+      const recordId=explicitRecordId||contextualRecordId,record=getRecord(recordId);
+      if(!record)throw new Error("失败前进路线 "+routeId+" 必须引用当前失败或跳过的检定记录");
+      if(route.checkId&&route.checkId!==record.sourceCheckId)throw new Error("检定记录 "+recordId+" 不属于失败前进路线 "+routeId);
+      if(record.result===true&&!record.skipped)throw new Error("检定记录 "+recordId+" 已成功，不能使用失败前进路线");
+      const quality=clueDiscoveryQuality(record),baseCost=Math.max(1,Number(route.cost?.tension||1)),tensionCost=quality==="fumble"?Math.max(2,baseCost):baseCost;validationContext.failureForwardTension=Math.max(Number(validationContext.failureForwardTension||0),tensionCost);return{routeId,record,quality,tensionCost}
+    }
+    if(route.type==="check"){
+      const recordId=explicitRecordId||contextualRecordId;if(!recordId)throw new Error("检定路线 "+routeId+" 必须引用检定记录");return authorizeCheck(route,recordId,getRecord(recordId))
+    }
+    const passive=passiveAuthorization(route);if(passive)return passive;throw new Error("线索 "+clue.id+" 的获取路线 "+routeId+" 当前条件未满足")
   }
-  if(sourceRecordId){
-    if(!record)throw new Error(`线索 ${clue.id} 引用的检定记录不存在：${sourceRecordId}`);const matching=routes.find(item=>item.type==="check"&&(!item.checkId||item.checkId===record.sourceCheckId));if(!matching)throw new Error(`检定记录 ${sourceRecordId} 不属于线索 ${clue.id} 的获取路线`);if(record.skipped||record.result!==true||!rankSatisfies(record.rank||"regular",matching.minimumRank))throw new Error(`检定记录 ${sourceRecordId} 未达到线索 ${clue.id} 的获取条件`);return{routeId:matching.id,record,quality:clueDiscoveryQuality(record),tensionCost:0}
+  if(explicitRecordId){
+    const record=getRecord(explicitRecordId);if(!record)throw new Error("线索 "+clue.id+" 引用的检定记录不存在："+explicitRecordId);const matching=routes.find(item=>item.type==="check"&&(!item.checkId||item.checkId===record.sourceCheckId));if(!matching)throw new Error("检定记录 "+explicitRecordId+" 不属于线索 "+clue.id+" 的获取路线");return authorizeCheck(matching,explicitRecordId,record)
   }
-  if(!route)throw new Error(`受保护线索 ${clue.id} 缺少有效 sourceCheckRecordId 或 sourceRouteId`);if(route.type==="automatic")return{routeId,record:null,quality:"automatic",tensionCost:0};if(route.type==="flag"&&state.campaign.flags?.[route.requiredFlag]===true)return{routeId,record:null,quality:"automatic",tensionCost:0};if(route.type==="clue"&&state.clues.some(item=>item.id===route.requiredClueId))return{routeId,record:null,quality:"automatic",tensionCost:0};if(route.type==="npc"&&state.npcs.some(item=>item.id===route.npcId)&&(!route.requiredFlag||state.campaign.flags?.[route.requiredFlag]===true))return{routeId,record:null,quality:"automatic",tensionCost:0};throw new Error(`线索 ${clue.id} 的获取路线 ${routeId} 当前条件未满足`)
+  let contextualFailure=null,contextualRecord=null;
+  if(contextualRecordId){
+    contextualRecord=getRecord(contextualRecordId);
+    if(contextualRecord){const matching=routes.find(item=>item.type==="check"&&(!item.checkId||item.checkId===contextualRecord.sourceCheckId));if(matching){if(!contextualRecord.skipped&&contextualRecord.result===true&&rankSatisfies(contextualRecord.rank||"regular",matching.minimumRank))return{routeId:matching.id,record:contextualRecord,quality:clueDiscoveryQuality(contextualRecord),tensionCost:0};contextualFailure={matching,record:contextualRecord}}}
+  }
+  for(const candidate of routes){const passive=passiveAuthorization(candidate);if(passive)return passive}
+  if(contextualFailure)throw new Error("检定记录 "+contextualRecordId+" 未达到线索 "+clue.id+" 的获取条件");
+  if(contextualRecord)throw new Error("检定记录 "+contextualRecordId+" 不属于线索 "+clue.id+" 的获取路线");
+  throw new Error("受保护线索 "+clue.id+" 缺少有效 sourceCheckRecordId 或 sourceRouteId")
 }
 function normalizeThreatClock(raw,index=0){const clock=isPlainObject(raw)?raw:{},max=clamp(Number(clock.max||6),1,20),legacyCurrent=clock.current!==undefined?clock.current:(clock.value!==undefined?clock.value:0),current=clamp(Number(legacyCurrent||0),0,max),resolved=Boolean(clock.resolved)||(clock.active===false&&!clock.triggered&&current<max),triggered=Boolean(clock.triggered)||(!resolved&&current>=max);return{id:asString(clock.id,100)||`clock-${index+1}`,name:asString(clock.name,160)||`威胁时钟 ${index+1}`,current,max,consequence:asString(clock.consequence,600),active:clock.active!==false&&!resolved&&!triggered,triggered,resolved,triggeredAt:clock.triggeredAt||null,resolvedAt:clock.resolvedAt||null}}
 function normalizeDirectorClocks(director){director.clocks=Array.isArray(director.clocks)?director.clocks.map(normalizeThreatClock):[];return director.clocks}
