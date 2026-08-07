@@ -1,4 +1,4 @@
-name: One-shot TRPG v1.5.3 clue-route hotfix
+name: One-shot TRPG v1.5.3 finalize
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  finalize:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,38 +22,22 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Apply v1.5.3 patch
-        run: node .github/scripts/trpg-v153-patch2.js
+      - name: Finalize release metadata and permanent CI
+        run: node .github/scripts/trpg-v153-finalize.js
 
-      - name: Runtime security and protocol tests
-        run: node trpg-dm-assistant/build/test-security-hardening.js
-      - name: Save management interaction regression
-        run: node trpg-dm-assistant/build/test-save-ui.js
-      - name: CoC outcome regression
-        run: node trpg-dm-assistant/build/test-coc-outcomes.js
-      - name: Situation sidebar regression
-        run: node trpg-dm-assistant/build/test-situation-ui.js
-      - name: AI JSON repair corpus
-        run: node trpg-dm-assistant/build/test-ai-json-repair.js
-      - name: v1.5.0 experience regression
-        run: node trpg-dm-assistant/build/test-v150-experience.js
-      - name: v1.5.1 investigation stability regression
-        run: node trpg-dm-assistant/build/test-v151-investigation-stability.js
-      - name: v1.5.2 long-session regression
-        run: node trpg-dm-assistant/build/test-v152-long-session.js
-      - name: v1.5.3 clue-route regression
-        run: node trpg-dm-assistant/build/test-v153-clue-routes.js
-
-      - name: JavaScript syntax
+      - name: Full deterministic regression
         shell: bash
         run: |
-          while IFS= read -r -d '' file; do
-            node --check "$file"
-          done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
-
-      - name: Build and verify deterministic product
-        shell: bash
-        run: |
+          node trpg-dm-assistant/build/test-security-hardening.js
+          node trpg-dm-assistant/build/test-save-ui.js
+          node trpg-dm-assistant/build/test-coc-outcomes.js
+          node trpg-dm-assistant/build/test-situation-ui.js
+          node trpg-dm-assistant/build/test-ai-json-repair.js
+          node trpg-dm-assistant/build/test-v150-experience.js
+          node trpg-dm-assistant/build/test-v151-investigation-stability.js
+          node trpg-dm-assistant/build/test-v152-long-session.js
+          node trpg-dm-assistant/build/test-v153-clue-routes.js
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
           node trpg-dm-assistant/build/build-single-html.js
           node trpg-dm-assistant/build/verify-single-html.js
           first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
@@ -62,21 +46,20 @@ jobs:
           second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
           test "$first" = "$second"
           test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --exit-code -- trpg-dm-assistant/outputs/trpg-dm-assistant.html
           git diff --check
 
-      - name: Commit validated v1.5.3 product
+      - name: Commit clean v1.5.3 release state
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add \
-            trpg-dm-assistant/src/scenarios/library.js \
-            trpg-dm-assistant/src/scenario-engine.js \
-            trpg-dm-assistant/src/ai-protocol.js \
-            trpg-dm-assistant/build/test-v152-long-session.js \
-            trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git rm -f \
+            .github/scripts/trpg-v153-patch.js \
+            .github/scripts/trpg-v153-patch2.js \
+            .github/scripts/trpg-v153-finalize.js \
+            .github/workflows/trpg-v153-release.yml
+          git add -A
           git diff --cached --check
-          git commit -m "Release TRPG DM Assistant v1.5.3"
+          git commit -m "Finalize TRPG DM Assistant v1.5.3"
           git push origin HEAD:tmp-v153-clue-route-hotfix
-
-# retry: 3
