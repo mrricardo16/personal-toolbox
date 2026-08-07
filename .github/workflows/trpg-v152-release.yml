@@ -25,6 +25,7 @@ jobs:
       - name: Apply v1.5.2 patches
         run: |
           python3 .github/scripts/trpg-v152-core.py
+          python3 .github/scripts/trpg-v152-similarity-fix.py
           python3 .github/scripts/trpg-v152-polish.py
 
       - name: Runtime security and protocol tests
@@ -84,12 +85,13 @@ jobs:
         shell: bash
         run: |
           rm .github/scripts/trpg-v152-core.py
+          rm .github/scripts/trpg-v152-similarity-fix.py
           rm .github/scripts/trpg-v152-polish.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add README.md trpg-dm-assistant .github/scripts/trpg-v152-core.py .github/scripts/trpg-v152-polish.py
+          git add README.md trpg-dm-assistant .github/scripts/trpg-v152-core.py .github/scripts/trpg-v152-similarity-fix.py .github/scripts/trpg-v152-polish.py
           git diff --cached --check
           git commit -m 'Release TRPG DM Assistant v1.5.2'
           git push origin HEAD:main
 
-# retry: v1.5.1 regression baseline is forward-compatible
+# retry: Dice coefficient for short Chinese narrative similarity
