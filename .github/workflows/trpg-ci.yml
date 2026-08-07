@@ -35,6 +35,9 @@ jobs:
       - name: Situation sidebar regression
         run: node trpg-dm-assistant/build/test-situation-ui.js
 
+      - name: AI JSON repair corpus
+        run: node trpg-dm-assistant/build/test-ai-json-repair.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
