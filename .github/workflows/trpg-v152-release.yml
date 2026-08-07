@@ -73,7 +73,7 @@ jobs:
 
       - name: Real API 20-round acceptance
         env:
-          TRPG_TEST_API_KEY: ${{ secrets.TRPG_TEST_API_KEY }}
+          TRPG_TEST_API_KEY: ${{ secrets.DS_KEY }}
           TRPG_TEST_API_URL: https://api.deepseek.com/chat/completions
           TRPG_TEST_MODEL: deepseek-v4-flash
           TRPG_TEST_ROUNDS: '20'
@@ -93,5 +93,3 @@ jobs:
           git diff --cached --check
           git commit -m 'Release TRPG DM Assistant v1.5.2'
           git push origin HEAD:main
-
-# retry: Dice coefficient for short Chinese narrative similarity
