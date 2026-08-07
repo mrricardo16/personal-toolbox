@@ -1,0 +1,162 @@
+name: One-shot TRPG v1.5.4 Release
+
+on:
+  push:
+    branches:
+      - tmp-v154-e2e
+    paths:
+      - '.github/workflows/trpg-v154-release.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout release operations
+        uses: actions/checkout@v4
+        with:
+          ref: tmp-v154-e2e
+          path: ops
+
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: work
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Confirm release baseline
+        working-directory: work
+        run: test "$(git rev-parse HEAD)" = "9ecd82063f014c5d3d9740d83a57562551e95914"
+
+      - name: Apply validated v1.5.4 fixes
+        working-directory: work
+        run: |
+          node ../ops/.github/scripts/trpg-v154-product-patch.js
+          node ../ops/.github/scripts/trpg-v154-npc-materialization-patch.js
+          node ../ops/.github/scripts/trpg-v154-location-alias-patch.js
+          node ../ops/.github/scripts/trpg-v154-empty-response-retry-patch.js
+          node ../ops/.github/scripts/trpg-v154-operation-id-alias-patch.js
+          cp ../ops/trpg-dm-assistant/build/test-v154-protocol-routing.js trpg-dm-assistant/build/
+          cp ../ops/trpg-dm-assistant/build/test-v154-npc-materialization.js trpg-dm-assistant/build/
+          cp ../ops/trpg-dm-assistant/build/test-v154-location-alias.js trpg-dm-assistant/build/
+          cp ../ops/trpg-dm-assistant/build/test-v154-empty-response-retry.js trpg-dm-assistant/build/
+          cp ../ops/trpg-dm-assistant/build/test-v154-operation-id-alias.js trpg-dm-assistant/build/
+
+      - name: Bump version and release notes
+        working-directory: work
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          const lib='trpg-dm-assistant/src/scenarios/library.js';
+          let text=fs.readFileSync(lib,'utf8');
+          const old='const APP_VERSION = "1.5.3";';
+          if(!text.includes(old))throw new Error('APP_VERSION 1.5.3 baseline not found');
+          text=text.replace(old,'const APP_VERSION = "1.5.4";');
+          fs.writeFileSync(lib,text,'utf8');
+
+          const testFile='trpg-dm-assistant/build/test-v153-clue-routes.js';
+          text=fs.readFileSync(testFile,'utf8');
+          const oldTest='test("版本为 v1.5.3",()=>assert.ok(library.includes(\'const APP_VERSION = "1.5.3";\')));';
+          const newTest='test("版本不低于 v1.5.3",()=>{const m=library.match(/const APP_VERSION = "(\\d+)\\.(\\d+)\\.(\\d+)";/);assert.ok(m);const n=Number(m[1])*10000+Number(m[2])*100+Number(m[3]);assert.ok(n>=10503)});';
+          if(!text.includes(oldTest))throw new Error('v1.5.3 version assertion target not found');
+          fs.writeFileSync(testFile,text.replace(oldTest,newTest),'utf8');
+
+          const readme='trpg-dm-assistant/README.md';
+          text=fs.readFileSync(readme,'utf8');
+          text=text.replace('# TRPG AI 主持助手 v1.5.3','# TRPG AI 主持助手 v1.5.4');
+          text=text.replace('当前版本为 v1.5.3。','当前版本为 v1.5.4。');
+          const marker='## v1.5.3 更新内容';
+          const section=`## v1.5.4 更新内容\n\n- 兼容 AI 将已知白名单 operation 放错 stateChanges / campaignChanges 的情况：页面按 operation 类型安全归位，未知 operation 仍严格拒绝。\n- 修复结构化节点 NPC 未进入运行态的问题：启用模组、进入节点和载入旧存档时只实体化当前节点已声明 NPC，不提前生成未来人物，也不覆盖已有连续性。\n- 兼容 nodeProposal.id → targetNodeId 与 name → title；仍必须通过当前节点合法出口验证，不会从叙事猜测目标。\n- 结构化 AI 返回空内容时自动重试同一请求一次；只处理空/全空白响应，不自动洗掉非空畸形 JSON 或业务协议错误。\n- 对 removeItem、removeStatus、revealClue、updateNpc、resolveLead、resolveQuestion、advanceClock 等操作兼容通用 id，并按 operation 精确映射为类型化 ID 字段；未知操作不推测。\n- 新增 50 项 v1.5.4 确定性回归，覆盖协议归位、NPC 实体化、地点别名、空响应重试和实体 ID 别名。\n- 存档 Schema 保持 8，无需迁移。\n\n`;
+          if(!text.includes(marker))throw new Error('README v1.5.3 marker not found');
+          text=text.replace(marker,section+marker);
+          fs.writeFileSync(readme,text,'utf8');
+          NODE
+
+      - name: Deterministic regression suite
+        working-directory: work
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/test-security-hardening.js
+          node trpg-dm-assistant/build/test-save-ui.js
+          node trpg-dm-assistant/build/test-coc-outcomes.js
+          node trpg-dm-assistant/build/test-situation-ui.js
+          node trpg-dm-assistant/build/test-ai-json-repair.js
+          node trpg-dm-assistant/build/test-v150-experience.js
+          node trpg-dm-assistant/build/test-v151-investigation-stability.js
+          node trpg-dm-assistant/build/test-v152-long-session.js
+          node trpg-dm-assistant/build/test-v153-clue-routes.js
+          node trpg-dm-assistant/build/test-v154-protocol-routing.js
+          node trpg-dm-assistant/build/test-v154-npc-materialization.js
+          node trpg-dm-assistant/build/test-v154-location-alias.js
+          node trpg-dm-assistant/build/test-v154-empty-response-retry.js
+          node trpg-dm-assistant/build/test-v154-operation-id-alias.js
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+
+      - name: Build verify and determinism
+        working-directory: work
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          cp trpg-dm-assistant/outputs/trpg-dm-assistant.html /tmp/trpg-v154-first.html
+          node trpg-dm-assistant/build/build-single-html.js
+          cmp /tmp/trpg-v154-first.html trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
+
+      - name: Write v1.5.4 test report
+        working-directory: work
+        shell: bash
+        run: |
+          cat > trpg-dm-assistant/reports/v1.5.4-test-report.md <<'EOF'
+          # TRPG DM Assistant v1.5.4 测试报告
+
+          - 发布基线：main `9ecd82063f014c5d3d9740d83a57562551e95914`
+          - 产品版本：v1.5.4
+          - Schema：8
+          - Node.js：24
+          - 确定性回归：191 PASS / 0 FAIL
+          - v1.5.4 新增回归：50 PASS / 0 FAIL
+          - JavaScript 语法检查：PASS
+          - 单文件构建：PASS
+          - `verify-single-html.js`：PASS
+          - 连续两次构建字节一致：PASS
+          - 产品 HTML 数量：1
+          - `git diff --check`：PASS
+
+          ## 本版覆盖
+
+          1. stateChanges / campaignChanges 白名单 operation 安全归位。
+          2. 当前节点声明 NPC 的运行态实体化与旧存档补齐。
+          3. nodeProposal `id` / `name` 兼容别名，合法出口约束保持严格。
+          4. 结构化 AI 空响应仅自动重试一次，非空协议错误不自动重试。
+          5. 实体操作通用 `id` 精确映射到 itemId / statusId / clueId / npcId / leadId / questionId / clockId。
+
+          ## 真实 API 烧机说明
+
+          30 回合真实 API E2E 属于探索性烧机，不再作为本次发布门槛。用户明确要求跳过继续烧机并执行下一项。最后一次探索性 Run `31194339002` 在确定性预检全部通过后，因模型返回未支持的 `locationEffect.type="transition"` 失败；本报告不将该烧机标记为通过，也不将其计入上述 191 项确定性回归。
+          EOF
+          sed -i 's/^          //' trpg-dm-assistant/reports/v1.5.4-test-report.md
+          git diff --check
+
+      - name: Commit release directly to main
+        working-directory: work
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant
+          git status --short
+          git commit -m "Release TRPG DM Assistant v1.5.4"
+          git push origin HEAD:main
+          echo "RELEASE_COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          echo "Released $(git rev-parse HEAD)"
