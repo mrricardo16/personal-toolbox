@@ -3,7 +3,7 @@ const fs=require("fs"),path=require("path"),assert=require("assert");
 const root=path.resolve(__dirname,"..");
 const state=fs.readFileSync(path.join(root,"src/state.js"),"utf8"),ai=fs.readFileSync(path.join(root,"src/ai-protocol.js"),"utf8"),ui=fs.readFileSync(path.join(root,"src/ui.js"),"utf8"),saves=fs.readFileSync(path.join(root,"src/saves.js"),"utf8"),library=fs.readFileSync(path.join(root,"src/scenarios/library.js"),"utf8");
 let passed=0;function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
-test("版本升级为 v1.5.0",()=>assert.ok(library.includes('const APP_VERSION = "1.5.0";')));
+test("版本不低于 v1.5.0",()=>{const match=library.match(/const APP_VERSION = "(\d+)\.(\d+)\.(\d+)";/);assert.ok(match);const version=match.slice(1).map(Number);assert.ok(version[0]>1||(version[0]===1&&version[1]>=5))});
 test("输入框使用独立 actionDraft",()=>assert.ok(ui.includes('state.ui.actionDraft||""')));
 test("发送动作立即清空草稿",()=>assert.match(ai,/submitPlayerAction\(action\)\{state\.ui\.actionDraft=""/));
 test("输入事件持续同步草稿",()=>assert.ok(ui.includes('actionInput.oninput=()=>{state.ui.actionDraft=actionInput.value}')));

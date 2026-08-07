@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.5.0
+# TRPG AI 主持助手 v1.5.1
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.0。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.1。
 
 ## 快速开始
 
@@ -12,6 +12,17 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.5.1 更新内容
+
+- 调查主循环允许真正的无收益行动：普通观察、闲聊、等待、重复搜索和走错方向可以只产生自然叙事，不强制线索、奖励、检定或调查进度。
+- 调整无进展节奏：连续 3～4 轮只允许轻微世界变化；连续 5 轮以上让既有 NPC、威胁、时间或环境主动行动，但不强送关键线索或正确答案。
+- 扩展现有 `updateNpc` 为 NPC 连续性载体，可记录重要说法、关系、当前意图和最近互动；历史说法去重并限制数量。
+- API 上下文加入优先级 NPC continuity；普通预览隐藏 NPC 当前意图和幕后动机，KP/API 上下文仍可使用内部连续性。
+- 上下文治理改为核心状态、固定事实、调查方向、未解决问题、NPC 连续性与相关 Lore 优先；最近聊天默认从 20 条降至最多 12 条。
+- API payload 仍保留 canonical trueState，memory 层改用精简 contextCore，减少重复状态占用。
+- 页面自动记录 neutral / informational / progress / risk / transition 回合影响，仅用于节奏、审计与上下文，不向玩家泄露正确路线。
+- 新增 v1.5.1 调查稳定性回归测试。
 
 ## v1.5.0 更新内容
 
@@ -102,6 +113,7 @@
 
 ## 版本记录
 
+- v1.5.1：稳定调查主循环，允许无收益行动，加入 NPC 连续性与上下文优先级治理。
 - v1.5.0：重构输入失败恢复与地点响应协议，允许无进展行动，并以受限后台校正保持场景连续性。
 - v1.4.6：修复检定难度透明度与边界核查，加入分层线索质量和更明确的失败前进代价。
 - v1.4.5：修复存档页面重绘后按钮失效，并增加交互回归测试。
@@ -122,13 +134,14 @@
 
 ## 文件说明
 
-- `src/`：v1.5.0 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
+- `src/`：v1.5.1 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
 - `src/shell.template`：单文件产品的 HTML 外壳模板。
 - `build/build-single-html.js`：无依赖 Node 构建脚本，将源码拼接为唯一正式产品。
 - `build/verify-single-html.js`：校验成品结构、版本、依赖和唯一产品 HTML。
 - `build/test-security-hardening.js`：运行 API、安全、存档导入和正式协议行为测试。
 - `build/test-save-ui.js`：验证存档页面重绘后的按钮重绑定和主要操作。
 - `build/test-coc-outcomes.js`：验证 CoC 等值边界、难度通过线、成功等级和分层线索规则。
+- `build/test-v151-investigation-stability.js`：验证无收益行动、NPC 连续性、回合影响分类和上下文治理。
 - `outputs/trpg-dm-assistant.html`：完整、可直接双击打开的唯一产品 HTML。
 - `reports/`：各版本测试报告归档；当前版本报告为 `reports/v1.5.0-test-report.md`。
 - `../.github/workflows/trpg-ci.yml`：针对 TRPG 项目的持续集成配置。

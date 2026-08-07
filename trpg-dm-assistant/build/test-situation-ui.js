@@ -14,5 +14,5 @@ test("调查进度 50 显示案情展开",()=>assert.equal(api.investigationStag
 test("调查进度 100 显示调查充分",()=>assert.equal(api.investigationStage(100).label,"调查充分"));
 test("侧栏使用张力阶段说明",()=>assert.ok(ui.includes('situationMeter("张力"')));
 test("侧栏使用调查进度阶段说明",()=>assert.ok(ui.includes('situationMeter("调查进度"')));
-test("正式版本为 v1.5.0",()=>assert.ok(library.includes('const APP_VERSION = "1.5.0";')));
+test("正式版本字段有效",()=>assert.match(library,/const APP_VERSION = "\d+\.\d+\.\d+";/));
 console.log(`SITUATION_UI_TESTS:${passed}:PASS`);

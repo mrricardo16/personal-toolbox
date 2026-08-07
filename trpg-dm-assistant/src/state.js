@@ -95,11 +95,11 @@ function randomInt(min,max){
 function makeInitialState(){
   return {
     appVersion:APP_VERSION,schemaVersion:SCHEMA_VERSION,revision:0,
-    runtime:{phase:"setup",activeRequestId:null,requestStartedAt:null,isDirty:false,lastError:null,processedRequestIds:[],connection:"untested",pendingCheck:null,checkQueue:[],pendingSecretResults:[],pendingNodeProposal:null,pendingEndingProposal:null,pendingActionSuggestions:[],pendingPlayerAction:"",lastContinuationPayload:null,failedRequest:null,lastRawAiResponse:null,summaryInProgress:false,improvGenerating:false,improvDraft:null,pendingDirectorEvent:null,checkChainDepth:0,currentResolutionRecordId:null,lastContextEnvelope:null,lastLoreSelection:[],hintGenerating:false,lastHintRequestId:null,sceneContinuityWarning:null,turnSnapshot:null,requestRollback:null,lastUndoAt:null,lastApiSelfCheck:null},
+    runtime:{phase:"setup",activeRequestId:null,requestStartedAt:null,isDirty:false,lastError:null,processedRequestIds:[],connection:"untested",pendingCheck:null,checkQueue:[],pendingSecretResults:[],pendingNodeProposal:null,pendingEndingProposal:null,pendingActionSuggestions:[],pendingPlayerAction:"",lastContinuationPayload:null,failedRequest:null,lastRawAiResponse:null,summaryInProgress:false,improvGenerating:false,improvDraft:null,pendingDirectorEvent:null,checkChainDepth:0,currentResolutionRecordId:null,lastContextEnvelope:null,lastLoreSelection:[],lastTurnImpact:null,hintGenerating:false,lastHintRequestId:null,sceneContinuityWarning:null,turnSnapshot:null,requestRollback:null,lastUndoAt:null,lastApiSelfCheck:null},
     config:deepClone(DEFAULT_CONFIG),character:null,scenario:null,
     campaign:{currentChapterId:null,currentSceneId:null,currentNodeId:null,currentLocation:"",currentTime:"",flags:{},activeLeads:[],unresolvedQuestions:[],triggeredCheckIds:[],processedExposureKeys:[],directorState:defaultDirectorState(),outcomes:defaultOutcomes(),navigation:defaultNavigationState(),hintUsage:defaultHintUsage(),ending:null},
     clues:[],npcs:[],items:[],statuses:[],resources:{},messages:[],logs:[],checkRecords:[],
-    context:{rollingSummary:"",recentMessageLimit:20,summaryThreshold:30,lastSummarizedMessageId:null,pinnedFacts:[],directorNote:{tone:"",currentFocus:"",avoid:""},loreCards:[],activeLoreCardIds:[],loreUsage:{}},
+    context:{rollingSummary:"",recentMessageLimit:12,summaryThreshold:30,lastSummarizedMessageId:null,pinnedFacts:[],directorNote:{tone:"",currentFocus:"",avoid:""},loreCards:[],activeLoreCardIds:[],loreUsage:{}},
     saveMeta:{slotId:null,slotName:"未命名调查",createdAt:null,updatedAt:null},
     ui:{currentView:"setup",sidebarCollapsed:false,chatVisibleCount:100,actionDraft:""}
   };
