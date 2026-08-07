@@ -1,4 +1,4 @@
-# release retry after DS_KEY 20-round acceptance confirmed
+# release retry after semantic v1.5.1 regression fix
 name: One-shot TRPG DM Assistant v1.5.2 release
 
 on:
