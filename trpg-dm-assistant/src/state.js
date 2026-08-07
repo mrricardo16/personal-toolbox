@@ -129,13 +129,26 @@ function getCurrentNode(){
 function findNode(id){
   if(!state.scenario)return null;for(const chapter of state.scenario.chapters||[])for(const scene of chapter.scenes||[])for(const node of scene.nodes||[])if(node.id===id)return {chapter,scene,node};return null;
 }
+function materializeNodeNpcs(node=getCurrentNode(),target=state.npcs){
+  if(!node||!Array.isArray(target))return 0;let added=0;
+  for(const raw of node.npcs||[]){
+    if(!isPlainObject(raw))continue;const id=asString(raw.id,100).trim();if(!id)continue;
+    let npc=target.find(item=>item.id===id);
+    if(npc){ensureNpcContinuity(npc);continue}
+    npc={id,name:asString(raw.name,160).trim()||id,description:asString(raw.description,1000),attitude:asString(raw.attitude,100)};
+    if(isPlainObject(raw.continuity))npc.continuity=deepClone(raw.continuity);
+    ensureNpcContinuity(npc);target.push(npc);added+=1
+  }
+  return added
+}
 function enterNode(nodeId,{initial=false,temporary=false,meaningfulProgress=false,reason=""}={}){
-  const found=findNode(nodeId);if(!found)throw new Error("目标节点不存在");recordNodeTransition(found,{initial,temporary,meaningfulProgress,reason});state.campaign.currentChapterId=found.chapter.id;state.campaign.currentSceneId=found.scene.id;state.campaign.currentNodeId=found.node.id;state.campaign.currentLocation=found.node.title;state.runtime.pendingNodeProposal=null;state.runtime.checkQueue=[];state.runtime.checkChainDepth=0;state.runtime.sceneContinuityWarning=null;state.campaign.directorState={...defaultDirectorState(),...(state.campaign.directorState||{}),sceneTurns:0,lastProgressTurn:0};setPhase("awaiting_player_action",{force:true});bumpRevision();addLog("node",`进入节点：${found.node.title}`);addMessage("system",`进入节点：${found.node.title}
+  const found=findNode(nodeId);if(!found)throw new Error("目标节点不存在");recordNodeTransition(found,{initial,temporary,meaningfulProgress,reason});state.campaign.currentChapterId=found.chapter.id;state.campaign.currentSceneId=found.scene.id;state.campaign.currentNodeId=found.node.id;state.campaign.currentLocation=found.node.title;materializeNodeNpcs(found.node,state.npcs);state.runtime.pendingNodeProposal=null;state.runtime.checkQueue=[];state.runtime.checkChainDepth=0;state.runtime.sceneContinuityWarning=null;state.campaign.directorState={...defaultDirectorState(),...(state.campaign.directorState||{}),sceneTurns:0,lastProgressTurn:0};setPhase("awaiting_player_action",{force:true});bumpRevision();addLog("node",`进入节点：${found.node.title}`);addMessage("system",`进入节点：${found.node.title}
 ${found.node.background||""}`,{kind:"sceneTransition"});renderAll();scheduleNodeChecks("on_enter");
 }
 function sanitizeRuntimeAfterLoad(){
   const interrupted=["requesting_ai","requesting_ai_continuation","rolling"].includes(state.runtime.phase);
   state.runtime.activeRequestId=null;state.runtime.requestStartedAt=null;state.runtime.pendingCheck=state.runtime.pendingCheck||null;state.runtime.pendingNodeProposal=state.runtime.pendingNodeProposal||null;
+  materializeNodeNpcs(getCurrentNode(),state.npcs);
   if(interrupted){state.runtime.phase=state.runtime.pendingCheck?"awaiting_check":"awaiting_player_action";addLog("recovery","上一次操作在页面关闭前未完成，未应用未确认的状态变化。");state.messages.push({id:uid("msg"),role:"system",content:"上一次操作在页面关闭前未完成，未应用未确认的状态变化。",time:nowIso()});}
 }
 

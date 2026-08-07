@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.5.3
+# TRPG AI 主持助手 v1.5.4
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.3。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.4。
 
 ## 快速开始
 
@@ -12,6 +12,16 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.5.4 更新内容
+
+- 兼容 AI 将已知白名单 operation 放错 stateChanges / campaignChanges 的情况：页面按 operation 类型安全归位，未知 operation 仍严格拒绝。
+- 修复结构化节点 NPC 未进入运行态的问题：启用模组、进入节点和载入旧存档时只实体化当前节点已声明 NPC，不提前生成未来人物，也不覆盖已有连续性。
+- 兼容 nodeProposal.id → targetNodeId 与 name → title；仍必须通过当前节点合法出口验证，不会从叙事猜测目标。
+- 结构化 AI 返回空内容时自动重试同一请求一次；只处理空/全空白响应，不自动洗掉非空畸形 JSON 或业务协议错误。
+- 对 removeItem、removeStatus、revealClue、updateNpc、resolveLead、resolveQuestion、advanceClock 等操作兼容通用 id，并按 operation 精确映射为类型化 ID 字段；未知操作不推测。
+- 新增 50 项 v1.5.4 确定性回归，覆盖协议归位、NPC 实体化、地点别名、空响应重试和实体 ID 别名。
+- 存档 Schema 保持 8，无需迁移。
 
 ## v1.5.3 更新内容
 

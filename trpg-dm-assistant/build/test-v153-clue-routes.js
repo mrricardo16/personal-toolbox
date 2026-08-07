@@ -10,7 +10,7 @@ const sandbox={state:{checkRecords:[],campaign:{flags:{}},clues:[],npcs:[]},CHEC
 function reset(records=[],flags={}){sandbox.state.checkRecords=records;sandbox.state.campaign={flags};sandbox.state.clues=[];sandbox.state.npcs=[]}
 function record(id,sourceCheckId,{result=true,rank="regular",skipped=false}={}){return{id,sourceCheckId,result,rank,skipped}}
 function clue(routes){return{id:"clue-test",protected:true,acquisitionRoutes:routes}}
-test("版本为 v1.5.3",()=>assert.ok(library.includes('const APP_VERSION = "1.5.3";')));
+test("版本不低于 v1.5.3",()=>{const m=library.match(/const APP_VERSION = "(\d+)\.(\d+)\.(\d+)";/);assert.ok(m);const n=Number(m[1])*10000+Number(m[2])*100+Number(m[3]);assert.ok(n>=10503)});
 test("Schema 保持 8",()=>assert.ok(library.includes('const SCHEMA_VERSION = 8;')));
 const data=parseLibraryData();
 test("所有内置隐藏线索都有显式路线",()=>{const hidden=[];for(const s of data.scenarios)for(const c of s.chapters||[])for(const sc of c.scenes||[])for(const n of sc.nodes||[])for(const x of n.clues||[])if(x.hidden!==false)hidden.push(x.id);assert.ok(hidden.length>=20);for(const id of hidden)assert.ok(data.routes[id],`缺少显式路线：${id}`)});
