@@ -41,6 +41,9 @@ jobs:
       - name: v1.5.0 experience regression
         run: node trpg-dm-assistant/build/test-v150-experience.js
 
+      - name: v1.5.1 investigation stability regression
+        run: node trpg-dm-assistant/build/test-v151-investigation-stability.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
