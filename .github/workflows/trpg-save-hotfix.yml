@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Patch structured source and corrected UI test
+      - name: Patch structured source and final UI test
         run: |
           python3 .github/scripts/trpg-save-hotfix.py
           python3 .github/scripts/trpg-save-hotfix-test-fix.py
