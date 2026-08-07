@@ -50,6 +50,21 @@ jobs:
       - name: v1.5.3 clue-route regression
         run: node trpg-dm-assistant/build/test-v153-clue-routes.js
 
+      - name: v1.5.4 protocol routing regression
+        run: node trpg-dm-assistant/build/test-v154-protocol-routing.js
+
+      - name: v1.5.4 NPC materialization regression
+        run: node trpg-dm-assistant/build/test-v154-npc-materialization.js
+
+      - name: v1.5.4 location alias regression
+        run: node trpg-dm-assistant/build/test-v154-location-alias.js
+
+      - name: v1.5.4 empty-response retry regression
+        run: node trpg-dm-assistant/build/test-v154-empty-response-retry.js
+
+      - name: v1.5.4 operation ID alias regression
+        run: node trpg-dm-assistant/build/test-v154-operation-id-alias.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
