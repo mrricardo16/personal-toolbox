@@ -130,12 +130,7 @@
 - `build/test-save-ui.js`：验证存档页面重绘后的按钮重绑定和主要操作。
 - `build/test-coc-outcomes.js`：验证 CoC 等值边界、难度通过线、成功等级和分层线索规则。
 - `outputs/trpg-dm-assistant.html`：完整、可直接双击打开的唯一产品 HTML。
-- `v1.5.0-test-report.md`：当前版本测试报告。
-- `v1.4.6-test-report.md`：上一版本测试报告。
-- `v1.4.5-test-report.md`：上一版本测试报告。
-- `v1.4.4-test-report.md`：上一版本测试报告。
-- `v1.4.3-test-report.md`：上一补丁版本的协议稳定性测试记录。
-- `v1.4.2-test-report.md`、`v1.4.1-test-report.md`、`v1.3.2-test-report.md`、`v1.2-test-report.md`：历史版本测试记录。
+- `reports/`：各版本测试报告归档；当前版本报告为 `reports/v1.5.0-test-report.md`。
 - `../.github/workflows/trpg-ci.yml`：针对 TRPG 项目的持续集成配置。
 
 ## 模块化构建
