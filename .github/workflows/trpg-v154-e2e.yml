@@ -6,6 +6,7 @@ on:
       - tmp-v154-e2e
     paths:
       - '.github/workflows/trpg-v154-e2e.yml'
+      - '.github/scripts/trpg-v154-fix-harness-loader.js'
       - 'trpg-dm-assistant/build/test-real-api-v154-e2e.js'
       - 'trpg-dm-assistant/src/**'
 
@@ -41,6 +42,9 @@ jobs:
           node trpg-dm-assistant/build/verify-single-html.js
           git diff --exit-code -- trpg-dm-assistant/outputs/trpg-dm-assistant.html
           git diff --check
+
+      - name: Match browser script loading semantics
+        run: node .github/scripts/trpg-v154-fix-harness-loader.js
 
       - name: Real API full-case E2E burn
         env:
