@@ -53,10 +53,10 @@ jobs:
           test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
           git diff --check
 
-      - name: Commit to main
+      - name: Commit product changes to main
         shell: bash
         run: |
-          rm .github/workflows/trpg-save-hotfix.yml
+          git checkout -- .github/workflows/trpg-ci.yml
           rm .github/scripts/trpg-save-hotfix.py
           rm .github/scripts/trpg-save-hotfix-test-fix.py
           rm .github/scripts/trpg-save-hotfix-scope-fix.py
