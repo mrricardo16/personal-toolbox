@@ -23,7 +23,7 @@ jobs:
           node-version: '24'
 
       - name: Apply v1.5.3 patch
-        run: node .github/scripts/trpg-v153-patch.js
+        run: node .github/scripts/trpg-v153-patch2.js
 
       - name: Runtime security and protocol tests
         run: node trpg-dm-assistant/build/test-security-hardening.js
