@@ -26,7 +26,7 @@ test("5 轮无进展让世界行动但不送答案",()=>{const pacing=extract("f
 const contextFn=extract("function buildContextSnapshot(","function endingConditionMatches");
 test("上下文包含 NPC continuity",()=>assert.ok(contextFn.includes("npcContinuity:npcContinuityContext")));
 test("API memory 最近消息上限为 12",()=>assert.ok(contextFn.includes("Math.min(12")));
-test("Lore 优先于最近消息分配预算",()=>assert.ok(contextFn.indexOf("loreAllowance")<contextFn.indexOf("while(recent.length")));
+test("Lore 优先于最近消息分配预算",()=>{const loreIndex=contextFn.indexOf("loreAllowance"),recentIndex=contextFn.includes("selectRecentMessagesForContext")?contextFn.indexOf("selectRecentMessagesForContext"):contextFn.indexOf("while(recent.length");assert.ok(loreIndex>=0&&recentIndex>loreIndex)});
 test("上下文使用精简核心状态",()=>assert.ok(contextFn.includes("trueState:safeContextCoreState()")));
 test("系统提示明确允许无收益行动",()=>assert.ok(ai.includes("单轮行动可以没有收益")));
 test("系统提示区分环境信息与正式线索",()=>assert.ok(ai.includes("普通环境信息不等于正式线索")));
