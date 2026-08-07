@@ -26,6 +26,9 @@ jobs:
       - name: Runtime security and protocol tests
         run: node trpg-dm-assistant/build/test-security-hardening.js
 
+      - name: Save management interaction regression
+        run: node trpg-dm-assistant/build/test-save-ui.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
