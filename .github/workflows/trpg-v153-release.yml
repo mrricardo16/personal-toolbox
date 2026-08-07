@@ -78,3 +78,5 @@ jobs:
           git diff --cached --check
           git commit -m "Release TRPG DM Assistant v1.5.3"
           git push origin HEAD:tmp-v153-clue-route-hotfix
+
+# retry: 3
