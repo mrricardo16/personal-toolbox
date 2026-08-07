@@ -1,7 +1,4 @@
-from pathlib import Path
-
-
-test_source = r'''"use strict";
+"use strict";
 const fs=require("fs"),path=require("path"),vm=require("vm"),assert=require("assert");
 const ui=fs.readFileSync(path.resolve(__dirname,"../src/ui.js"),"utf8");
 let passed=0;
@@ -21,5 +18,3 @@ test("槽位载入按钮有处理器",()=>assert.ok(ui.includes("data-load-slot"
 test("槽位删除按钮有处理器",()=>assert.ok(ui.includes("data-delete-slot")&&ui.includes("deleteSlot(button.dataset.deleteSlot)")));
 test("新槽位名称自动去重",()=>{const match=ui.match(/function uniqueNewSlotName\(base\)\{[^\n]+\}/);assert.ok(match);const sandbox={asString:(value,max)=>String(value??"").slice(0,max),getSaveIndex:()=>[{slotName:"调查"},{slotName:"调查 (2)"}]};vm.runInNewContext(`${match[0]};globalThis.result=uniqueNewSlotName("调查")`,sandbox);assert.equal(sandbox.result,"调查 (3)")});
 console.log(`SAVE_UI_TESTS:${passed}:PASS`);
-'''
-Path("trpg-dm-assistant/build/test-save-ui.js").write_text(test_source, encoding="utf-8")

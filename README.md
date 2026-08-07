@@ -6,7 +6,7 @@
 
 ## 当前工具
 
-### TRPG AI 主持助手（最新版 v1.4.4）
+### TRPG AI 主持助手（最新版 v1.4.5）
 
 路径：[trpg-dm-assistant/outputs/trpg-dm-assistant.html](trpg-dm-assistant/outputs/trpg-dm-assistant.html)
 
@@ -32,12 +32,14 @@
 - 内置多个调查悬疑短剧本，支持前情提要和节点确认。
 - 支持 TXT / Markdown 剧本本地导入。
 - 支持 DeepSeek、OpenAI、通义千问、Moonshot 等 OpenAI 兼容接口。
+- 修复存档页面重绘后按钮事件丢失，保存、另存为、导入、导出和槽位操作持续可用。
 - 支持本地多槽位存档、导入和导出。
 
 使用说明：[trpg-dm-assistant/README.md](trpg-dm-assistant/README.md)
 
 版本记录：
 
+- v1.4.5：修复存档页面重绘后按钮失效，并新增存档交互回归测试。
 - v1.4.4：隔离 API 密钥与存档配置，强化外部存档净化、响应上限、本地 JSON 修复、真实协议测试、生产构建安全和永久 CI。
 - v1.4.3：修复自由行动被裁决协议阻断的问题，自动派生检定 `required`，兼容协议版本格式及 `by` / `delta` 数值别名。
 - v1.4.2：修复 Schema 8 存档导入、统一威胁时钟、加入回合撤销、协议自检、诊断包和长聊天优化。

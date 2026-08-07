@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.4.4
+# TRPG AI 主持助手 v1.4.5
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.4.4。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.4.5。
 
 ## 快速开始
 
@@ -12,6 +12,13 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.4.5 更新内容
+
+- 修复存档页面重绘后按钮事件丢失，保存、另存为、导入、导出、诊断和槽位按钮持续可用。
+- 将存档交互抽离为专用 `bindSaveEvents()`，并由 `renderSaves()` 每次重绘后立即重新绑定。
+- 增加当前槽位、最后保存时间、未保存变更和当前槽位标识。
+- 新增存档交互回归测试并纳入 CI。
 
 ## v1.4.4 更新内容
 
@@ -74,6 +81,7 @@
 
 ## 版本记录
 
+- v1.4.5：修复存档页面重绘后按钮失效，并增加交互回归测试。
 - v1.4.4：严格隔离 API 密钥与存档，强化导入、响应上限、本地确定性修复、真实协议测试、生产构建安全和永久 CI。
 - v1.4.3：修复裁决协议稳定性与自由行动阻断。
 - v1.4.2：修复 Schema 8 存档导入，统一威胁时钟，加入回合撤销、协议自检、诊断包、长聊天分批渲染和存储管理。
@@ -91,13 +99,15 @@
 
 ## 文件说明
 
-- `src/`：v1.4.4 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
+- `src/`：v1.4.5 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
 - `src/shell.template`：单文件产品的 HTML 外壳模板。
 - `build/build-single-html.js`：无依赖 Node 构建脚本，将源码拼接为唯一正式产品。
 - `build/verify-single-html.js`：校验成品结构、版本、依赖和唯一产品 HTML。
 - `build/test-security-hardening.js`：运行 API、安全、存档导入和正式协议行为测试。
+- `build/test-save-ui.js`：验证存档页面重绘后的按钮重绑定和主要操作。
 - `outputs/trpg-dm-assistant.html`：完整、可直接双击打开的唯一产品 HTML。
-- `v1.4.4-test-report.md`：当前版本测试报告。
+- `v1.4.5-test-report.md`：当前版本测试报告。
+- `v1.4.4-test-report.md`：上一版本测试报告。
 - `v1.4.3-test-report.md`：上一补丁版本的协议稳定性测试记录。
 - `v1.4.2-test-report.md`、`v1.4.1-test-report.md`、`v1.3.2-test-report.md`、`v1.2-test-report.md`：历史版本测试记录。
 - `../.github/workflows/trpg-ci.yml`：针对 TRPG 项目的持续集成配置。
