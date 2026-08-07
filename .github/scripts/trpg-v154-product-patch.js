@@ -1,0 +1,15 @@
+"use strict";
+const fs=require("fs");
+const path=require("path");
+const file=path.resolve("trpg-dm-assistant/src/ai-protocol.js");
+let text=fs.readFileSync(file,"utf8");
+const old=`  const amountOps=new Set(["adjustHp","adjustSan","adjustResource","adjustTension","adjustProgress","advanceClock"]);for(const list of [obj.stateChanges,obj.campaignChanges])if(Array.isArray(list))for(const item of list){if(!isPlainObject(item))continue;if(typeof item.operation==="string")item.operation=item.operation.trim();if(!amountOps.has(item.operation)||item.amount!==undefined)continue;for(const alias of ["by","delta"]){if(item[alias]!==undefined&&Number.isFinite(Number(item[alias]))){item.amount=Number(item[alias]);break}}}\n  return obj`;
+const replacement=`  const amountOps=new Set(["adjustHp","adjustSan","adjustResource","adjustTension","adjustProgress","advanceClock"]);for(const list of [obj.stateChanges,obj.campaignChanges])if(Array.isArray(list))for(const item of list){if(!isPlainObject(item))continue;if(typeof item.operation==="string")item.operation=item.operation.trim();if(!amountOps.has(item.operation)||item.amount!==undefined)continue;for(const alias of ["by","delta"]){if(item[alias]!==undefined&&Number.isFinite(Number(item[alias]))){item.amount=Number(item[alias]);break}}}\n  if(Array.isArray(obj.stateChanges)&&Array.isArray(obj.campaignChanges)){\n    const routedState=[],routedCampaign=[];\n    for(const [origin,list] of [["state",obj.stateChanges],["campaign",obj.campaignChanges]])for(const item of list){\n      const operation=isPlainObject(item)&&typeof item.operation==="string"?item.operation.trim():"";\n      if(ALLOWED_STATE_OPERATIONS.has(operation)){routedState.push(item);continue}\n      if(ALLOWED_CAMPAIGN_OPERATIONS.has(operation)){routedCampaign.push(item);continue}\n      (origin==="state"?routedState:routedCampaign).push(item)\n    }\n    obj.stateChanges=routedState;obj.campaignChanges=routedCampaign\n  }\n  return obj`;
+if(!text.includes(old))throw new Error("normalizeAiProtocolShape patch target not found");
+text=text.replace(old,replacement);
+const oldPrompt=`普通状态操作：\${Array.from(ALLOWED_STATE_OPERATIONS).join(", ")}\n剧情操作：\${Array.from(ALLOWED_CAMPAIGN_OPERATIONS).join(", ")}\n检定规则：`;
+const newPrompt=`普通状态操作：\${Array.from(ALLOWED_STATE_OPERATIONS).join(", ")}\n剧情操作：\${Array.from(ALLOWED_CAMPAIGN_OPERATIONS).join(", ")}\nstateChanges 只能放普通状态操作；campaignChanges 只能放剧情操作，不要把已知 operation 放错数组。页面只会对已知白名单操作做安全归位，未知 operation 仍会拒绝。\n检定规则：`;
+if(!text.includes(oldPrompt))throw new Error("buildUserPrompt patch target not found");
+text=text.replace(oldPrompt,newPrompt);
+fs.writeFileSync(file,text,"utf8");
+console.log("V154_PRODUCT_PATCH_APPLIED");
