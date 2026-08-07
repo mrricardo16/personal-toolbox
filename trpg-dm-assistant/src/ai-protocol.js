@@ -122,17 +122,62 @@ function validateAiResponse(obj,{requestId,baseRevision,stage}){
   if(out.endingProposal!==null){if(!isPlainObject(out.endingProposal))throw protocolError("ENDING_PROPOSAL_INVALID","endingProposal 必须是对象或 null");out.endingProposal={endingId:asString(out.endingProposal.endingId,120),reason:asString(out.endingProposal.reason,500)}}return out
 }
 
-function repairJsonSyntaxLocally(raw){
-  let text=extractFirstJsonObject(raw).replace(/^\uFEFF/,"").trim();if(!text)return text;text=text.replace(/,\s*([}\]])/g,"$1");
-  let depthCurly=0,depthSquare=0,inString=false,escape=false;for(const char of text){if(inString){if(escape)escape=false;else if(char==="\\")escape=true;else if(char==='"')inString=false;continue}if(char==='"'){inString=true;continue}if(char==="{")depthCurly++;else if(char==="}")depthCurly--;else if(char==="[")depthSquare++;else if(char==="]")depthSquare--}
-  if(inString||depthCurly<0||depthSquare<0)return text;return text+"]".repeat(depthSquare)+"}".repeat(depthCurly)
+function stripAiJsonFences(raw){
+  let text=String(raw??"").replace(/^\uFEFF/,"").trim();
+  text=text.replace(/^\s*```(?:json|javascript|js)?\s*/i,"").replace(/\s*```\s*$/i,"").trim();
+  const wrapped=safeJsonParse(text);if(wrapped.ok&&typeof wrapped.value==="string")text=wrapped.value.trim();return text
+}
+function extractAiJsonCandidate(raw){
+  const text=stripAiJsonFences(raw);if(!text)return "";
+  const anchor=text.search(/["'“”]?protocolVersion["'“”]?\s*[:：]/i),fallback=text.indexOf("{"),start=anchor>=0?text.lastIndexOf("{",anchor):fallback;if(start<0)return text;
+  let quote=null,escape=false,stack=[];for(let i=start;i<text.length;i++){
+    const char=text[i];if(quote){if(escape){escape=false;continue}if(char==="\\"){escape=true;continue}if((quote==='"'&&char==='"')||(quote==="'"&&char==="'")||(quote==="“"&&char==="”"))quote=null;continue}
+    if(char==='"'||char==="'"||char==="“"){quote=char;continue}if(char==="{"||char==="[")stack.push(char);else if(char==="}"||char==="]"){const expected=char==="}"?"{":"[";if(stack.at(-1)===expected)stack.pop();if(!stack.length)return text.slice(start,i+1)}
+  }
+  return text.slice(start)
+}
+function normalizeJsonLikeSyntax(candidate){
+  const source=String(candidate??"").replace(/^\uFEFF/,"").trim();let out="",quote=null,escape=false,stack=[];
+  const nextNonSpace=index=>{for(let i=index;i<source.length;i++)if(!/\s/.test(source[i]))return source[i];return ""};
+  for(let i=0;i<source.length;i++){
+    const char=source[i],next=source[i+1]||"";
+    if(quote){
+      if(escape){out+=char;escape=false;continue}
+      if(char==="\\"){out+=char;escape=true;continue}
+      const closing=(quote==='"'&&char==='"')||(quote==="'"&&char==="'")||(quote==="“"&&char==="”");
+      if(closing){const lookahead=nextNonSpace(i+1);if(quote==='"'&&lookahead&&!",:}]，：；".includes(lookahead)){out+='\\"';continue}out+='"';quote=null;continue}
+      if(char==='"'&&quote!=="\""){out+='\\"';continue}
+      if(char==="\n"){out+="\\n";continue}if(char==="\r")continue;if(char==="\t"){out+="\\t";continue}
+      out+=char;continue
+    }
+    if(char==='"'||char==="'"||char==="“"){quote=char;out+='"';continue}
+    if(char==="/"&&next==="/"){while(i<source.length&&source[i]!=="\n")i++;out+="\n";continue}
+    if(char==="/"&&next==="*"){i+=2;while(i<source.length-1&&!(source[i]==="*"&&source[i+1]==="/"))i++;i++;continue}
+    if(char==="："){out+=":";continue}if(char==="，"||char==="；"){out+=",";continue}if(char==="`"||char==="\u200b")continue
+    if(char==="{"||char==="["){stack.push(char);out+=char;continue}
+    if(char==="}"||char==="]"){const expected=char==="}"?"{":"[";if(stack.at(-1)===expected){stack.pop();out+=char}continue}
+    out+=char
+  }
+  if(quote)out+='"';while(stack.length){out+=stack.pop()==="{"?"}":"]"}
+  out=out.replace(/([{,]\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\s*:)/g,'$1"$2"$3');
+  out=out.replace(/:\s*(True|False|None|undefined|NaN)(?=\s*[,}\]])/g,(_,value)=>`: ${value==="True"?"true":value==="False"?"false":"null"}`);
+  out=out.replace(/:\s*([A-Za-z_][A-Za-z0-9_.-]*)(?=\s*[,}\]])/g,(match,value)=>["true","false","null"].includes(value)?match:`: "${value}"`);
+  out=out.replace(/(["}\]])\s+(?="[^"]+"\s*:)/g,"$1,");
+  out=out.replace(/,\s*,+/g,",").replace(/,\s*([}\]])/g,"$1");return out.trim()
+}
+function repairJsonSyntaxLocally(raw){return normalizeJsonLikeSyntax(extractAiJsonCandidate(raw))}
+function parseAiJsonObject(text){
+  const parsed=safeJsonParse(text);if(!parsed.ok)return parsed;if(typeof parsed.value==="string"){const nested=safeJsonParse(parsed.value);if(nested.ok)return nested}return parsed
 }
 async function parseAndRepairAiResponse(raw,meta){
   if(utf8Bytes(raw)>MAX_API_RESPONSE_BYTES)throw withRawResponse(protocolError("API_RESPONSE_TOO_LARGE","AI 响应超过安全上限"),"",meta.stage);
-  const extracted=extractFirstJsonObject(raw),first=safeJsonParse(extracted);if(first.ok){try{return validateAiResponse(first.value,meta)}catch(error){throw withRawResponse(error,raw,meta.stage)}}
-  const repairedText=repairJsonSyntaxLocally(raw),repaired=safeJsonParse(repairedText);if(!repaired.ok)throw withRawResponse(protocolError("AI_RESPONSE_JSON_PARSE_FAILED","AI 响应 JSON 解析失败，本地安全修复后仍无法解析"),raw,meta.stage);
+  const candidate=extractAiJsonCandidate(raw),first=parseAiJsonObject(candidate);if(first.ok&&isPlainObject(first.value)){try{return validateAiResponse(first.value,meta)}catch(error){throw withRawResponse(error,raw,meta.stage)}}
+  const repairedText=repairJsonSyntaxLocally(raw),repaired=parseAiJsonObject(repairedText);if(!repaired.ok||!isPlainObject(repaired.value))throw withRawResponse(protocolError("AI_RESPONSE_JSON_PARSE_FAILED","AI 响应 JSON 解析失败；已尝试清理代码围栏、前后说明、中文结构标点、单引号、注释、尾逗号、裸键值和缺失闭合符，仍无法安全解析"),raw,meta.stage);
   try{return validateAiResponse(repaired.value,meta)}catch(error){throw withRawResponse(error,raw,meta.stage)}
 }
+
+/* =========================
+   状态变化事务
 /* =========================
    状态变化事务
 ========================= */
