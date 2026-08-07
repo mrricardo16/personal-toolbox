@@ -10,10 +10,12 @@ on:
       - '.github/scripts/trpg-v154-product-patch.js'
       - '.github/scripts/trpg-v154-npc-materialization-patch.js'
       - '.github/scripts/trpg-v154-location-alias-patch.js'
+      - '.github/scripts/trpg-v154-empty-response-retry-patch.js'
       - 'trpg-dm-assistant/build/test-real-api-v154-e2e.js'
       - 'trpg-dm-assistant/build/test-v154-protocol-routing.js'
       - 'trpg-dm-assistant/build/test-v154-npc-materialization.js'
       - 'trpg-dm-assistant/build/test-v154-location-alias.js'
+      - 'trpg-dm-assistant/build/test-v154-empty-response-retry.js'
       - 'trpg-dm-assistant/src/**'
 
 permissions:
@@ -40,6 +42,9 @@ jobs:
       - name: Apply v1.5.4 location alias fix
         run: node .github/scripts/trpg-v154-location-alias-patch.js
 
+      - name: Apply v1.5.4 empty-response retry fix
+        run: node .github/scripts/trpg-v154-empty-response-retry-patch.js
+
       - name: Deterministic preflight
         shell: bash
         run: |
@@ -55,6 +60,7 @@ jobs:
           node trpg-dm-assistant/build/test-v154-protocol-routing.js
           node trpg-dm-assistant/build/test-v154-npc-materialization.js
           node trpg-dm-assistant/build/test-v154-location-alias.js
+          node trpg-dm-assistant/build/test-v154-empty-response-retry.js
           while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
           node trpg-dm-assistant/build/build-single-html.js
           node trpg-dm-assistant/build/verify-single-html.js
