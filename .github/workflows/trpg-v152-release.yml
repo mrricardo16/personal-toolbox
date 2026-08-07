@@ -91,3 +91,5 @@ jobs:
           git diff --cached --check
           git commit -m 'Release TRPG DM Assistant v1.5.2'
           git push origin HEAD:main
+
+# retry: v1.5.1 regression baseline is forward-compatible
