@@ -22,8 +22,10 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Apply v1.4.6 AI JSON repair patch
-        run: python3 .github/scripts/trpg-v146-json-repair.py
+      - name: Correct patch boundary and apply v1.4.6 repair
+        run: |
+          python3 .github/scripts/trpg-v146-json-repair-fix.py
+          python3 .github/scripts/trpg-v146-json-repair.py
 
       - name: Runtime security and protocol tests
         run: node trpg-dm-assistant/build/test-security-hardening.js
@@ -63,8 +65,9 @@ jobs:
         shell: bash
         run: |
           rm .github/scripts/trpg-v146-json-repair.py
+          rm .github/scripts/trpg-v146-json-repair-fix.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add README.md trpg-dm-assistant .github/scripts/trpg-v146-json-repair.py
+          git add README.md trpg-dm-assistant .github/scripts/trpg-v146-json-repair.py .github/scripts/trpg-v146-json-repair-fix.py
           git commit -m 'Harden v1.4.6 AI JSON repair'
           git push origin HEAD:main
