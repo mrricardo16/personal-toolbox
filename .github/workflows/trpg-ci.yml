@@ -32,6 +32,9 @@ jobs:
       - name: CoC outcome regression
         run: node trpg-dm-assistant/build/test-coc-outcomes.js
 
+      - name: Situation sidebar regression
+        run: node trpg-dm-assistant/build/test-situation-ui.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
