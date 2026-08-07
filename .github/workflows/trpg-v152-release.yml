@@ -1,3 +1,4 @@
+# release retry after DS_KEY 20-round acceptance confirmed
 name: One-shot TRPG DM Assistant v1.5.2 release
 
 on:
