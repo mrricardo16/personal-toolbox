@@ -6,7 +6,7 @@
 
 ## 当前工具
 
-### TRPG AI 主持助手（最新版 v1.4.5）
+### TRPG AI 主持助手（最新版 v1.4.6）
 
 路径：[trpg-dm-assistant/outputs/trpg-dm-assistant.html](trpg-dm-assistant/outputs/trpg-dm-assistant.html)
 
@@ -39,6 +39,7 @@
 
 版本记录：
 
+- v1.4.6：增加检定难度与通过线展示、等值边界校验、分层线索质量和大失败前进代价。
 - v1.4.5：修复存档页面重绘后按钮失效，并新增存档交互回归测试。
 - v1.4.4：隔离 API 密钥与存档配置，强化外部存档净化、响应上限、本地 JSON 修复、真实协议测试、生产构建安全和永久 CI。
 - v1.4.3：修复自由行动被裁决协议阻断的问题，自动派生检定 `required`，兼容协议版本格式及 `by` / `delta` 数值别名。

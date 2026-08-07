@@ -14,6 +14,13 @@ function rollDiceExpression(input){
   const rolls=[];for(let i=0;i<count;i++)rolls.push(randomInt(1,faces));const subtotal=rolls.reduce((a,b)=>a+b,0);
   return {ok:true,value:{expression:text,rawRolls:rolls,modifier,total:subtotal+modifier}};
 }
+const COC_DIFFICULTY_LABELS={regular:"普通",hard:"困难",extreme:"极难"};
+const COC_RANK_LABELS={critical:"大成功",extreme:"极难成功",hard:"困难成功",regular:"普通成功",failure:"失败",fumble:"大失败",skipped:"已跳过"};
+function cocDifficultyLabel(value){return COC_DIFFICULTY_LABELS[value]||String(value||"普通")}
+function cocRankLabel(value){return COC_RANK_LABELS[value]||String(value||"未知")}
+function cocDifficultyTarget(target,difficulty="regular"){
+  const value=clamp(Number(target||0),1,100);if(difficulty==="hard")return Math.floor(value/2);if(difficulty==="extreme")return Math.floor(value/5);return value
+}
 function cocRank(roll,target){
   const critical=roll===1;const fumble=target<50?roll>=96:roll===100;
   if(critical)return "critical";if(fumble)return "fumble";if(roll<=Math.floor(target/5))return "extreme";
@@ -22,13 +29,21 @@ function cocRank(roll,target){
 function cocDifficultyPass(rank,difficulty){
   const order={fumble:0,failure:0,regular:1,hard:2,extreme:3,critical:4};const need={regular:1,hard:2,extreme:3}[difficulty||"regular"]||1;return order[rank]>=need;
 }
+function clueDiscoveryQuality(record){
+  if(!record||record.skipped)return "skipped";if(record.rank==="fumble")return "fumble";if(record.result!==true)return "failure";return ["critical","extreme","hard","regular"].includes(record.rank)?record.rank:"regular"
+}
+function validateCocRollOutcome(roll){
+  if(!roll||roll.skipped)return true;const total=Number(roll.total),target=Number(roll.target),difficulty=roll.difficulty||"regular";
+  const expectedRank=cocRank(total,target),expectedResult=cocDifficultyPass(expectedRank,difficulty),expectedTarget=cocDifficultyTarget(target,difficulty);
+  if(roll.rank!==expectedRank||Boolean(roll.result)!==expectedResult||Number(roll.difficultyTarget)!==expectedTarget)throw new Error(`COC 判定不一致：骰点 ${total} / 技能 ${target} / 难度 ${difficulty}`);return true
+}
 function rollCocPercentile(check){
   const rawBonus=clamp(Number(check.bonusDice||0),0,2),rawPenalty=clamp(Number(check.penaltyDice||0),0,2);
   const net=rawBonus-rawPenalty,bonus=Math.max(0,net),penalty=Math.max(0,-net),extra=Math.max(bonus,penalty);
   const ones=randomInt(0,9);const tens=[];for(let i=0;i<1+extra;i++)tens.push(randomInt(0,9));
   const values=tens.map(t=>{const v=t*10+ones;return v===0?100:v});
-  const selected=bonus?Math.min(...values):penalty?Math.max(...values):values[0];const target=clamp(Number(check.target||0),1,100);
-  const rank=cocRank(selected,target);return {expression:"1d100",rawRolls:values,modifier:0,total:selected,target,difficulty:check.difficulty||"regular",rank,result:cocDifficultyPass(rank,check.difficulty)};
+  const selected=bonus?Math.min(...values):penalty?Math.max(...values):values[0],target=clamp(Number(check.target||0),1,100),difficulty=["regular","hard","extreme"].includes(check.difficulty)?check.difficulty:"regular";
+  const rank=cocRank(selected,target),result=cocDifficultyPass(rank,difficulty),difficultyTarget=cocDifficultyTarget(target,difficulty),out={expression:"1d100",rawRolls:values,modifier:0,total:selected,target,difficulty,difficultyTarget,rank,result};validateCocRollOutcome(out);return out;
 }
 function rollDnd(check){
   const mode=check.advantage&&check.disadvantage?"normal":check.advantage?"advantage":check.disadvantage?"disadvantage":"normal";const rolls=[randomInt(1,20)];if(mode!=="normal")rolls.push(randomInt(1,20));
