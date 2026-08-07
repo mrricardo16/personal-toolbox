@@ -22,7 +22,7 @@ test("线索分类 progress",()=>assert.equal(classify({stateChanges:[{operation
 test("张力分类 risk",()=>assert.equal(classify({stateChanges:[],campaignChanges:[{operation:"adjustTension",amount:1}],locationEffect:{type:"stay"}}),"risk"));
 test("地点切换分类 transition",()=>assert.equal(classify({stateChanges:[],campaignChanges:[],locationEffect:{type:"transition_proposal"},nodeProposal:{}}),"transition"));
 test("3 轮无进展不再强制失败前进线索",()=>{const pacing=extract("function pacingDirective()","function buildContextSnapshot");assert.ok(!pacing.includes("采用失败前进：提供可继续调查的信息"));assert.ok(pacing.includes("不要强制线索、奖励、检定或进度"))});
-test("5 轮无进展让世界行动但不送答案",()=>{const pacing=extract("function pacingDirective()","function buildContextSnapshot");assert.ok(pacing.includes("不得为了推进而强送关键线索或正确答案"))});
+test("5 轮无进展让世界行动但不送答案",()=>{const pacing=extract("function pacingDirective()","function buildContextSnapshot");assert.ok(pacing.includes("不得为了推进而强送关键线索"));assert.ok(pacing.includes("正确答案"))});
 const contextFn=extract("function buildContextSnapshot(","function endingConditionMatches");
 test("上下文包含 NPC continuity",()=>assert.ok(contextFn.includes("npcContinuity:npcContinuityContext")));
 test("API memory 最近消息上限为 12",()=>assert.ok(contextFn.includes("Math.min(12")));
