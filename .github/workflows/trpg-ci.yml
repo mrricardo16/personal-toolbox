@@ -44,6 +44,9 @@ jobs:
       - name: v1.5.1 investigation stability regression
         run: node trpg-dm-assistant/build/test-v151-investigation-stability.js
 
+      - name: v1.5.2 long-session regression
+        run: node trpg-dm-assistant/build/test-v152-long-session.js
+
       - name: JavaScript syntax
         shell: bash
         run: |

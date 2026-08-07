@@ -1,0 +1,43 @@
+name: TRPG DM Assistant Real API Acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      rounds:
+        description: '真实 API 验收轮数'
+        required: true
+        default: '20'
+        type: choice
+        options:
+          - '20'
+          - '50'
+
+permissions:
+  contents: read
+
+jobs:
+  real-api-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Deterministic preflight
+        run: |
+          node trpg-dm-assistant/build/test-security-hardening.js
+          node trpg-dm-assistant/build/test-v152-long-session.js
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          git diff --exit-code -- trpg-dm-assistant/outputs/trpg-dm-assistant.html
+
+      - name: Real API acceptance
+        env:
+          TRPG_TEST_API_KEY: ${{ secrets.DS_KEY }}
+          TRPG_TEST_API_URL: https://api.deepseek.com/chat/completions
+          TRPG_TEST_MODEL: deepseek-v4-flash
+          TRPG_TEST_ROUNDS: ${{ inputs.rounds }}
+        run: |
+          test -n "$TRPG_TEST_API_KEY"
+          node trpg-dm-assistant/build/test-real-api-v152.js
