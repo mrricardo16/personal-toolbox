@@ -22,8 +22,9 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Patch structured source and final UI test
+      - name: Patch structured source with scoped event replacement
         run: |
+          python3 .github/scripts/trpg-save-hotfix-scope-fix.py
           python3 .github/scripts/trpg-save-hotfix.py
           python3 .github/scripts/trpg-save-hotfix-test-fix.py
 
@@ -58,6 +59,7 @@ jobs:
           rm .github/workflows/trpg-save-hotfix.yml
           rm .github/scripts/trpg-save-hotfix.py
           rm .github/scripts/trpg-save-hotfix-test-fix.py
+          rm .github/scripts/trpg-save-hotfix-scope-fix.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
