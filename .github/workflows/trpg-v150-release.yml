@@ -23,7 +23,9 @@ jobs:
           node-version: '24'
 
       - name: Apply v1.5.0 source patch
-        run: python3 .github/scripts/trpg-v150-release.py
+        run: |
+          python3 .github/scripts/trpg-v150-release.py
+          python3 .github/scripts/trpg-v150-fix-tests.py
 
       - name: Runtime security and protocol tests
         run: node trpg-dm-assistant/build/test-security-hardening.js
@@ -66,8 +68,9 @@ jobs:
         shell: bash
         run: |
           rm .github/scripts/trpg-v150-release.py
+          rm .github/scripts/trpg-v150-fix-tests.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add README.md trpg-dm-assistant .github/scripts/trpg-v150-release.py
+          git add README.md trpg-dm-assistant .github/scripts/trpg-v150-release.py .github/scripts/trpg-v150-fix-tests.py
           git commit -m 'Release TRPG DM Assistant v1.5.0'
           git push origin HEAD:main
