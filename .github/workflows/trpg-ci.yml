@@ -29,6 +29,9 @@ jobs:
       - name: Save management interaction regression
         run: node trpg-dm-assistant/build/test-save-ui.js
 
+      - name: CoC outcome regression
+        run: node trpg-dm-assistant/build/test-coc-outcomes.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
