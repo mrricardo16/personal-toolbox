@@ -38,6 +38,9 @@ jobs:
       - name: AI JSON repair corpus
         run: node trpg-dm-assistant/build/test-ai-json-repair.js
 
+      - name: v1.5.0 experience regression
+        run: node trpg-dm-assistant/build/test-v150-experience.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
