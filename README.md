@@ -6,7 +6,7 @@
 
 ## 当前工具
 
-### TRPG AI 主持助手（最新版 v1.5.1）
+### TRPG AI 主持助手（最新版 v1.5.2）
 
 路径：[trpg-dm-assistant/outputs/trpg-dm-assistant.html](trpg-dm-assistant/outputs/trpg-dm-assistant.html)
 
