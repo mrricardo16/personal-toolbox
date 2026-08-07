@@ -1,0 +1,11 @@
+"use strict";
+const fs=require("fs");
+const path=require("path");
+const file=path.resolve("trpg-dm-assistant/build/test-real-api-v154-e2e.js");
+let text=fs.readFileSync(file,"utf8");
+const old='for(const relative of moduleFiles){const source=fs.readFileSync(path.join(root,"src",relative),"utf8");vm.runInContext(source,context,{filename:`src/${relative}`})}';
+const replacement='const combinedSource=moduleFiles.map(relative=>`/* src/${relative} */\\n${fs.readFileSync(path.join(root,"src",relative),"utf8")}`).join("\\n\\n");vm.runInContext(combinedSource,context,{filename:"trpg-core-combined.js"})';
+if(!text.includes(old))throw new Error("未找到旧的逐模块 VM 加载逻辑");
+text=text.replace(old,replacement);
+fs.writeFileSync(file,text,"utf8");
+console.log("V154_HARNESS_LOADER_FIXED");
