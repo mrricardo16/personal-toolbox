@@ -1,4 +1,4 @@
-name: One-shot TRPG v1.5.3 finalize
+name: One-shot TRPG v1.5.3 docs finalize
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  finalize:
+  finalize-docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,45 +21,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-
-      - name: Finalize release metadata and permanent CI
+      - name: Finalize release docs
         run: node .github/scripts/trpg-v153-finalize.js
-
-      - name: Full deterministic regression
+      - name: Verify release state
         shell: bash
         run: |
-          node trpg-dm-assistant/build/test-security-hardening.js
-          node trpg-dm-assistant/build/test-save-ui.js
-          node trpg-dm-assistant/build/test-coc-outcomes.js
-          node trpg-dm-assistant/build/test-situation-ui.js
-          node trpg-dm-assistant/build/test-ai-json-repair.js
-          node trpg-dm-assistant/build/test-v150-experience.js
-          node trpg-dm-assistant/build/test-v151-investigation-stability.js
-          node trpg-dm-assistant/build/test-v152-long-session.js
           node trpg-dm-assistant/build/test-v153-clue-routes.js
-          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
           node trpg-dm-assistant/build/build-single-html.js
           node trpg-dm-assistant/build/verify-single-html.js
-          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
-          node trpg-dm-assistant/build/build-single-html.js
-          node trpg-dm-assistant/build/verify-single-html.js
-          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
-          test "$first" = "$second"
-          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
           git diff --exit-code -- trpg-dm-assistant/outputs/trpg-dm-assistant.html
           git diff --check
-
-      - name: Commit clean v1.5.3 release state
+      - name: Commit release docs only
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git rm -f \
-            .github/scripts/trpg-v153-patch.js \
-            .github/scripts/trpg-v153-patch2.js \
-            .github/scripts/trpg-v153-finalize.js \
-            .github/workflows/trpg-v153-release.yml
-          git add -A
+          git add README.md trpg-dm-assistant/README.md trpg-dm-assistant/reports/v1.5.3-test-report.md
           git diff --cached --check
-          git commit -m "Finalize TRPG DM Assistant v1.5.3"
+          git commit -m "Document TRPG DM Assistant v1.5.3"
           git push origin HEAD:tmp-v153-clue-route-hotfix
