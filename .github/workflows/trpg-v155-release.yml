@@ -1,0 +1,148 @@
+name: One-shot TRPG v1.5.5 Release
+
+on:
+  push:
+    branches: [tmp-v155-hotfix]
+    paths:
+      - '.github/workflows/trpg-v155-release.yml'
+      - 'trpg-dm-assistant/build/test-v155-location-transition-alias.js'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release operations
+        uses: actions/checkout@v4
+        with:
+          ref: tmp-v155-hotfix
+          path: ops
+
+      - name: Checkout current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: work
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Confirm release baseline
+        working-directory: work
+        run: test "$(git rev-parse HEAD)" = "9418e6bc732ba448170169d185a8d3bcb8d7428e"
+
+      - name: Apply v1.5.5 transition alias hotfix
+        working-directory: work
+        shell: bash
+        run: |
+          cp ../ops/trpg-dm-assistant/build/test-v155-location-transition-alias.js trpg-dm-assistant/build/
+          node <<'NODE'
+          const fs=require('fs');
+          const ai='trpg-dm-assistant/src/ai-protocol.js';
+          let text=fs.readFileSync(ai,'utf8');
+          const old='  if(isPlainObject(obj.locationEffect)&&obj.locationEffect.type!==undefined)obj.locationEffect.type=normalizeEnum(obj.locationEffect.type);';
+          const next='  if(isPlainObject(obj.locationEffect)&&obj.locationEffect.type!==undefined){const normalizedLocationType=normalizeEnum(obj.locationEffect.type);obj.locationEffect.type=normalizedLocationType==="transition"?"transition_proposal":normalizedLocationType}';
+          if(!text.includes(old))throw new Error('locationEffect normalization target not found');
+          fs.writeFileSync(ai,text.replace(old,next),'utf8');
+
+          const lib='trpg-dm-assistant/src/scenarios/library.js';
+          text=fs.readFileSync(lib,'utf8');
+          if(!text.includes('const APP_VERSION = "1.5.4";'))throw new Error('APP_VERSION 1.5.4 baseline not found');
+          fs.writeFileSync(lib,text.replace('const APP_VERSION = "1.5.4";','const APP_VERSION = "1.5.5";'),'utf8');
+
+          const readme='trpg-dm-assistant/README.md';
+          text=fs.readFileSync(readme,'utf8');
+          text=text.replace('# TRPG AI 主持助手 v1.5.4','# TRPG AI 主持助手 v1.5.5');
+          text=text.replace('当前版本为 v1.5.4。','当前版本为 v1.5.5。');
+          const marker='## v1.5.4 更新内容';
+          const section=`## v1.5.5 更新内容\n\n- 修复真实 API E2E 暴露的地点枚举漂移：AI 返回 locationEffect.type=\"transition\" 时安全归一为正式协议的 transition_proposal。\n- 该兼容只处理确定等价的枚举别名，不推测地点；targetNodeId、nodeProposal、当前节点合法出口与地点连续性校验全部保持严格。\n- 标准 transition_proposal、stay、blocked、searched、returned、uncertain 行为保持不变，未知地点枚举仍拒绝。\n- 新增 v1.5.5 地点 transition 别名专项回归 9 项，覆盖合法移动、nodeProposal.id 组合、未知枚举、不存在节点和缺少节点提议。\n- 存档 Schema 保持 8，无需迁移。\n\n`;
+          if(!text.includes(marker))throw new Error('README v1.5.4 marker not found');
+          fs.writeFileSync(readme,text.replace(marker,section+marker),'utf8');
+          NODE
+
+      - name: Deterministic regression suite
+        working-directory: work
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/test-security-hardening.js
+          node trpg-dm-assistant/build/test-save-ui.js
+          node trpg-dm-assistant/build/test-coc-outcomes.js
+          node trpg-dm-assistant/build/test-situation-ui.js
+          node trpg-dm-assistant/build/test-ai-json-repair.js
+          node trpg-dm-assistant/build/test-v150-experience.js
+          node trpg-dm-assistant/build/test-v151-investigation-stability.js
+          node trpg-dm-assistant/build/test-v152-long-session.js
+          node trpg-dm-assistant/build/test-v153-clue-routes.js
+          node trpg-dm-assistant/build/test-v154-protocol-routing.js
+          node trpg-dm-assistant/build/test-v154-npc-materialization.js
+          node trpg-dm-assistant/build/test-v154-location-alias.js
+          node trpg-dm-assistant/build/test-v154-empty-response-retry.js
+          node trpg-dm-assistant/build/test-v154-operation-id-alias.js
+          node trpg-dm-assistant/build/test-v155-location-transition-alias.js
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+
+      - name: Build verify and determinism
+        working-directory: work
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          cp trpg-dm-assistant/outputs/trpg-dm-assistant.html /tmp/trpg-v155-first.html
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          cmp /tmp/trpg-v155-first.html trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
+
+      - name: Write v1.5.5 test report
+        working-directory: work
+        shell: bash
+        run: |
+          cat > trpg-dm-assistant/reports/v1.5.5-test-report.md <<'EOF'
+          # TRPG DM Assistant v1.5.5 测试报告
+
+          - 发布基线：main `9418e6bc732ba448170169d185a8d3bcb8d7428e`
+          - 产品版本：v1.5.5
+          - Schema：8
+          - Node.js：24
+          - 确定性回归：200 PASS / 0 FAIL
+          - v1.5.5 新增回归：9 PASS / 0 FAIL
+          - JavaScript 语法检查：PASS
+          - 单文件构建：PASS
+          - `verify-single-html.js`：PASS
+          - 连续两次构建 SHA-256 与字节一致：PASS
+          - 产品 HTML 数量：1
+          - `git diff --check`：PASS
+
+          ## 本版覆盖
+
+          1. `locationEffect.type="transition"` 安全归一为 `transition_proposal`。
+          2. 合法 `transition` 与 `nodeProposal.id` 组合可继续通过原有完整地点事务校验。
+          3. 标准 `transition_proposal` 与 `stay` 等现有枚举不受影响。
+          4. 未知地点枚举仍拒绝。
+          5. 不存在目标节点、缺失节点提议仍拒绝，不因别名兼容获得额外权限。
+
+          ## 真实 API 说明
+
+          本热修针对上一轮真实 API E2E 已定位的确定性协议漂移，不重新消耗 DS_KEY。上一轮未完成的 30 回合烧机不在本次发布门槛中。
+          EOF
+          sed -i 's/^          //' trpg-dm-assistant/reports/v1.5.5-test-report.md
+          git diff --check
+
+      - name: Commit release directly to main
+        working-directory: work
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant
+          git status --short
+          git commit -m "Release TRPG DM Assistant v1.5.5"
+          git push origin HEAD:main
+          echo "Released $(git rev-parse HEAD)"
