@@ -65,6 +65,9 @@ jobs:
       - name: v1.5.4 operation ID alias regression
         run: node trpg-dm-assistant/build/test-v154-operation-id-alias.js
 
+      - name: v1.5.5 location transition alias regression
+        run: node trpg-dm-assistant/build/test-v155-location-transition-alias.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
