@@ -6,7 +6,7 @@
 /* =========================
    常量与默认数据
 ========================= */
-const APP_VERSION = "1.5.4";
+const APP_VERSION = "1.5.5";
 const SCHEMA_VERSION = 8;
 const STORAGE_INDEX_KEY = "trpg-dm-assistant:index:v1";
 const STORAGE_SLOT_PREFIX = "trpg-dm-assistant:slot:";

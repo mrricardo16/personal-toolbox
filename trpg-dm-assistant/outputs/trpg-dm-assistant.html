@@ -89,7 +89,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 /* =========================
    常量与默认数据
 ========================= */
-const APP_VERSION = "1.5.4";
+const APP_VERSION = "1.5.5";
 const SCHEMA_VERSION = 8;
 const STORAGE_INDEX_KEY = "trpg-dm-assistant:index:v1";
 const STORAGE_SLOT_PREFIX = "trpg-dm-assistant:slot:";
@@ -960,7 +960,7 @@ function normalizeAiProtocolShape(input,{stage=""}={}){
   if(!isPlainObject(input))return input;const obj=deepClone(input);obj.protocolVersion=normalizeAiProtocolVersion(obj.protocolVersion);obj.decision=normalizeEnum(obj.decision);
   if(obj.stateChanges===undefined)obj.stateChanges=[];if(obj.campaignChanges===undefined)obj.campaignChanges=[];if(obj.locationEffect===undefined)obj.locationEffect={type:"stay",targetNodeId:null};if(obj.nodeProposal===undefined)obj.nodeProposal=null;if(obj.endingProposal===undefined)obj.endingProposal=null;if(obj.actionSuggestions===undefined)obj.actionSuggestions=[];
   if(isPlainObject(obj.check)){for(const key of ["type","system","difficulty","visibility","trigger","origin"])if(obj.check[key]!==undefined)obj.check[key]=normalizeEnum(obj.check[key]);if(obj.check.skillId!==undefined)obj.check.skillId=String(obj.check.skillId).trim()}
-  if(isPlainObject(obj.locationEffect)&&obj.locationEffect.type!==undefined)obj.locationEffect.type=normalizeEnum(obj.locationEffect.type);
+  if(isPlainObject(obj.locationEffect)&&obj.locationEffect.type!==undefined){const normalizedLocationType=normalizeEnum(obj.locationEffect.type);obj.locationEffect.type=normalizedLocationType==="transition"?"transition_proposal":normalizedLocationType}
   if(isPlainObject(obj.nodeProposal)){
     if(typeof obj.nodeProposal.targetNodeId==="string")obj.nodeProposal.targetNodeId=obj.nodeProposal.targetNodeId.trim();
     else if(typeof obj.nodeProposal.id==="string")obj.nodeProposal.targetNodeId=obj.nodeProposal.id.trim();

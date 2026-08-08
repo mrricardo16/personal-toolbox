@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.5.4
+# TRPG AI 主持助手 v1.5.5
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.4。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.5。
 
 ## 快速开始
 
@@ -12,6 +12,14 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.5.5 更新内容
+
+- 修复真实 API E2E 暴露的地点枚举漂移：AI 返回 locationEffect.type="transition" 时安全归一为正式协议的 transition_proposal。
+- 该兼容只处理确定等价的枚举别名，不推测地点；targetNodeId、nodeProposal、当前节点合法出口与地点连续性校验全部保持严格。
+- 标准 transition_proposal、stay、blocked、searched、returned、uncertain 行为保持不变，未知地点枚举仍拒绝。
+- 新增 v1.5.5 地点 transition 别名专项回归 9 项，覆盖合法移动、nodeProposal.id 组合、未知枚举、不存在节点和缺少节点提议。
+- 存档 Schema 保持 8，无需迁移。
 
 ## v1.5.4 更新内容
 
