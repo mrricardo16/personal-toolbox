@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.5.9
+# TRPG AI 主持助手 v1.5.10
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.9。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.10。
 
 ## 快速开始
 
@@ -12,6 +12,19 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.5.10 更新内容
+
+- 新增 Authored Threat Clock：剧本作者可以为威胁时钟声明浏览器执行的推进 / 解决条件，AI 不再直接拥有 authored clock 的最终状态权限。
+- 固定支持 `stall`、`semantic`、`flag`、`clue`、`node`、`tension`、`turn` 七类确定性规则事件，并支持 once、cooldown 和单次推进预算。
+- authored clock 的 AI `advanceClock` / `resolveClock` 越权提议会被本地剥离，但同一响应中的合法状态变化继续执行，遵循 `BLOCK UNSAFE STATE, NOT PLAYER ACTION`。
+- post-commit 解析只允许立即 resolve、绝不借新状态额外 advance；实际 `enterNode()`、AI canonical commit 和暗骰结果可在同回合满足解决条件，避免时钟晚一回合才解除。
+- authored 时钟推进 / 触发写入 v1.5.9 Progress Semantics 的 `THREAT`，解决写入 `RESOLUTION`；时钟自身产生的语义不会递归触发自身。
+- 无 authored clock 的旧剧本保持原五轮停滞 fallback，legacy clock 仍允许既有 AI `advanceClock` / `resolveClock` 操作。
+- “雾港夜航”新增首个正式 authored clock“午夜涨潮”，按调查停滞、外部 THREAT 证据和结局节点确定性运行。
+- 修复旧 legacy `advanceClock` 分支引用未定义 `reason` 导致状态事务失败的问题，不改变其原有权限范围。
+- authored 配置在剧本启用前静态校验重复 ID、非法规则、无效 semantic kind、缺失 node / clue 引用等，坏配置不会覆盖当前案件。
+- Save Schema 保持 8、AI protocol 保持 1.3，不增加 AI 请求；新增 32 条 v1.5.10 确定性回归。
 
 ## v1.5.9 更新内容
 
@@ -195,6 +208,7 @@
 
 ## 版本记录
 
+- v1.5.10：加入 browser-owned Authored Threat Clock，用剧本作者规则驱动威胁推进 / 解决，AI authored clock 越权操作本地剥离，并支持同回合 post-commit 即时解决。
 - v1.5.9：加入 browser-owned Progress Semantics，以已提交 canonical diff 分类 NONE / DISCOVERY / ACCESS / SOCIAL / THREAT / RESOLUTION，为后续威胁时钟和结局门控提供确定性语义。
 - v1.5.8：加入 API Response Resilience，对 provider 空响应、超时、网络异常与可恢复 JSON 失败进行有限重试和安全 fallback。
 - v1.5.7：加入 Case Integrity Validator 与 Interaction Availability Invariant，检查案件软锁风险，同时确保 Guard 只挡非法状态、不挡正常玩家交互。
@@ -222,7 +236,7 @@
 
 ## 文件说明
 
-- `src/`：v1.5.9 的模块化源码；按状态、检定、AI 协议、剧本、记忆、安全边界、API 韧性、Progress Semantics、存档、UI、场景库和样式拆分。
+- `src/`：v1.5.10 的模块化源码；按状态、检定、AI 协议、剧本、记忆、安全边界、API 韧性、Progress Semantics、Authored Threat Clock、存档、UI、场景库和样式拆分。
 - `src/shell.template`：单文件产品的 HTML 外壳模板。
 - `build/build-single-html.js`：无依赖 Node 构建脚本，将源码拼接为唯一正式产品。
 - `build/verify-single-html.js`：校验成品结构、版本、依赖和唯一产品 HTML。
@@ -230,9 +244,10 @@
 - `build/test-save-ui.js`：验证存档页面重绘后的按钮重绑定和主要操作。
 - `build/test-coc-outcomes.js`：验证 CoC 等值边界、难度通过线、成功等级和分层线索规则。
 - `build/test-v151-investigation-stability.js`：验证无收益行动、NPC 连续性、回合影响分类和上下文治理。
+- `build/test-v1510-authored-threat-clock.js`：验证 authored clock 权限、规则、幂等、post-commit 即时解决、legacy 兼容和静态配置校验。
 - `build/test-v159-progress-semantics.js`：验证 canonical diff 六类语义、旧存档兼容、上下文暴露与 AI 自报不具权威性。
 - `outputs/trpg-dm-assistant.html`：完整、可直接双击打开的唯一产品 HTML。
-- `reports/`：各版本测试报告归档；当前版本报告为 `reports/trpg-dm-assistant-v1.5.9-test-report.md`。
+- `reports/`：各版本测试报告归档；当前版本报告为 `reports/trpg-dm-assistant-v1.5.10-test-report.md`。
 - `../.github/workflows/trpg-ci.yml`：针对 TRPG 项目的持续集成配置。
 
 ## 模块化构建
