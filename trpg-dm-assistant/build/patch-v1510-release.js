@@ -36,6 +36,10 @@ const staleHelper='function __resolveByNode(){const clock=state.campaign.directo
 const liveHelper='function __resolveByNode(){state.campaign.currentNodeId="harbor-ending-light";const result=applyDeterministicPacingBeforeAction(),clock=state.campaign.directorState.clocks[0];return deepClone({clock,result,last:ensureProgressSemanticsState().last})}';
 if(text.includes(staleHelper))text=text.replace(staleHelper,liveHelper);
 if(!text.includes(liveHelper))throw new Error("v1.5.10 live clock test helper wiring failed");
+const triggerOld='function __trigger(){__activateCustom({advanceRules:[{id:"flag-step",event:"flag",flag:"pressure",equals:true,amount:2,once:false,cooldownTurns:0}],resolveRules:[]});';
+const triggerNew='function __trigger(){__activateCustom({maxAdvancePerEvaluation:2,advanceRules:[{id:"flag-step",event:"flag",flag:"pressure",equals:true,amount:2,once:false,cooldownTurns:0}],resolveRules:[]});';
+if(text.includes(triggerOld))text=text.replace(triggerOld,triggerNew);
+if(!text.includes(triggerNew))throw new Error("v1.5.10 trigger budget fixture wiring failed");
 write("build/test-v1510-authored-threat-clock.js",text);
 
 text=read("src/authored-threat-clock.js");
