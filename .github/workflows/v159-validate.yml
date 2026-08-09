@@ -63,15 +63,6 @@ jobs:
           assert new in text
           text=text.replace('版本升级为 v1.5.8 且 Schema/协议不变','版本不低于 v1.5.8 且 Schema/协议不变',1)
           v158.write_text(text,encoding='utf-8')
-
-          ci=Path('.github/workflows/trpg-ci.yml')
-          text=ci.read_text(encoding='utf-8')
-          marker='      - name: JavaScript syntax\n'
-          block='      - name: v1.5.9 progress semantics regression\n        run: node trpg-dm-assistant/build/test-v159-progress-semantics.js\n\n'
-          if block not in text:
-              assert marker in text
-              text=text.replace(marker,block+marker,1)
-          ci.write_text(text,encoding='utf-8')
           PY
 
       - name: v1.5.9 deterministic regression
@@ -112,8 +103,7 @@ jobs:
                   trpg-dm-assistant/build/verify-single-html.js \
                   trpg-dm-assistant/build/test-v158-api-response-resilience.js \
                   trpg-dm-assistant/build/test-v159-progress-semantics.js \
-                  trpg-dm-assistant/outputs/trpg-dm-assistant.html \
-                  .github/workflows/trpg-ci.yml
+                  trpg-dm-assistant/outputs/trpg-dm-assistant.html
           if git diff --cached --quiet; then
             echo "Release wiring already synchronized"
           else
