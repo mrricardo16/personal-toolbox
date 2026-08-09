@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Restore main scenario library and apply version-only bump
+      - name: Prepare version-compatible validation baseline
         shell: bash
         run: |
           git fetch origin main --depth=1
@@ -39,9 +39,17 @@ jobs:
           strict_new='assert(after.runtime.failedRequest?.errorCode);assert(!after.runtime.failedRequest?.errorCode.startsWith("AI_PROVIDER_"))'
           if strict_old in text:
               text=text.replace(strict_old,strict_new,1)
-          assert new in text
-          assert strict_new in text
+          assert new in text and strict_new in text
           test.write_text(text,encoding='utf-8')
+
+          historical=Path('trpg-dm-assistant/build/test-v157-case-integrity.js')
+          text=historical.read_text(encoding='utf-8')
+          old='test("版本为 v1.5.7",()=>{ready();assert.equal(api.APP_VERSION,"1.5.7")});'
+          new='test("版本不低于 v1.5.7",()=>{ready();const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=7))});'
+          if old in text:
+              text=text.replace(old,new,1)
+          assert new in text
+          historical.write_text(text,encoding='utf-8')
           PY
       - name: v1.5.8 deterministic chaos regression
         run: node trpg-dm-assistant/build/test-v158-api-response-resilience.js
@@ -49,6 +57,7 @@ jobs:
         run: |
           node trpg-dm-assistant/build/test-v154-empty-response-retry.js
           node trpg-dm-assistant/build/test-v156-player-assertion-guard.js
+          node trpg-dm-assistant/build/test-v157-case-integrity.js
           node trpg-dm-assistant/build/test-v157-canonical-assertion-state.js
       - name: JavaScript syntax
         shell: bash
@@ -72,7 +81,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trpg-dm-assistant/src/scenarios/library.js trpg-dm-assistant/build/test-v158-api-response-resilience.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git add trpg-dm-assistant/src/scenarios/library.js trpg-dm-assistant/build/test-v157-case-integrity.js trpg-dm-assistant/build/test-v158-api-response-resilience.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
           if git diff --cached --quiet; then
             echo "Release files already synchronized"
           else
