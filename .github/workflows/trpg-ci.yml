@@ -77,6 +77,9 @@ jobs:
       - name: v1.5.7 canonical assertion state regression
         run: node trpg-dm-assistant/build/test-v157-canonical-assertion-state.js
 
+      - name: v1.5.8 API response resilience regression
+        run: node trpg-dm-assistant/build/test-v158-api-response-resilience.js
+
       - name: JavaScript syntax
         shell: bash
         run: |

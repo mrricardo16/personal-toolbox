@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.5.7
+# TRPG AI 主持助手 v1.5.8
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.7。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.8。
 
 ## 快速开始
 
@@ -12,6 +12,17 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.5.8 更新内容
+
+- 新增 API Response Resilience：正常成功响应仍只发起 1 次请求；空 final content、超时、网络异常、可重试 HTTP 错误与最终 JSON 解析失败使用统一、有限的恢复链。
+- 结构化主持请求最多 3 次总尝试，不做无限重试；非空但无法安全解析的 JSON 只用受限纠错提示重新请求，禁止在 repair 中新增游戏结果。
+- 新增明确 provider 错误分类：`AI_PROVIDER_EMPTY_CONTENT`、`AI_PROVIDER_TIMEOUT`、`AI_PROVIDER_NETWORK_ERROR`、`AI_PROVIDER_HTTP_ERROR`、`AI_PROVIDER_RESPONSE_INVALID`，与真正业务协议错误分离。
+- 玩家初始行动若 provider 失败耗尽重试，浏览器恢复请求前 canonical state、回合数与张力，并把原行动放回输入框；不会把正常游戏卡进 `error`。
+- 检定续写若 provider 失败，已完成的浏览器骰点和检定记录保留，但失败 AI 响应不会提交线索、物品、地点、剧情或结局变化；玩家可沿用原骰点重试续写或继续行动。
+- 新增 API 可靠性诊断计数：结构化请求、实际 API 尝试、自动重试、空响应、JSON 失败、安全 fallback 与 hard failure 可独立审计。
+- 未知 operation、requestId/revision 不匹配和非法状态事务仍保持严格失败，不会被 provider recovery 静默吞掉。
+- Save Schema 保持 8，AI protocol 保持 1.3；新增 20 条 v1.5.8 deterministic chaos 回归。
 
 ## v1.5.7 更新内容
 

@@ -17,7 +17,8 @@ const moduleFiles = [
   "player-action-guard.js",
   "interaction-availability.js",
   "saves.js",
-  "ui.js"
+  "ui.js",
+  "api-response-resilience.js"
 ];
 
 function readUtf8(filePath) {
