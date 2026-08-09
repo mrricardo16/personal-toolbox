@@ -21,7 +21,7 @@ let __apiResilienceLastLocationProviderError=null;
 function apiReliabilityState(){
   const base={structuredRequests:0,apiAttempts:0,automaticRetries:0,retryExhausted:0,providerEmpty:0,providerTimeout:0,providerNetwork:0,providerHttp:0,providerInvalidResponse:0,jsonInvalid:0,gracefulFallbacks:0,hardFailures:0,lastFailureCode:null,lastFailureAt:null};
   if(!isPlainObject(state.runtime.apiReliability))state.runtime.apiReliability=base;
-  else state.runtime.apiReliability={...base,...state.runtime.apiReliability};
+  else for(const [key,value] of Object.entries(base))if(state.runtime.apiReliability[key]===undefined)state.runtime.apiReliability[key]=value;
   return state.runtime.apiReliability
 }
 function apiReliabilityMark(code,field=null){const d=apiReliabilityState();if(field)d[field]=Number(d[field]||0)+1;d.lastFailureCode=code||null;d.lastFailureAt=nowIso();return d}
