@@ -83,6 +83,9 @@ jobs:
       - name: v1.5.9 progress semantics regression
         run: node trpg-dm-assistant/build/test-v159-progress-semantics.js
 
+      - name: v1.5.10 authored threat clock regression
+        run: node trpg-dm-assistant/build/test-v1510-authored-threat-clock.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
