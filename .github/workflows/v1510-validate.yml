@@ -23,6 +23,9 @@ jobs:
       - name: Add post-commit authored clock resolution
         run: node trpg-dm-assistant/build/patch-v1510-post-commit.js
 
+      - name: Update v1.5.10 README
+        run: node trpg-dm-assistant/build/patch-v1510-readme.js
+
       - name: Align v1.5.10 fixture with addItem contract
         shell: bash
         run: |
@@ -83,7 +86,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trpg-dm-assistant/src/scenarios/library.js \
+          git add trpg-dm-assistant/README.md \
+                  trpg-dm-assistant/src/scenarios/library.js \
                   trpg-dm-assistant/src/authored-threat-clock.js \
                   trpg-dm-assistant/src/ai-protocol.js \
                   trpg-dm-assistant/build/build-single-html.js \
@@ -94,6 +98,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Release wiring already synchronized"
           else
-            git commit -m "Finalize TRPG DM Assistant v1.5.10 post-commit resolution"
+            git commit -m "Finalize TRPG DM Assistant v1.5.10 release files"
             git push origin HEAD:agent/v1.5.10-authored-threat-clock
           fi
