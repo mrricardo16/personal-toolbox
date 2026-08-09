@@ -11,9 +11,13 @@ const requiredSources = [
   "src/check-engine.js",
   "src/ai-protocol.js",
   "src/scenario-engine.js",
+  "src/case-integrity.js",
   "src/memory.js",
+  "src/player-action-guard.js",
+  "src/interaction-availability.js",
   "src/saves.js",
   "src/ui.js",
+  "src/api-response-resilience.js",
   "src/scenarios/library.js",
   "src/styles.css",
   "src/shell.template"
