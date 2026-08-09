@@ -1,0 +1,54 @@
+name: Validate TRPG v1.5.8 API Response Resilience
+
+on:
+  push:
+    branches:
+      - agent/v1.5.8-api-response-resilience
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: v1.5.8 deterministic chaos regression
+        run: node trpg-dm-assistant/build/test-v158-api-response-resilience.js
+      - name: Relevant historical regressions
+        run: |
+          node trpg-dm-assistant/build/test-v154-empty-response-retry.js
+          node trpg-dm-assistant/build/test-v156-player-assertion-guard.js
+          node trpg-dm-assistant/build/test-v157-canonical-assertion-state.js
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+      - name: Build and verify
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
+      - name: Commit rebuilt product
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          if git diff --cached --quiet; then
+            echo "Product already synchronized"
+          else
+            git commit -m "Build TRPG DM Assistant v1.5.8"
+            git push origin HEAD:agent/v1.5.8-api-response-resilience
+          fi
