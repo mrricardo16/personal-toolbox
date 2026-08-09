@@ -32,6 +32,20 @@ jobs:
           fs.writeFileSync(file,text,'utf8');
           NODE
 
+      - name: Fix legacy advanceClock reason handling
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const file='trpg-dm-assistant/src/ai-protocol.js';
+          let text=fs.readFileSync(file,'utf8');
+          const old='advanceThreatClockInDirector(draft.campaign.directorState,{clockId:id,amount,reason})';
+          const next='advanceThreatClockInDirector(draft.campaign.directorState,{clockId:id,amount,reason:asString(raw.reason,300)})';
+          if(text.includes(old))text=text.replace(old,next);
+          if(!text.includes(next))throw new Error('legacy advanceClock reason fix failed');
+          fs.writeFileSync(file,text,'utf8');
+          NODE
+
       - name: v1.5.10 authored threat clock regression
         run: node trpg-dm-assistant/build/test-v1510-authored-threat-clock.js
 
@@ -68,6 +82,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add trpg-dm-assistant/src/scenarios/library.js \
                   trpg-dm-assistant/src/authored-threat-clock.js \
+                  trpg-dm-assistant/src/ai-protocol.js \
                   trpg-dm-assistant/build/build-single-html.js \
                   trpg-dm-assistant/build/verify-single-html.js \
                   trpg-dm-assistant/build/test-v159-progress-semantics.js \
