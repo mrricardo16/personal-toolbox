@@ -1894,7 +1894,7 @@ const AUTHORED_THREAT_CLOCK_VERSION="1.0";
 const AUTHORED_CLOCK_RULE_EVENTS=Object.freeze(["stall","semantic","flag","clue","node","tension","turn"]);
 const AUTHORED_CLOCK_MAX_RULES=24;
 const AUTHORED_CLOCK_MAX_ADVANCE_PER_EVALUATION=3;
-const AUTHORED_CLOCK_NON_MODEL_SEMANTIC_SOURCES=new Set(["authored_threat_clock","legacy_pacing"]);
+const AUTHORED_CLOCK_NON_MODEL_SEMANTIC_SOURCES=new Set(["authored_threat_clock","authored_threat_clock_resolution","legacy_pacing"]);
 
 function authoredClockList(director=state.campaign?.directorState){return Array.isArray(director?.clocks)?director.clocks.filter(clock=>clock?.authored===true):[]}
 function authoredClockById(clockId,director=state.campaign?.directorState){const id=asString(clockId,120).trim();return authoredClockList(director).find(clock=>clock.id===id)||null}
@@ -1952,6 +1952,21 @@ function evaluateAuthoredThreatClocks(){
   }
   if(!events.length)return{changed:false,events:[]};const triggered=events.find(event=>event.kind==="triggered"),resolved=events.find(event=>event.kind==="resolved"),event={id:uid("director-event"),kind:triggered?"clock_triggered":resolved?"authored_clock_resolved":"authored_clock_advanced",turn:context.turn,reason:events.map(item=>`${item.clockId}:${item.ruleId}`).join(", "),events:deepClone(events)};director.pendingPressure=event;state.runtime.pendingDirectorEvent=event;bumpRevision();const after=progressSemanticSnapshot(),semanticEvent=recordProgressSemantics(before,after,{source:"authored_threat_clock",requestId:null,recordNone:false});addLog("director",`Authored Threat Clock：${events.map(item=>item.description).join("；")}`,{secret:true});return{changed:true,events,semantic:semanticEvent}
 }
+
+
+function evaluateAuthoredThreatClockResolutions({source="post_commit"}={}){
+  const director=state.campaign?.directorState;if(!director)return{changed:false,events:[]};normalizeDirectorClocks(director);const clockIds=authoredClockList(director).map(clock=>clock.id);if(!clockIds.length)return{changed:false,events:[]};const before=progressSemanticSnapshot(),context=authoredClockEvaluationContext(),events=[];
+  for(const clockId of clockIds){let clock=authoredClockById(clockId,director);if(!clock||clock.resolved)continue;clock.authoredState=normalizeAuthoredClockState(clock.authoredState);const semantic=context.semantic,semanticForClock=semantic?.id&&clock.authoredState.lastSemanticEventId===semantic.id?null:semantic,ruleContext={...context,semantic:semanticForClock};const resolution=clock.resolveRules.find(rule=>authoredClockRuleCanFire(clock,rule,ruleContext.semantic)&&authoredClockRuleMatches(rule,ruleContext));if(!resolution)continue;clock=resolveThreatClockInDirector(director,clock.id);markAuthoredClockRuleFire(clock,resolution,ruleContext.semantic);events.push({clockId:clock.id,kind:"resolved",ruleId:resolution.id,description:`威胁时钟“${clock.name}”按剧本规则解除`})
+  }
+  if(!events.length)return{changed:false,events:[]};const event={id:uid("director-event"),kind:"authored_clock_resolved",turn:context.turn,reason:events.map(item=>`${item.clockId}:${item.ruleId}`).join(", "),events:deepClone(events),source};director.pendingPressure=event;state.runtime.pendingDirectorEvent=event;bumpRevision();const semanticEvent=recordProgressSemantics(before,progressSemanticSnapshot(),{source:"authored_threat_clock_resolution",requestId:null,recordNone:false});addLog("director",`Authored Threat Clock post-commit：${events.map(item=>item.description).join("；")}`,{secret:true});return{changed:true,events,semantic:semanticEvent}
+}
+
+const __authoredBaseEnterNode=enterNode;
+enterNode=function(...args){const result=__authoredBaseEnterNode(...args);evaluateAuthoredThreatClockResolutions({source:"node_transition"});return result};
+const __authoredBaseCommitAiTransaction=commitAiTransaction;
+commitAiTransaction=function(...args){const result=__authoredBaseCommitAiTransaction(...args);evaluateAuthoredThreatClockResolutions({source:"ai_commit"});return result};
+const __authoredBaseApplySecretCheckOutcome=applySecretCheckOutcome;
+applySecretCheckOutcome=function(...args){const result=__authoredBaseApplySecretCheckOutcome(...args);evaluateAuthoredThreatClockResolutions({source:"secret_check"});return result};
 
 const __authoredBaseApplyDeterministicPacingBeforeAction=applyDeterministicPacingBeforeAction;
 applyDeterministicPacingBeforeAction=function(){
