@@ -1,0 +1,108 @@
+name: Validate TRPG v1.5.10 Authored Threat Clock
+
+on:
+  push:
+    branches:
+      - agent/v1.5.10-authored-threat-clock
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Prepare v1.5.10 release wiring
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          library=Path('trpg-dm-assistant/src/scenarios/library.js')
+          text=library.read_text(encoding='utf-8')
+          if 'const APP_VERSION = "1.5.9";' in text:
+              text=text.replace('const APP_VERSION = "1.5.9";','const APP_VERSION = "1.5.10";',1)
+          assert 'const APP_VERSION = "1.5.10";' in text
+          anchor='"keeperGuide":"海燕号运输一件会发出低频呼唤的海底石碑。走私者将船引到灯塔下的潮洞卸货，石碑正在诱使听见声音的人走向海中。倒计时以午夜潮汐体现。","chapters":'
+          director='"keeperGuide":"海燕号运输一件会发出低频呼唤的海底石碑。走私者将船引到灯塔下的潮洞卸货，石碑正在诱使听见声音的人走向海中。倒计时以午夜潮汐体现。","director":{"threatClocks":[{"id":"harbor-tide","name":"午夜涨潮","current":0,"max":4,"consequence":"旧防波堤与潮洞退路被上涨海水切断。","authored":true,"maxAdvancePerEvaluation":1,"advanceRules":[{"id":"harbor-stall-pressure","event":"stall","turns":3,"amount":1,"once":false,"cooldownTurns":2},{"id":"harbor-threat-pressure","event":"semantic","kinds":["THREAT"],"amount":1,"once":false,"cooldownTurns":1}],"resolveRules":[{"id":"harbor-safe-exit","event":"node","nodeIds":["harbor-ending-light","harbor-ending-rescue","harbor-ending-flood"],"once":true}]}]},"chapters":'
+          if '"id":"harbor-tide"' not in text:
+              assert text.count(anchor)==1
+              text=text.replace(anchor,director,1)
+          assert '"id":"harbor-tide"' in text
+          library.write_text(text,encoding='utf-8')
+
+          build=Path('trpg-dm-assistant/build/build-single-html.js')
+          text=build.read_text(encoding='utf-8')
+          if '"authored-threat-clock.js"' not in text:
+              text=text.replace('  "progress-semantics.js"\n];','  "progress-semantics.js",\n  "authored-threat-clock.js"\n];',1)
+          assert text.index('"authored-threat-clock.js"')>text.index('"progress-semantics.js"')
+          build.write_text(text,encoding='utf-8')
+
+          verify=Path('trpg-dm-assistant/build/verify-single-html.js')
+          text=verify.read_text(encoding='utf-8')
+          if '"src/authored-threat-clock.js"' not in text:
+              text=text.replace('  "src/progress-semantics.js",','  "src/progress-semantics.js",\n  "src/authored-threat-clock.js",',1)
+          assert '"src/authored-threat-clock.js"' in text
+          verify.write_text(text,encoding='utf-8')
+
+          v159=Path('trpg-dm-assistant/build/test-v159-progress-semantics.js')
+          text=v159.read_text(encoding='utf-8')
+          old='assert.equal(api.APP_VERSION,"1.5.9");assert.equal(api.SCHEMA_VERSION,8);'
+          new='const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=9));assert.equal(api.SCHEMA_VERSION,8);'
+          if old in text:
+              text=text.replace(old,new,1)
+          assert new in text
+          text=text.replace('版本升级为 v1.5.9 且 Schema/协议不变','版本不低于 v1.5.9 且 Schema/协议不变',1)
+          v159.write_text(text,encoding='utf-8')
+          PY
+
+      - name: v1.5.10 authored threat clock regression
+        run: node trpg-dm-assistant/build/test-v1510-authored-threat-clock.js
+
+      - name: Relevant historical regressions
+        run: |
+          node trpg-dm-assistant/build/test-v159-progress-semantics.js
+          node trpg-dm-assistant/build/test-v158-api-response-resilience.js
+          node trpg-dm-assistant/build/test-v157-case-integrity.js
+          node trpg-dm-assistant/build/test-v157-canonical-assertion-state.js
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+
+      - name: Build and verify
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
+
+      - name: Commit validated release wiring
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/src/scenarios/library.js \
+                  trpg-dm-assistant/build/build-single-html.js \
+                  trpg-dm-assistant/build/verify-single-html.js \
+                  trpg-dm-assistant/build/test-v159-progress-semantics.js \
+                  trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          if git diff --cached --quiet; then
+            echo "Release wiring already synchronized"
+          else
+            git commit -m "Finalize TRPG DM Assistant v1.5.10 wiring"
+            git push origin HEAD:agent/v1.5.10-authored-threat-clock
+          fi
