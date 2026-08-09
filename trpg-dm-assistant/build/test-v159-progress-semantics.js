@@ -37,7 +37,7 @@ vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v159-progres
 const api=sandbox.__test;let passed=0;function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
 function has(result,kind){return result.kinds.includes(kind)}
 
-test("版本升级为 v1.5.9 且 Schema/协议不变",()=>{api.ready();assert.equal(api.APP_VERSION,"1.5.9");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.PROGRESS_SEMANTICS_VERSION,"1.0")});
+test("版本不低于 v1.5.9 且 Schema/协议不变",()=>{api.ready();const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=9));assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.PROGRESS_SEMANTICS_VERSION,"1.0")});
 test("语义集合固定为六类",()=>{assert.deepEqual(Array.from(api.PROGRESS_SEMANTIC_TYPES),["NONE","DISCOVERY","ACCESS","SOCIAL","THREAT","RESOLUTION"])});
 test("无 canonical 变化合法分类为 NONE",()=>{api.ready();const r=api.record("none");assert.equal(r.primary,"NONE");assert.deepEqual(r.kinds,["NONE"])});
 test("新增线索分类为 DISCOVERY",()=>{api.ready();const r=api.mutate("clue");assert.equal(r.primary,"DISCOVERY");assert(has(r,"DISCOVERY"));assert(r.evidence.some(x=>x.code==="clue_added"))});

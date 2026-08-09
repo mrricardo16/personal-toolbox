@@ -11,7 +11,7 @@ vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v154-npc-run
 const api=sandbox.__test;let passed=0;function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
 function activateOldHouse(){api.reset();api.activateScenario(api.scenarioById("scenario-old-house"));return api.snapshot()}
 
-test("版本基线不低于 v1.5.3",()=>assert.ok(/^1\.5\.[3-9]\d*$/.test(api.APP_VERSION)||/^1\.[6-9]\./.test(api.APP_VERSION)||/^[2-9]\./.test(api.APP_VERSION)));
+test("版本基线不低于 v1.5.3",()=>{const [major,minor,patch]=api.APP_VERSION.split(".").map(Number);assert.ok(major>1||major===1&&(minor>5||minor===5&&patch>=3))});
 test("Schema 保持 8",()=>assert.equal(api.SCHEMA_VERSION,8));
 test("启用结构化模组会实体化首节点 NPC",()=>{const s=activateOldHouse();assert.ok(s.npcs.some(n=>n.id==="old-butler"));assert.equal(s.npcs.filter(n=>n.id==="old-butler").length,1)});
 test("首节点不会提前实体化未来 NPC",()=>{const s=activateOldHouse();assert.equal(s.npcs.some(n=>n.id==="old-shen"),false)});
