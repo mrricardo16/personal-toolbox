@@ -174,7 +174,7 @@ Coverage includes:
 
 ## Historical regression compatibility
 
-The same final temporary validation run also passed:
+The final temporary validation run also passed:
 
 - v1.5.9 Progress Semantics: **23 PASS / 0 FAIL**
 - v1.5.8 API Response Resilience: **20 PASS / 0 FAIL**
@@ -186,6 +186,8 @@ The same final temporary validation run also passed:
 - exactly one TRPG product HTML: **PASS**
 
 The v1.5.9 release-identity assertion was changed from exact `1.5.9` equality to `>= 1.5.9`; its 23 semantic behavior assertions were not relaxed.
+
+The first permanent PR CI run (`31322736395`) exposed one additional historical-test compatibility defect before the NPC behavior assertions executed: `test-v154-npc-materialization.js` used a regex that accepted one-digit patch versions such as `1.5.9` but rejected the valid newer version `1.5.10`. That release-identity gate was replaced with numeric semantic-version comparison (`>= 1.5.3`). The NPC materialization behavior assertions were not changed.
 
 The permanent suite target increases from 309 to **341 deterministic PASS / 0 FAIL** after adding the 32 v1.5.10 tests.
 
@@ -199,6 +201,19 @@ Final temporary validation Run `31322522848` generated:
 - deterministic double build: PASS
 - JavaScript syntax: PASS
 - `git diff --check`: PASS
+
+## Permanent PR CI
+
+After the v1.5.4 historical version-gate correction, permanent PR CI Run `31322827718` completed successfully on code head `d94bae9e898b9f0049a567cc8e349d1d5765fa5d`.
+
+It passed:
+
+- all permanent historical regression groups from security hardening through v1.5.9;
+- v1.5.10 Authored Threat Clock regression;
+- JavaScript syntax;
+- deterministic single-HTML build and verifier.
+
+Result: **SUCCESS**, with the permanent deterministic target at **341 PASS / 0 FAIL**.
 
 ## Real API decision
 
@@ -214,9 +229,4 @@ Reason:
 
 ## Release decision
 
-Before opening the release PR:
-
-1. update README to v1.5.10;
-2. remove temporary v1.5.10 validation workflow and patch helpers;
-3. confirm only formal release files differ from `main`;
-4. open the PR and require permanent `TRPG DM Assistant CI` to pass on the exact cleaned PR head.
+The implementation and formal release files are ready. The final documentation-only head must re-run permanent `TRPG DM Assistant CI`; if that exact head remains green, PR #7 is ready for squash merge. No automatic merge is performed.
