@@ -20,6 +20,18 @@ jobs:
       - name: Prepare v1.5.10 release wiring
         run: node trpg-dm-assistant/build/patch-v1510-release.js
 
+      - name: Align v1.5.10 fixture with addItem contract
+        shell: bash
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const file='trpg-dm-assistant/build/test-v1510-authored-threat-clock.js';
+          let text=fs.readFileSync(file,'utf8');
+          text=text.replace('{operation:"addItem",id:"safe-item",name:"合法物品",quantity:1}','{operation:"addItem",itemId:"safe-item",name:"合法物品",quantity:1}');
+          if(!text.includes('itemId:"safe-item"'))throw new Error('addItem fixture patch failed');
+          fs.writeFileSync(file,text,'utf8');
+          NODE
+
       - name: v1.5.10 authored threat clock regression
         run: node trpg-dm-assistant/build/test-v1510-authored-threat-clock.js
 
@@ -59,6 +71,7 @@ jobs:
                   trpg-dm-assistant/build/build-single-html.js \
                   trpg-dm-assistant/build/verify-single-html.js \
                   trpg-dm-assistant/build/test-v159-progress-semantics.js \
+                  trpg-dm-assistant/build/test-v1510-authored-threat-clock.js \
                   trpg-dm-assistant/outputs/trpg-dm-assistant.html
           if git diff --cached --quiet; then
             echo "Release wiring already synchronized"
