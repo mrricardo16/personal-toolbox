@@ -54,6 +54,16 @@ jobs:
           assert '"saves.js","progress-semantics.js"' in text
           test.write_text(text,encoding='utf-8')
 
+          v158=Path('trpg-dm-assistant/build/test-v158-api-response-resilience.js')
+          text=v158.read_text(encoding='utf-8')
+          old='assert.equal(api.APP_VERSION,"1.5.8");assert.equal(api.SCHEMA_VERSION,8);'
+          new='const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=8));assert.equal(api.SCHEMA_VERSION,8);'
+          if old in text:
+              text=text.replace(old,new,1)
+          assert new in text
+          text=text.replace('版本升级为 v1.5.8 且 Schema/协议不变','版本不低于 v1.5.8 且 Schema/协议不变',1)
+          v158.write_text(text,encoding='utf-8')
+
           ci=Path('.github/workflows/trpg-ci.yml')
           text=ci.read_text(encoding='utf-8')
           marker='      - name: JavaScript syntax\n'
@@ -100,6 +110,7 @@ jobs:
           git add trpg-dm-assistant/src/scenarios/library.js \
                   trpg-dm-assistant/build/build-single-html.js \
                   trpg-dm-assistant/build/verify-single-html.js \
+                  trpg-dm-assistant/build/test-v158-api-response-resilience.js \
                   trpg-dm-assistant/build/test-v159-progress-semantics.js \
                   trpg-dm-assistant/outputs/trpg-dm-assistant.html \
                   .github/workflows/trpg-ci.yml
