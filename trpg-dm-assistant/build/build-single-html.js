@@ -16,6 +16,7 @@ const moduleFiles = [
   "ai-protocol.js",
   "player-action-guard.js",
   "interaction-availability.js",
+  "api-response-resilience.js",
   "saves.js",
   "ui.js"
 ];
