@@ -18,6 +18,7 @@ const requiredSources = [
   "src/saves.js",
   "src/ui.js",
   "src/api-response-resilience.js",
+  "src/progress-semantics.js",
   "src/scenarios/library.js",
   "src/styles.css",
   "src/shell.template"
