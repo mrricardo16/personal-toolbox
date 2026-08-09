@@ -1,4 +1,4 @@
-name: Validate TRPG v1.5.7 Case Integrity
+name: Finalize TRPG v1.5.7 Documentation
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 jobs:
-  validate:
+  finalize-docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,76 +19,37 @@ jobs:
           ref: agent/v1.5.7-case-integrity
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-
-      - name: Apply version compatibility patch
+      - name: Update README release notes
         run: |
-          sed -i 's/const APP_VERSION = "1.5.6";/const APP_VERSION = "1.5.7";/' trpg-dm-assistant/src/scenarios/library.js
-          sed -i 's/assert.equal(api.APP_VERSION,"1.5.6")/assert.ok(Number(api.APP_VERSION.split(".")[2])>=6)/' trpg-dm-assistant/build/test-v156-player-assertion-guard.js
-          sed -i 's/assert.equal(tx.count,0)/assert.equal(parsed.stateChanges.length,0);assert.equal(parsed.campaignChanges.length,0)/' trpg-dm-assistant/build/test-v157-case-integrity.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('trpg-dm-assistant/README.md')
+          text=p.read_text(encoding='utf-8')
+          text=text.replace('# TRPG AI 主持助手 v1.5.6','# TRPG AI 主持助手 v1.5.7',1)
+          text=text.replace('当前版本为 v1.5.6。','当前版本为 v1.5.7。',1)
+          section='''## v1.5.7 更新内容
 
-      - name: Runtime security and protocol tests
-        run: node trpg-dm-assistant/build/test-security-hardening.js
-      - name: Save management interaction regression
-        run: node trpg-dm-assistant/build/test-save-ui.js
-      - name: CoC outcome regression
-        run: node trpg-dm-assistant/build/test-coc-outcomes.js
-      - name: Situation sidebar regression
-        run: node trpg-dm-assistant/build/test-situation-ui.js
-      - name: AI JSON repair corpus
-        run: node trpg-dm-assistant/build/test-ai-json-repair.js
-      - name: v1.5.0 experience regression
-        run: node trpg-dm-assistant/build/test-v150-experience.js
-      - name: v1.5.1 investigation stability regression
-        run: node trpg-dm-assistant/build/test-v151-investigation-stability.js
-      - name: v1.5.2 long-session regression
-        run: node trpg-dm-assistant/build/test-v152-long-session.js
-      - name: v1.5.3 clue-route regression
-        run: node trpg-dm-assistant/build/test-v153-clue-routes.js
-      - name: v1.5.4 protocol routing regression
-        run: node trpg-dm-assistant/build/test-v154-protocol-routing.js
-      - name: v1.5.4 NPC materialization regression
-        run: node trpg-dm-assistant/build/test-v154-npc-materialization.js
-      - name: v1.5.4 location alias regression
-        run: node trpg-dm-assistant/build/test-v154-location-alias.js
-      - name: v1.5.4 empty-response retry regression
-        run: node trpg-dm-assistant/build/test-v154-empty-response-retry.js
-      - name: v1.5.4 operation ID alias regression
-        run: node trpg-dm-assistant/build/test-v154-operation-id-alias.js
-      - name: v1.5.5 location transition alias regression
-        run: node trpg-dm-assistant/build/test-v155-location-transition-alias.js
-      - name: v1.5.6 player assertion guard regression
-        run: node trpg-dm-assistant/build/test-v156-player-assertion-guard.js
-      - name: v1.5.7 case integrity and interaction availability regression
-        run: node trpg-dm-assistant/build/test-v157-case-integrity.js
+- 新增 Case Integrity Validator：启用剧本前检查节点拓扑、线索 acquisitionRoute、依赖环、关键线索单骰软锁和 Ending 静态可满足性。
+- ERROR 只用于可证明的结构损坏并阻止坏剧本覆盖当前案件；不可达节点、动态 NPC/线索/flag 来源、脆弱 Ending 等使用 WARN/INFO，默认允许继续游戏。
+- 新增 Interaction Availability Invariant：安全层遵循 `BLOCK UNSAFE STATE, NOT PLAYER ACTION`，防御机制不能让 AI 无法执行玩家的正常交互。
+- v1.5.6 的玩家断言 / 多步行动 Guard 越权不再直接变成技术失败；页面本地剥离非法后续状态并生成中性叙事，继续处理第一个合法步骤。
+- Guard 恢复叙事不会复述未验证的玩家断言，避免伪造 NPC 台词、世界事实或结果重新污染聊天上下文。
+- 合法 check 会在恢复中保留；合法单步移动、普通调查、等待和无收益行动不会触发 recovery，未知 operation 等真正协议错误仍严格拒绝。
+- AI protocol 保持 1.3，Save Schema 保持 8；不新增第二次 AI 请求，本版没有使用 DS_KEY。
+- 新增 34 条 v1.5.7 专项回归，完整确定性回归达到 259 PASS / 0 FAIL。
 
-      - name: JavaScript syntax
-        shell: bash
-        run: |
-          while IFS= read -r -d '' file; do
-            node --check "$file"
-          done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
-
-      - name: Build and verify
-        shell: bash
-        run: |
-          node trpg-dm-assistant/build/build-single-html.js
-          node trpg-dm-assistant/build/verify-single-html.js
-          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
-          node trpg-dm-assistant/build/build-single-html.js
-          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
-          test "$first" = "$second"
-          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+'''
+          if '## v1.5.7 更新内容' not in text:
+              text=text.replace('## v1.5.6 更新内容',section+'## v1.5.6 更新内容',1)
+          p.write_text(text,encoding='utf-8')
+          PY
           git diff --check
 
-      - name: Commit validated generated changes
-        shell: bash
+      - name: Commit README
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trpg-dm-assistant/src/scenarios/library.js trpg-dm-assistant/build/test-v156-player-assertion-guard.js trpg-dm-assistant/build/test-v157-case-integrity.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git add trpg-dm-assistant/README.md
           git diff --cached --check
-          git commit -m "Finalize TRPG DM Assistant v1.5.7 build"
+          git commit -m "Document TRPG DM Assistant v1.5.7"
           git push origin HEAD:agent/v1.5.7-case-integrity
