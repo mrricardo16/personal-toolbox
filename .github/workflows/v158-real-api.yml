@@ -19,8 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Deterministic preflight
+      - name: Final-head deterministic preflight
         run: |
+          echo "Validating final v1.5.8 release head before real API calls"
           node trpg-dm-assistant/build/test-v158-api-response-resilience.js
           node trpg-dm-assistant/build/verify-single-html.js
       - name: Real DeepSeek v1.5.8 E2E - 5 rounds / 15 actions
@@ -32,6 +33,6 @@ jobs:
         run: |
           test -n "$TRPG_TEST_API_KEY"
           for round in 1 2 3 4 5; do
-            echo "===== V1.5.8 REAL API ROUND $round/5 ====="
+            echo "===== V1.5.8 FINAL-HEAD REAL API ROUND $round/5 ====="
             node trpg-dm-assistant/build/test-real-api-v158-e2e.js
           done
