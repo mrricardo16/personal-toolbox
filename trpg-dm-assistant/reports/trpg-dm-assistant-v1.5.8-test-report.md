@@ -108,12 +108,34 @@ Guard behavior also remained active during real API testing: `PLAYER_ASSERTION_U
 
 ## Final-head real API acceptance
 
-A second 15-action real API acceptance run is being executed against the final release head after README, verifier, permanent CI and forward-compatible historical test changes. Its run ID and aggregate metrics will replace this paragraph before the release PR is opened.
+Workflow run: `31316322007`
+
+The final runtime/release head was checked out at commit `ccb4fefd626e96652e02bb8219edd17fc204791f`. The run first re-executed the 20 deterministic resilience regressions and single-HTML verifier, then ran five rounds × three real DeepSeek player actions.
+
+Aggregate result:
+
+- player-action cases: **15 / 15 PASS**
+- actual API calls / attempts: **20**
+- automatic retries: **5**
+- observed empty final content responses: **6**
+- malformed non-empty JSON failures: **0**
+- final graceful provider fallbacks: **1**
+- hard failures: **0**
+- canonical corruption: **0 observed**
+- interaction dead-end: **0 observed**
+- prompt tokens reported by provider: **95789**
+- completion tokens reported by provider: **14302**
+
+Again, round 5 `ordinary-wait` produced three consecutive empty final responses. The third failure exhausted the bounded retry policy and triggered `AI_PROVIDER_EMPTY_CONTENT` recovery. The turn returned to `awaiting_player_action`; no fabricated AI result was committed and the E2E case still passed. This independently reproduces the same failure mode on the final runtime head.
+
+Live Player Assertion Guard behavior also remained active: multiple real-model cases triggered `PLAYER_ASSERTION_UNGROUNDED_RESULT` while the unverified NPC claim never entered canonical state.
+
+Across both 15-action real API runs, v1.5.8 completed **30 / 30 player-action E2E cases**, observed **13 empty final responses**, used **11 automatic retries**, exercised **2 exhausted-retry graceful fallbacks**, and recorded **0 hard failures / 0 observed canonical corruption / 0 interaction dead-ends**.
 
 ## Release decision
 
-Do not merge based on this report alone until:
+Runtime implementation and real API acceptance are complete. Remaining release gates are:
 
-1. final-head real API acceptance completes;
-2. temporary validation/E2E workflow files are removed;
-3. the release PR permanent CI passes on the cleaned branch.
+1. remove temporary validation/E2E workflow and harness files;
+2. open the release PR from the cleaned branch;
+3. require permanent PR CI to pass on the exact cleaned PR head before merge.
