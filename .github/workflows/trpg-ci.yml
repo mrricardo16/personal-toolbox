@@ -71,6 +71,9 @@ jobs:
       - name: v1.5.6 player assertion guard regression
         run: node trpg-dm-assistant/build/test-v156-player-assertion-guard.js
 
+      - name: v1.5.7 case integrity and interaction availability regression
+        run: node trpg-dm-assistant/build/test-v157-case-integrity.js
+
       - name: JavaScript syntax
         shell: bash
         run: |

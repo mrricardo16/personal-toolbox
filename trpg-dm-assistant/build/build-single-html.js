@@ -11,9 +11,11 @@ const moduleFiles = [
   "state.js",
   "check-engine.js",
   "scenario-engine.js",
+  "case-integrity.js",
   "memory.js",
   "ai-protocol.js",
   "player-action-guard.js",
+  "interaction-availability.js",
   "saves.js",
   "ui.js"
 ];

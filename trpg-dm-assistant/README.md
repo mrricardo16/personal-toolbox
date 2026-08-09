@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.5.6
+# TRPG AI 主持助手 v1.5.7
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.6。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.7。
 
 ## 快速开始
 
@@ -12,6 +12,17 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.5.7 更新内容
+
+- 新增 Case Integrity Validator：启用剧本前检查节点拓扑、线索 acquisitionRoute、依赖环、关键线索单骰软锁和 Ending 静态可满足性。
+- ERROR 只用于可证明的结构损坏并阻止坏剧本覆盖当前案件；不可达节点、动态 NPC/线索/flag 来源、脆弱 Ending 等使用 WARN/INFO，默认允许继续游戏。
+- 新增 Interaction Availability Invariant：安全层遵循 `BLOCK UNSAFE STATE, NOT PLAYER ACTION`，防御机制不能让 AI 无法执行玩家的正常交互。
+- v1.5.6 的玩家断言 / 多步行动 Guard 越权不再直接变成技术失败；页面本地剥离非法后续状态并生成中性叙事，继续处理第一个合法步骤。
+- Guard 恢复叙事不会复述未验证的玩家断言，避免伪造 NPC 台词、世界事实或结果重新污染聊天上下文。
+- 合法 check 会在恢复中保留；合法单步移动、普通调查、等待和无收益行动不会触发 recovery，未知 operation 等真正协议错误仍严格拒绝。
+- AI protocol 保持 1.3，Save Schema 保持 8；不新增第二次 AI 请求，本版没有使用 DS_KEY。
+- 新增 34 条 v1.5.7 专项回归，完整确定性回归达到 259 PASS / 0 FAIL。
 
 ## v1.5.6 更新内容
 
@@ -161,6 +172,8 @@
 
 ## 版本记录
 
+- v1.5.7：加入 Case Integrity Validator 与 Interaction Availability Invariant，检查案件软锁风险，同时确保 Guard 只挡非法状态、不挡正常玩家交互。
+- v1.5.6：加入 Player Assertion Guard 与 Action Chaining Guard，阻止玩家完成式措辞和多步行动直接写入结果。
 - v1.5.3：修复线索来源与本轮检定误绑定，显式化内置线索路线，并保持无收益行动合法。
 - v1.5.2：强化长团世界连续性、重复叙事治理、时间意识与真实 API 压力验收。
 - v1.5.1：稳定调查主循环，允许无收益行动，加入 NPC 连续性与上下文优先级治理。
@@ -184,7 +197,7 @@
 
 ## 文件说明
 
-- `src/`：v1.5.1 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
+- `src/`：v1.5.7 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
 - `src/shell.template`：单文件产品的 HTML 外壳模板。
 - `build/build-single-html.js`：无依赖 Node 构建脚本，将源码拼接为唯一正式产品。
 - `build/verify-single-html.js`：校验成品结构、版本、依赖和唯一产品 HTML。
@@ -193,7 +206,7 @@
 - `build/test-coc-outcomes.js`：验证 CoC 等值边界、难度通过线、成功等级和分层线索规则。
 - `build/test-v151-investigation-stability.js`：验证无收益行动、NPC 连续性、回合影响分类和上下文治理。
 - `outputs/trpg-dm-assistant.html`：完整、可直接双击打开的唯一产品 HTML。
-- `reports/`：各版本测试报告归档；当前版本报告为 `reports/v1.5.0-test-report.md`。
+- `reports/`：各版本测试报告归档；当前版本报告为 `reports/trpg-dm-assistant-v1.5.7-test-report.md`。
 - `../.github/workflows/trpg-ci.yml`：针对 TRPG 项目的持续集成配置。
 
 ## 模块化构建
