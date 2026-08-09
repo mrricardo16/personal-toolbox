@@ -56,7 +56,7 @@ Relevant historical regressions also passed during v1.5.8 validation:
 - v1.5.7 Case Integrity / Interaction Availability: 34 PASS / 0 FAIL
 - v1.5.7 canonical assertion state: 7 PASS / 0 FAIL
 
-With the prior v1.5.7 deterministic suite, canonical-state hotfix regression, and this v1.5.8 suite, the release target is **286 deterministic PASS / 0 FAIL** pending the permanent PR CI run.
+With the prior v1.5.7 deterministic suite, canonical-state hotfix regression, and this v1.5.8 suite, the release target is **286 deterministic PASS / 0 FAIL**.
 
 ## Build validation
 
@@ -132,10 +132,19 @@ Live Player Assertion Guard behavior also remained active: multiple real-model c
 
 Across both 15-action real API runs, v1.5.8 completed **30 / 30 player-action E2E cases**, observed **13 empty final responses**, used **11 automatic retries**, exercised **2 exhausted-retry graceful fallbacks**, and recorded **0 hard failures / 0 observed canonical corruption / 0 interaction dead-ends**.
 
+## Permanent PR CI
+
+PR #5 permanent CI run `31316563629` completed successfully on clean release head `ba3d21b69a13ceb2d2efbecf1fff5753243a3298` before this report-only finalization.
+
+- full deterministic release suite: **286 PASS / 0 FAIL**
+- JavaScript syntax: PASS
+- final single HTML build/verify: PASS
+- build artifact synchronized: PASS
+
+This report-only cleanup must also pass the same permanent PR CI before merge; no runtime or generated product content changed in this finalization commit.
+
 ## Release decision
 
-Runtime implementation and real API acceptance are complete. Remaining release gates are:
+Implementation, deterministic chaos coverage, two real DeepSeek E2E runs, temporary harness cleanup, release PR creation, and permanent PR CI have all been completed successfully.
 
-1. remove temporary validation/E2E workflow and harness files;
-2. open the release PR from the cleaned branch;
-3. require permanent PR CI to pass on the exact cleaned PR head before merge.
+The release is **ready to merge after the permanent PR CI is green on this final report-only head**. `main` remains unchanged until an explicit merge action is requested.
