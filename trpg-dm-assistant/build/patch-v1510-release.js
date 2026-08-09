@@ -31,6 +31,13 @@ if(!text.includes(compatible))throw new Error("v1.5.9 forward compatibility wiri
 text=text.replace('版本升级为 v1.5.9 且 Schema/协议不变','版本不低于 v1.5.9 且 Schema/协议不变');
 write("build/test-v159-progress-semantics.js",text);
 
+text=read("build/test-v1510-authored-threat-clock.js");
+const staleHelper='function __resolveByNode(){const clock=state.campaign.directorState.clocks[0];state.campaign.currentNodeId="harbor-ending-light";const result=applyDeterministicPacingBeforeAction();return deepClone({clock,result,last:ensureProgressSemanticsState().last})}';
+const liveHelper='function __resolveByNode(){state.campaign.currentNodeId="harbor-ending-light";const result=applyDeterministicPacingBeforeAction(),clock=state.campaign.directorState.clocks[0];return deepClone({clock,result,last:ensureProgressSemanticsState().last})}';
+if(text.includes(staleHelper))text=text.replace(staleHelper,liveHelper);
+if(!text.includes(liveHelper))throw new Error("v1.5.10 live clock test helper wiring failed");
+write("build/test-v1510-authored-threat-clock.js",text);
+
 text=read("src/authored-threat-clock.js");
 const start=text.indexOf("function evaluateAuthoredThreatClocks(){");
 const end=text.indexOf("\n\nconst __authoredBaseApplyDeterministicPacingBeforeAction",start);
