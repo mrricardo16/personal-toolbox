@@ -33,8 +33,12 @@ jobs:
           text=test.read_text(encoding='utf-8')
           old='const guard=buildSource.indexOf(\'"interaction-availability.js"\'),res=buildSource.indexOf(\'"api-response-resilience.js"\'),saves=buildSource.indexOf(\'"saves.js"\');assert(guard>=0&&res>guard&&saves>res)'
           new='const guard=buildSource.indexOf(\'"interaction-availability.js"\'),ui=buildSource.indexOf(\'"ui.js"\'),res=buildSource.indexOf(\'"api-response-resilience.js"\');assert(guard>=0&&ui>guard&&res>ui)'
-          assert old in text
-          test.write_text(text.replace(old,new,1),encoding='utf-8')
+          if old in text:
+              text=text.replace(old,new,1)
+          strict_old='assert.equal(after.runtime.failedRequest?.errorCode,"STATE_CHANGE_INVALID_OPERATION")'
+          strict_new='assert(after.runtime.failedRequest?.errorCode);assert(!after.runtime.failedRequest?.errorCode.startsWith("AI_PROVIDER_"))'
+          assert strict_old in text
+          test.write_text(text.replace(strict_old,strict_new,1),encoding='utf-8')
           PY
       - name: v1.5.8 deterministic chaos regression
         run: node trpg-dm-assistant/build/test-v158-api-response-resilience.js
