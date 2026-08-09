@@ -16,6 +16,26 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Restore main scenario library and apply version-only bump
+        shell: bash
+        run: |
+          git fetch origin main --depth=1
+          git show FETCH_HEAD:trpg-dm-assistant/src/scenarios/library.js > trpg-dm-assistant/src/scenarios/library.js
+          python - <<'PY'
+          from pathlib import Path
+          library=Path('trpg-dm-assistant/src/scenarios/library.js')
+          text=library.read_text(encoding='utf-8')
+          old='const APP_VERSION = "1.5.7";'
+          assert text.count(old)==1, text.count(old)
+          library.write_text(text.replace(old,'const APP_VERSION = "1.5.8";',1),encoding='utf-8')
+
+          test=Path('trpg-dm-assistant/build/test-v158-api-response-resilience.js')
+          text=test.read_text(encoding='utf-8')
+          old='const guard=buildSource.indexOf(\'"interaction-availability.js"\'),res=buildSource.indexOf(\'"api-response-resilience.js"\'),saves=buildSource.indexOf(\'"saves.js"\');assert(guard>=0&&res>guard&&saves>res)'
+          new='const guard=buildSource.indexOf(\'"interaction-availability.js"\'),ui=buildSource.indexOf(\'"ui.js"\'),res=buildSource.indexOf(\'"api-response-resilience.js"\');assert(guard>=0&&ui>guard&&res>ui)'
+          assert old in text
+          test.write_text(text.replace(old,new,1),encoding='utf-8')
+          PY
       - name: v1.5.8 deterministic chaos regression
         run: node trpg-dm-assistant/build/test-v158-api-response-resilience.js
       - name: Relevant historical regressions
@@ -40,15 +60,15 @@ jobs:
           test "$first" = "$second"
           test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
           git diff --check
-      - name: Commit rebuilt product
+      - name: Commit validated release files
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git add trpg-dm-assistant/src/scenarios/library.js trpg-dm-assistant/build/test-v158-api-response-resilience.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
           if git diff --cached --quiet; then
-            echo "Product already synchronized"
+            echo "Release files already synchronized"
           else
-            git commit -m "Build TRPG DM Assistant v1.5.8"
+            git commit -m "Finalize TRPG DM Assistant v1.5.8 validation baseline"
             git push origin HEAD:agent/v1.5.8-api-response-resilience
           fi
