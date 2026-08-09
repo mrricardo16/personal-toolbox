@@ -50,6 +50,17 @@ jobs:
               text=text.replace(old,new,1)
           assert new in text
           historical.write_text(text,encoding='utf-8')
+
+          readme=Path('trpg-dm-assistant/README.md')
+          text=readme.read_text(encoding='utf-8')
+          text=text.replace('# TRPG AI 主持助手 v1.5.7','# TRPG AI 主持助手 v1.5.8',1)
+          text=text.replace('当前版本为 v1.5.7。','当前版本为 v1.5.8。',1)
+          marker='## v1.5.7 更新内容\n'
+          section='''## v1.5.8 更新内容\n\n- 新增 API Response Resilience：正常成功响应仍只发起 1 次请求；空 final content、超时、网络异常、可重试 HTTP 错误与最终 JSON 解析失败使用统一、有限的恢复链。\n- 结构化主持请求最多 3 次总尝试，不做无限重试；非空但无法安全解析的 JSON 只用受限纠错提示重新请求，禁止在 repair 中新增游戏结果。\n- 新增明确 provider 错误分类：`AI_PROVIDER_EMPTY_CONTENT`、`AI_PROVIDER_TIMEOUT`、`AI_PROVIDER_NETWORK_ERROR`、`AI_PROVIDER_HTTP_ERROR`、`AI_PROVIDER_RESPONSE_INVALID`，与真正业务协议错误分离。\n- 玩家初始行动若 provider 失败耗尽重试，浏览器恢复请求前 canonical state、回合数与张力，并把原行动放回输入框；不会把正常游戏卡进 `error`。\n- 检定续写若 provider 失败，已完成的浏览器骰点和检定记录保留，但失败 AI 响应不会提交线索、物品、地点、剧情或结局变化；玩家可沿用原骰点重试续写或继续行动。\n- 新增 API 可靠性诊断计数：结构化请求、实际 API 尝试、自动重试、空响应、JSON 失败、安全 fallback 与 hard failure 可独立审计。\n- 未知 operation、requestId/revision 不匹配和非法状态事务仍保持严格失败，不会被 provider recovery 静默吞掉。\n- Save Schema 保持 8，AI protocol 保持 1.3；新增 20 条 v1.5.8 deterministic chaos 回归。\n\n'''
+          if '## v1.5.8 更新内容' not in text:
+              assert marker in text
+              text=text.replace(marker,section+marker,1)
+          readme.write_text(text,encoding='utf-8')
           PY
       - name: v1.5.8 deterministic chaos regression
         run: node trpg-dm-assistant/build/test-v158-api-response-resilience.js
@@ -81,10 +92,10 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trpg-dm-assistant/src/scenarios/library.js trpg-dm-assistant/build/test-v157-case-integrity.js trpg-dm-assistant/build/test-v158-api-response-resilience.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git add trpg-dm-assistant/src/scenarios/library.js trpg-dm-assistant/build/test-v157-case-integrity.js trpg-dm-assistant/build/test-v158-api-response-resilience.js trpg-dm-assistant/README.md trpg-dm-assistant/outputs/trpg-dm-assistant.html
           if git diff --cached --quiet; then
             echo "Release files already synchronized"
           else
-            git commit -m "Finalize TRPG DM Assistant v1.5.8 validation baseline"
+            git commit -m "Finalize TRPG DM Assistant v1.5.8 release docs"
             git push origin HEAD:agent/v1.5.8-api-response-resilience
           fi
