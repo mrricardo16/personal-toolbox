@@ -13,6 +13,7 @@ const moduleFiles = [
   "scenario-engine.js",
   "memory.js",
   "ai-protocol.js",
+  "player-action-guard.js",
   "saves.js",
   "ui.js"
 ];
