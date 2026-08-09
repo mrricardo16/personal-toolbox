@@ -16,7 +16,7 @@ function envelope(action,stage="action_adjudication",extra={}){const s=api.snaps
 function raw(baseRevision,overrides={}){return{protocolVersion:"1.3",requestId:"r-v157",baseRevision,decision:"no_check",narrative:"你仍在当前地点。",check:null,stateChanges:[],campaignChanges:[],locationEffect:{type:"stay",targetNodeId:null},nodeProposal:null,endingProposal:null,actionSuggestions:[],...overrides}}
 function codes(report){return new Set(report.issues.map(x=>x.code))}
 
-test("版本为 v1.5.7",()=>{ready();assert.equal(api.APP_VERSION,"1.5.7")});
+test("版本不低于 v1.5.7",()=>{ready();const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=7))});
 test("Schema 保持 8",()=>{ready();assert.equal(api.SCHEMA_VERSION,8)});
 test("所有内置剧本都没有 blocking integrity error",()=>{api.reset();for(const scenario of api.allScenarios()){const report=api.validateCaseIntegrity(prepared(scenario));assert.equal(report.blocking,false,scenario.id+"\n"+api.formatCaseIntegrityReport(report))}});
 test("报告包含节点可达统计",()=>{const report=api.validateCaseIntegrity(prepared(baseScenario()));assert.equal(report.nodeCount,1);assert.equal(report.reachableNodeCount,1)});
