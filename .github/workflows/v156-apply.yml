@@ -35,6 +35,10 @@ jobs:
           replacement=r'''function playerGuardEscape(value){let out="";for(const char of String(value||""))out+="\\^$.*+?()[]{}|".includes(char)?"\\"+char:char;return out}'''
           lines=[replacement if line.startswith("function playerGuardEscape(value)") else line for line in lines]
           p.write_text("\n".join(lines)+"\n",encoding="utf-8")
+          test_path=Path("trpg-dm-assistant/build/test-v156-player-assertion-guard.js")
+          test_text=test_path.read_text(encoding="utf-8")
+          test_text=test_text.replace('assert(/本轮只解决 steps[0]/.test(text))','assert(text.includes("本轮只解决 steps[0]"))')
+          test_path.write_text(test_text,encoding="utf-8")
           PY
           sed -i 's/23 PASS \/ 0 FAIL/25 PASS \/ 0 FAIL/g; s/223 PASS \/ 0 FAIL/225 PASS \/ 0 FAIL/g; s/v1.5.5 的 200 + 本版 23/v1.5.5 的 200 + 本版 25/g; s/新增 23 条 v1.5.6/新增 25 条 v1.5.6/g' trpg-dm-assistant/README.md trpg-dm-assistant/reports/trpg-dm-assistant-v1.5.6-test-report.md
           sed -i 's/assert.equal(api.APP_VERSION,"1.5.5")/assert.ok(Number(api.APP_VERSION.split(".")[2])>=5)/' trpg-dm-assistant/build/test-v155-location-transition-alias.js
