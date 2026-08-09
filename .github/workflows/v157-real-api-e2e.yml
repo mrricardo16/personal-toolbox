@@ -1,0 +1,37 @@
+name: Temporary TRPG v1.5.7 Real API E2E
+
+on:
+  push:
+    branches:
+      - tmp/v157-real-api-e2e
+    paths:
+      - '.github/workflows/v157-real-api-e2e.yml'
+      - 'trpg-dm-assistant/build/test-real-api-v157-e2e.js'
+
+permissions:
+  contents: read
+
+jobs:
+  real-api-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: v1.5.7 deterministic preflight
+        run: |
+          node trpg-dm-assistant/build/test-v157-case-integrity.js
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          git diff --exit-code -- trpg-dm-assistant/outputs/trpg-dm-assistant.html
+
+      - name: Real DeepSeek v1.5.7 E2E
+        env:
+          TRPG_TEST_API_KEY: ${{ secrets.DS_KEY }}
+          TRPG_TEST_API_URL: https://api.deepseek.com/chat/completions
+          TRPG_TEST_MODEL: deepseek-v4-flash
+        run: |
+          test -n "$TRPG_TEST_API_KEY"
+          node trpg-dm-assistant/build/test-real-api-v157-e2e.js
