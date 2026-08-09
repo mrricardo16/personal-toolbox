@@ -19,7 +19,8 @@ const moduleFiles = [
   "saves.js",
   "ui.js",
   "api-response-resilience.js",
-  "progress-semantics.js"
+  "progress-semantics.js",
+  "authored-threat-clock.js"
 ];
 
 function readUtf8(filePath) {
