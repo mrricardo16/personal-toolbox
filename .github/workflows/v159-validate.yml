@@ -44,6 +44,15 @@ jobs:
           assert '"src/progress-semantics.js"' in text
           verify.write_text(text,encoding='utf-8')
 
+          test=Path('trpg-dm-assistant/build/test-v159-progress-semantics.js')
+          text=test.read_text(encoding='utf-8')
+          old='document:{querySelector(){return null},querySelectorAll(){return[]},createElement:node,body:{appendChild(){}}}'
+          new='document:{addEventListener(){},querySelector(){return null},querySelectorAll(){return[]},createElement:node,body:{appendChild(){}}}'
+          if old in text:
+              text=text.replace(old,new,1)
+          assert 'document:{addEventListener(){}' in text
+          test.write_text(text,encoding='utf-8')
+
           ci=Path('.github/workflows/trpg-ci.yml')
           text=ci.read_text(encoding='utf-8')
           marker='      - name: JavaScript syntax\n'
@@ -90,6 +99,7 @@ jobs:
           git add trpg-dm-assistant/src/scenarios/library.js \
                   trpg-dm-assistant/build/build-single-html.js \
                   trpg-dm-assistant/build/verify-single-html.js \
+                  trpg-dm-assistant/build/test-v159-progress-semantics.js \
                   trpg-dm-assistant/outputs/trpg-dm-assistant.html \
                   .github/workflows/trpg-ci.yml
           if git diff --cached --quiet; then
