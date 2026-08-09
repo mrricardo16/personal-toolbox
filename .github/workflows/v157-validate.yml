@@ -1,50 +1,26 @@
-name: Finalize TRPG v1.5.7 Documentation
+name: Finalize TRPG v1.5.7 docs
 
 on:
   push:
-    branches:
-      - agent/v1.5.7-case-integrity
-    paths:
-      - '.github/workflows/v157-validate.yml'
+    branches: [agent/v1.5.7-case-integrity]
+    paths: ['.github/workflows/v157-validate.yml']
 
 permissions:
   contents: write
 
 jobs:
-  finalize-docs:
+  docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: agent/v1.5.7-case-integrity
           fetch-depth: 0
-
-      - name: Update README release notes
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('trpg-dm-assistant/README.md')
-          text=p.read_text(encoding='utf-8')
-          text=text.replace('# TRPG AI 主持助手 v1.5.6','# TRPG AI 主持助手 v1.5.7',1)
-          text=text.replace('当前版本为 v1.5.6。','当前版本为 v1.5.7。',1)
-          section='''## v1.5.7 更新内容
-
-- 新增 Case Integrity Validator：启用剧本前检查节点拓扑、线索 acquisitionRoute、依赖环、关键线索单骰软锁和 Ending 静态可满足性。
-- ERROR 只用于可证明的结构损坏并阻止坏剧本覆盖当前案件；不可达节点、动态 NPC/线索/flag 来源、脆弱 Ending 等使用 WARN/INFO，默认允许继续游戏。
-- 新增 Interaction Availability Invariant：安全层遵循 `BLOCK UNSAFE STATE, NOT PLAYER ACTION`，防御机制不能让 AI 无法执行玩家的正常交互。
-- v1.5.6 的玩家断言 / 多步行动 Guard 越权不再直接变成技术失败；页面本地剥离非法后续状态并生成中性叙事，继续处理第一个合法步骤。
-- Guard 恢复叙事不会复述未验证的玩家断言，避免伪造 NPC 台词、世界事实或结果重新污染聊天上下文。
-- 合法 check 会在恢复中保留；合法单步移动、普通调查、等待和无收益行动不会触发 recovery，未知 operation 等真正协议错误仍严格拒绝。
-- AI protocol 保持 1.3，Save Schema 保持 8；不新增第二次 AI 请求，本版没有使用 DS_KEY。
-- 新增 34 条 v1.5.7 专项回归，完整确定性回归达到 259 PASS / 0 FAIL。
-
-'''
-          if '## v1.5.7 更新内容' not in text:
-              text=text.replace('## v1.5.6 更新内容',section+'## v1.5.6 更新内容',1)
-          p.write_text(text,encoding='utf-8')
-          PY
-          git diff --check
-
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Patch README
+        run: node trpg-dm-assistant/build/finalize-v157-readme.js
       - name: Commit README
         run: |
           git config user.name "github-actions[bot]"
