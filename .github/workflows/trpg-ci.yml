@@ -80,6 +80,9 @@ jobs:
       - name: v1.5.8 API response resilience regression
         run: node trpg-dm-assistant/build/test-v158-api-response-resilience.js
 
+      - name: v1.5.9 progress semantics regression
+        run: node trpg-dm-assistant/build/test-v159-progress-semantics.js
+
       - name: JavaScript syntax
         shell: bash
         run: |

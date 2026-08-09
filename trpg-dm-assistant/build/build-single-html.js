@@ -18,7 +18,8 @@ const moduleFiles = [
   "interaction-availability.js",
   "saves.js",
   "ui.js",
-  "api-response-resilience.js"
+  "api-response-resilience.js",
+  "progress-semantics.js"
 ];
 
 function readUtf8(filePath) {
