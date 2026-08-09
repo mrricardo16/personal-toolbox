@@ -3,7 +3,9 @@ name: Finalize TRPG v1.5.7 docs
 on:
   push:
     branches: [agent/v1.5.7-case-integrity]
-    paths: ['.github/workflows/v157-validate.yml']
+    paths:
+      - '.github/workflows/v157-validate.yml'
+      - 'trpg-dm-assistant/build/finalize-v157-readme.js'
 
 permissions:
   contents: write
