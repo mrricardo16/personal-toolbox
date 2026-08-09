@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.5.8
+# TRPG AI 主持助手 v1.5.9
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.8。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.5.9。
 
 ## 快速开始
 
@@ -12,6 +12,18 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.5.9 更新内容
+
+- 新增浏览器持有的 Progress Semantics：只依据**已经提交的 canonical state 前后差异**分类回合后果，不信任 AI 自报的“进展”或叙事措辞。
+- 固定六类语义：`NONE`、`DISCOVERY`、`ACCESS`、`SOCIAL`、`THREAT`、`RESOLUTION`；`NONE` 是合法且可玩的结果，不会为了“有进展”强送线索或奖励。
+- `DISCOVERY` 覆盖真实线索/事实发现与调查问题解决；`ACCESS` 覆盖实际节点进入和物品获取；`SOCIAL` 覆盖 NPC canonical continuity 变化。
+- `THREAT` 覆盖张力、HP/SAN 损失、威胁与时钟推进；`RESOLUTION` 覆盖案件 outcome、Ending、威胁/时钟解决。
+- 同一 canonical commit 可以同时记录多种语义，并保留 evidence；primary 仅用于后续节奏消费，不会反向修改状态。
+- 保留旧 `lastTurnImpact` 作为兼容字段，但新的 Progress Semantics 不依赖旧的 AI operation 预判。即使旧 impact 声称 transition，只要 canonical state 没变，新语义仍是 `NONE`。
+- 新语义进入压缩上下文、world continuity 与诊断包，供后续 Threat Clock、Ending Gate 和节奏系统使用；不会新增 AI 请求。
+- 旧 Schema 8 存档缺少该字段时自动懒初始化，无需迁移；AI protocol 仍为 1.3。
+- 新增 23 条 v1.5.9 确定性回归；v1.5.8 版本断言改为向前兼容，但其 20 条 API Resilience 行为断言保持不变。
 
 ## v1.5.8 更新内容
 
@@ -183,6 +195,8 @@
 
 ## 版本记录
 
+- v1.5.9：加入 browser-owned Progress Semantics，以已提交 canonical diff 分类 NONE / DISCOVERY / ACCESS / SOCIAL / THREAT / RESOLUTION，为后续威胁时钟和结局门控提供确定性语义。
+- v1.5.8：加入 API Response Resilience，对 provider 空响应、超时、网络异常与可恢复 JSON 失败进行有限重试和安全 fallback。
 - v1.5.7：加入 Case Integrity Validator 与 Interaction Availability Invariant，检查案件软锁风险，同时确保 Guard 只挡非法状态、不挡正常玩家交互。
 - v1.5.6：加入 Player Assertion Guard 与 Action Chaining Guard，阻止玩家完成式措辞和多步行动直接写入结果。
 - v1.5.3：修复线索来源与本轮检定误绑定，显式化内置线索路线，并保持无收益行动合法。
@@ -208,7 +222,7 @@
 
 ## 文件说明
 
-- `src/`：v1.5.7 的模块化源码；按状态、检定、AI 协议、剧本、记忆、存档、UI、场景库和样式拆分。
+- `src/`：v1.5.9 的模块化源码；按状态、检定、AI 协议、剧本、记忆、安全边界、API 韧性、Progress Semantics、存档、UI、场景库和样式拆分。
 - `src/shell.template`：单文件产品的 HTML 外壳模板。
 - `build/build-single-html.js`：无依赖 Node 构建脚本，将源码拼接为唯一正式产品。
 - `build/verify-single-html.js`：校验成品结构、版本、依赖和唯一产品 HTML。
@@ -216,8 +230,9 @@
 - `build/test-save-ui.js`：验证存档页面重绘后的按钮重绑定和主要操作。
 - `build/test-coc-outcomes.js`：验证 CoC 等值边界、难度通过线、成功等级和分层线索规则。
 - `build/test-v151-investigation-stability.js`：验证无收益行动、NPC 连续性、回合影响分类和上下文治理。
+- `build/test-v159-progress-semantics.js`：验证 canonical diff 六类语义、旧存档兼容、上下文暴露与 AI 自报不具权威性。
 - `outputs/trpg-dm-assistant.html`：完整、可直接双击打开的唯一产品 HTML。
-- `reports/`：各版本测试报告归档；当前版本报告为 `reports/trpg-dm-assistant-v1.5.7-test-report.md`。
+- `reports/`：各版本测试报告归档；当前版本报告为 `reports/trpg-dm-assistant-v1.5.9-test-report.md`。
 - `../.github/workflows/trpg-ci.yml`：针对 TRPG 项目的持续集成配置。
 
 ## 模块化构建
