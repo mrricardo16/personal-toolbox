@@ -46,11 +46,12 @@ jobs:
 
           test=Path('trpg-dm-assistant/build/test-v159-progress-semantics.js')
           text=test.read_text(encoding='utf-8')
+          text=text.replace('"saves.js","ui.js","api-response-resilience.js","progress-semantics.js"','"saves.js","progress-semantics.js"',1)
           old='document:{querySelector(){return null},querySelectorAll(){return[]},createElement:node,body:{appendChild(){}}}'
           new='document:{addEventListener(){},querySelector(){return null},querySelectorAll(){return[]},createElement:node,body:{appendChild(){}}}'
           if old in text:
               text=text.replace(old,new,1)
-          assert 'document:{addEventListener(){}' in text
+          assert '"saves.js","progress-semantics.js"' in text
           test.write_text(text,encoding='utf-8')
 
           ci=Path('.github/workflows/trpg-ci.yml')
