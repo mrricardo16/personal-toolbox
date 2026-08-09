@@ -74,6 +74,9 @@ jobs:
       - name: v1.5.7 case integrity and interaction availability regression
         run: node trpg-dm-assistant/build/test-v157-case-integrity.js
 
+      - name: v1.5.7 canonical assertion state regression
+        run: node trpg-dm-assistant/build/test-v157-canonical-assertion-state.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
