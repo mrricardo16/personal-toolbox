@@ -134,7 +134,7 @@ The same successful validation run re-executed the most relevant prior safety la
 
 The v1.5.8 test's release-identity assertion was changed from exact `1.5.8` equality to `>= 1.5.8`, matching the existing forward-compatible historical-test pattern. Its API Resilience behavior assertions were not relaxed.
 
-With the v1.5.8 permanent suite total of 286 deterministic passes plus 23 new v1.5.9 tests, the release target is **309 deterministic PASS / 0 FAIL**, pending permanent PR CI on the cleaned release head.
+The permanent PR suite now totals **309 deterministic PASS / 0 FAIL**.
 
 ## Build validation
 
@@ -151,6 +151,14 @@ Temporary validation Run `31319525912` completed all runtime gates before releas
 
 The first attempt to push validated release wiring failed only because a GitHub Actions `GITHUB_TOKEN` is not permitted to modify `.github/workflows/trpg-ci.yml` without workflow permission. No product or test gate failed. The workflow was then restricted to ordinary release files, and permanent CI wiring was written separately through the GitHub connector instead of broadening Actions permissions.
 
+## Permanent PR CI
+
+PR #6 clean release head `c0d8c103ce6d8f9fcaf88c16743b7a09382d9d31` was validated by permanent workflow Run `31319776880`.
+
+Result: **SUCCESS**.
+
+The permanent workflow passed every historical test group, the new v1.5.9 Progress Semantics regression, JavaScript syntax validation, and final single-HTML deterministic build verification.
+
 ## Real API decision
 
 No new real DeepSeek run is required as a v1.5.9 release gate.
@@ -166,8 +174,4 @@ A future long-session E2E may audit how the semantic history behaves over an aut
 
 ## Release decision
 
-The implementation is ready for a cleaned PR after:
-
-1. removing the temporary v1.5.9 validation workflow;
-2. confirming only formal release files differ from `main`;
-3. opening the PR and requiring permanent `TRPG DM Assistant CI` to pass on the exact PR head.
+The temporary validation workflow has been removed. The release diff contains only formal v1.5.9 files, and permanent PR CI has passed on the cleaned release code head. A final CI rerun on the documentation-updated PR head is the remaining merge gate.
