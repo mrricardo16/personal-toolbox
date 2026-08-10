@@ -15,4 +15,11 @@ const forward='const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0
 if(historical.includes(exact))historical=historical.replace(exact,forward);
 if(!historical.includes('v[2]>=12'))throw new Error("v1.5.12 forward identity patch failed");
 write("build/test-v1512-ending-resolution-gate.js",historical);
+
+let e2e=read("build/test-v1513-full-case-e2e.js");
+const malformed='assert(n.continuity.claims.some(x=>x.includes("地下入口"))});';
+const fixed='assert(n.continuity.claims.some(x=>x.includes("地下入口")))});';
+if(e2e.includes(malformed))e2e=e2e.replace(malformed,fixed);
+if(e2e.includes(malformed)||!e2e.includes(fixed))throw new Error("v1.5.13 E2E syntax patch failed");
+write("build/test-v1513-full-case-e2e.js",e2e);
 console.log("V1513_RELEASE_PATCH:PASS");
