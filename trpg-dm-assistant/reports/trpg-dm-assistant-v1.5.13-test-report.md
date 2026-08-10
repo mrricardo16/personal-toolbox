@@ -311,4 +311,4 @@ Before merge:
 5. if this report is updated after a clean-head CI run, the new report-only head must receive another permanent CI run;
 6. do not merge automatically.
 
-At report creation time, live current-runtime DeepSeek validation has passed twice and the formal source has been persisted. Clean PR-head permanent CI is still pending.
+Clean PR-head permanent CI Run `31356432365` on head `9bb634c2dd262dc472c4b4a3ec34d0da5ad8262f` completed successfully: the full **458 PASS / 0 FAIL** deterministic suite, JavaScript syntax, deterministic single-HTML build, and verifier all passed. Because this evidence update changes only the report file and therefore creates a new final head, that final report-only head must receive one additional permanent CI run before merge.
