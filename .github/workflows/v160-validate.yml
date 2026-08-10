@@ -87,8 +87,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add trpg-dm-assistant/src/scenarios/library.js \
-                  trpg-dm-assistant/build/test-v1513-full-case-e2e.js \
-                  trpg-dm-assistant/build/test-v160-coc-resolution-engine.js \
+                  trpg-dm-assistant/build/test-v*.js \
                   trpg-dm-assistant/build/test-real-api-v1513.js \
                   trpg-dm-assistant/outputs/trpg-dm-assistant.html
           if git diff --cached --quiet; then
