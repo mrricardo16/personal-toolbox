@@ -175,5 +175,8 @@ buildUserPrompt=function(payload){return `${__cocResolutionBuildUserPrompt(paylo
 
 if(typeof buildDiagnosticPackage==="function"){
   const __cocResolutionBuildDiagnosticPackage=buildDiagnosticPackage;
-  buildDiagnosticPackage=function(options={}){const pack=__cocResolutionBuildDiagnosticPackage(options);pack.cocResolutionEngine={...cocResolutionContext(),recentOutcomes:(state.checkRecords||[]).filter(record=>record?.system==="coc7").slice(-12).map(record=>{ensureCocOutcomeContract(record);return deepClone(record.outcomeContract)})};return pack}
+  buildDiagnosticPackage=function(options={}){
+    const pack=__cocResolutionBuildDiagnosticPackage(options),includeSecrets=Boolean(options?.includeSecrets),records=(state.checkRecords||[]).filter(record=>record?.system==="coc7"&&(includeSecrets||record.visibility!=="secret")).slice(-12);
+    pack.cocResolutionEngine={...cocResolutionContext(),recentOutcomes:records.map(record=>{ensureCocOutcomeContract(record);return deepClone(record.outcomeContract)})};return pack
+  }
 }
