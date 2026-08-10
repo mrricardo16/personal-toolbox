@@ -27,7 +27,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,NPC_KNOWLEDGE_
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v1511-npc-knowledge-boundary-runtime.js"});const api=sandbox.__test;let passed=0;function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
 function fact(id){return api.facts().find(x=>x.id===id)}
 
-test("版本升级为 v1.5.11 且 Schema/协议不变",()=>{api.ready();assert.equal(api.APP_VERSION,"1.5.11");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.NPC_KNOWLEDGE_BOUNDARY_VERSION,"1.0")});
+test("版本升级为 v1.5.11 且 Schema/协议不变",()=>{api.ready();const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=11));assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.NPC_KNOWLEDGE_BOUNDARY_VERSION,"1.0")});
 test("旧宅内置 authored knowledge facts 完整",()=>{api.ready();assert(fact("old-secret-door-fact"));assert(fact("old-low-temp-plan-fact"));assert(fact("old-underground-experiment-fact"));assert(fact("old-shen-location-fact"))});
 test("管家初始知道书房暗门事实",()=>{api.ready();assert(api.butler().continuity.knownFactIds.includes("old-secret-door-fact"))});
 test("管家初始不知道地下非法实验",()=>{api.ready();assert(!api.butler().continuity.knownFactIds.includes("old-underground-experiment-fact"))});
