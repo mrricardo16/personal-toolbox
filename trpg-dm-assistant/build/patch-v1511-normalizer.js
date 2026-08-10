@@ -49,9 +49,9 @@ prepareStateChanges=function(changes,campaignChanges=[],validationContext={}){
   const prepared=__npcKnowledgeBasePrepareStateChanges(routed,campaignChanges,validationContext);
   for(const change of knowledgeOnly){
     const npc=prepared.draft.npcs.find(item=>item.id===change.npcId);
-    if(!npc)throw protocolError("STATE_CHANGE_PARAMETER_INVALID",`NPC 不存在：${change.npcId}`);
+    if(!npc)throw protocolError("STATE_CHANGE_PARAMETER_INVALID","NPC 不存在："+change.npcId);
     applyNpcContinuityPatch(npc,change);
-    prepared.summaries.push(`NPC 知识更新：${npc.name||npc.id}`);
+    prepared.summaries.push("NPC 知识更新："+(npc.name||npc.id));
     prepared.count=Number(prepared.count||0)+1;
     prepared.stateCount=Number(prepared.stateCount||0)+1
   }
@@ -63,6 +63,6 @@ if(!text.includes("__npcKnowledgeBasePrepareStateChanges")){
   text=text.replace(prepareAnchor,"\n"+prepareBlock+prepareAnchor);
 }
 
-for(const marker of ["__npcKnowledgeBaseNormalizeDirectorSituation","__npcKnowledgeBaseSanitizeNpcChange","__npcKnowledgeBasePrepareStateChanges"])if(!text.includes(marker))throw new Error(`NPC knowledge integration patch missing: ${marker}`);
+for(const marker of ["__npcKnowledgeBaseNormalizeDirectorSituation","__npcKnowledgeBaseSanitizeNpcChange","__npcKnowledgeBasePrepareStateChanges"])if(!text.includes(marker))throw new Error("NPC knowledge integration patch missing: "+marker);
 fs.writeFileSync(file,text,"utf8");
 console.log("V1511_NORMALIZER_PATCH:PASS");
