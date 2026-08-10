@@ -250,6 +250,16 @@ This release does not change provider transport, retry policy, AI protocol versi
 
 A model following the new prompt should propose fewer premature endings; a model ignoring the prompt still cannot commit a protected ending through the paths covered by the gate.
 
+## Permanent CI evidence
+
+The first clean PR head was:
+
+`90511ad82e0a4b52e639bb49d47793db2af0a186`
+
+Permanent `TRPG DM Assistant CI` Run `31350703950` completed **SUCCESS** on that exact head. It passed every historical regression group, the v1.5.12 46-test gate suite, JavaScript syntax, and deterministic single-HTML build/verify.
+
+This report update is documentation-only and does not modify product code. The resulting final PR head must receive another successful permanent CI run before merge.
+
 ## Release gate
 
 Before merge:
@@ -259,8 +269,5 @@ Before merge:
 3. temporary validation workflow and patch helpers must be removed;
 4. final diff must contain only formal release files;
 5. release PR must target `main` from `agent/v1.5.12-ending-resolution-gate`;
-6. permanent CI must pass on the exact clean PR head with **421 PASS / 0 FAIL** plus JavaScript syntax and deterministic single-HTML build/verify;
-7. any report-only head change must receive another permanent CI run;
-8. do not merge automatically.
-
-At the time this report is created, temporary validation has passed and permanent clean-head CI is still pending.
+6. permanent CI must pass on the exact final PR head with **421 PASS / 0 FAIL** plus JavaScript syntax and deterministic single-HTML build/verify;
+7. do not merge automatically.
