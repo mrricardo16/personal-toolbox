@@ -26,6 +26,7 @@ gateTest=gateTest.replace('sandbox.state.campaign.outcomes.truth="full"','api.se
 gateTest=gateTest.replace('sandbox.enterNode("old-study",{meaningfulProgress:true,reason:"test"})','api.enter("old-study")');
 gateTest=gateTest.replace('sandbox.availableEndings()','api.available()');
 gateTest=gateTest.replace('sandbox.validateAiResponse(raw,{requestId,baseRevision:meta,stage:"action_adjudication"})','api.validateRaw(raw,{requestId,baseRevision:meta,stage:"action_adjudication"})');
+gateTest=gateTest.replace('sandbox.state.scenario.endings.find(x=>x.id==="old-withdraw")','api.state().scenario.endings.find(x=>x.id==="old-withdraw")');
 gateTest=gateTest.replace('sandbox.endingGateEvaluate(withdraw).ready','api.evaluate("old-withdraw").ready');
 for(const marker of ['setThreats:items=>','setOutcome:(key,value)=>','enter:id=>','available:()=>','validateRaw:(raw,meta)=>'])if(!gateTest.includes(marker))throw new Error("v1.5.12 VM helper patch missing: "+marker);
 if(gateTest.includes('sandbox.state.'))throw new Error("v1.5.12 test still reads lexical state through sandbox.state");
