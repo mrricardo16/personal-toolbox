@@ -9,6 +9,13 @@ library=library.replace('const APP_VERSION = "1.5.13";','const APP_VERSION = "1.
 if(!library.includes('const APP_VERSION = "1.6.0";'))throw new Error("APP_VERSION v1.6.0 patch failed");
 write("src/scenarios/library.js",library);
 
+/* Old 1.5.x tests that compared only the patch component break correctly ordered 1.6.0. Rewrite only that flawed version predicate; behavior assertions remain untouched. */
+for(const name of fs.readdirSync(path.join(root,"build")).filter(name=>/^test-v\d+.*\.js$/.test(name))){
+  const rel="build/"+name;let text=read(rel);
+  text=text.replace(/Number\(api\.APP_VERSION\.split\("\."\)\[2\]\)>=(\d+)/g,(_,patch)=>`(()=>{const v=api.APP_VERSION.split(".").map(Number);return v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=${patch})})()`);
+  write(rel,text)
+}
+
 let oldE2E=read("build/test-v1513-full-case-e2e.js");
 const oldExact='assert.equal(api.APP_VERSION,"1.5.13");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")';
 const oldForward='const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=13));assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")';
