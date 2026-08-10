@@ -261,14 +261,28 @@ A separate real-provider run is not required as a release gate for v1.5.11.
 
 The prompt/context contract is expanded, but the security property does not depend on the model obeying it: the deterministic browser boundary is explicitly tested against unsafe model-shaped outputs. The transport pipeline, AI protocol version, retry behavior, and request count are unchanged. A model that follows the new context produces cleaner narration; a model that ignores it still cannot directly commit the protected NPC knowledge covered by the authored boundary.
 
-## Release gate
+## Permanent PR CI evidence
 
-Before merge:
+Release PR: **#8**.
 
-1. update README to v1.5.11;
-2. add v1.5.11 regression to permanent `TRPG DM Assistant CI`;
-3. remove all temporary v1.5.11 validation workflow / patch helpers;
-4. audit the final diff against `main`;
-5. open the release PR;
-6. require permanent CI success on the exact clean PR head;
-7. do not merge automatically.
+First cleaned PR head:
+
+`3a46de5e79d15917bc4d74ceb24bf3005d892903`
+
+Permanent `TRPG DM Assistant CI` Run `31348112458`: **SUCCESS**.
+
+That run passed every permanent historical regression group, the v1.5.11 NPC Knowledge Boundary suite, JavaScript syntax, and deterministic single-HTML build / verify. With the new 34 v1.5.11 cases, the permanent deterministic suite is **375 PASS / 0 FAIL**.
+
+## Release decision
+
+All release-preparation gates are complete:
+
+1. README updated to v1.5.11;
+2. v1.5.11 regression added to permanent `TRPG DM Assistant CI`;
+3. temporary v1.5.11 validation workflow and all four patch helpers removed;
+4. final diff audited against `main` with only formal release files remaining;
+5. release PR #8 opened;
+6. permanent CI passed on the cleaned PR head;
+7. `main` remains unchanged until an explicit merge request.
+
+This report-only evidence update intentionally changes the PR head once more. The permanent CI for that final exact head is the last merge gate.
