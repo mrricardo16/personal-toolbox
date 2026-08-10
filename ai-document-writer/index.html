@@ -590,20 +590,41 @@
     try {
       status.textContent = '正在生成初稿……';
       var first = await callDeepSeek(getValue('systemPrompt'), buildUserPrompt());
-      var finalText = first.content;
+      var firstText = (first.content || '').trim();
 
+      if (!firstText) {
+        throw new Error('初稿未返回有效内容。');
+      }
+
+      var finalText = first.content;
+      var reviewNotice = '';
       result.textContent = finalText;
 
       if (document.getElementById('autoReview').checked) {
-        status.textContent = '初稿已完成，正在进行忠实审校……';
+        status.textContent = '初稿已生成，可立即复制或下载。正在自动审校……';
         var reviewSystem = baseRules + '\n\n当前任务是忠实审校。不得扩大、补造或改写事实。';
-        var reviewed = await callDeepSeek(reviewSystem, buildReviewPrompt(finalText));
-        finalText = reviewed.content;
-        result.textContent = finalText;
+
+        try {
+          var reviewed = await callDeepSeek(reviewSystem, buildReviewPrompt(finalText));
+          var reviewedText = (reviewed.content || '').trim();
+
+          if (reviewedText) {
+            finalText = reviewed.content;
+            result.textContent = finalText;
+          } else {
+            reviewNotice = ' 审校未返回有效内容，已保留初稿。';
+          }
+        } catch (reviewError) {
+          if (reviewError && reviewError.name === 'AbortError') {
+            reviewNotice = ' 审校已停止，初稿已保留。';
+          } else {
+            reviewNotice = ' 审校失败，已保留初稿：' + (reviewError && reviewError.message ? reviewError.message : String(reviewError));
+          }
+        }
       }
 
       var auditMessage = auditProtectedTerms(finalText);
-      status.textContent = '生成完成。' + auditMessage;
+      status.textContent = '生成完成。' + auditMessage + reviewNotice;
     } catch (error) {
       if (error && error.name === 'AbortError') {
         status.textContent = '已停止生成。';
