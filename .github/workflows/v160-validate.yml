@@ -18,7 +18,9 @@ jobs:
           node-version: '24'
 
       - name: v1.6 CoC Resolution Engine
-        run: node trpg-dm-assistant/build/test-v160-coc-resolution-engine.js
+        run: |
+          node trpg-dm-assistant/build/test-v160-coc-resolution-engine.js
+          node trpg-dm-assistant/build/test-v160-coc-resolution-diagnostics.js
 
       - name: Focused historical regressions
         run: |
