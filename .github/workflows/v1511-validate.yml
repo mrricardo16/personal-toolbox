@@ -26,6 +26,9 @@ jobs:
       - name: Normalize v1.5.11 test harness
         run: node trpg-dm-assistant/build/patch-v1511-test-harness.js
 
+      - name: Update v1.5.11 README
+        run: node trpg-dm-assistant/build/patch-v1511-readme.js
+
       - name: v1.5.11 NPC knowledge boundary regression
         run: node trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js
 
@@ -78,7 +81,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trpg-dm-assistant/src/scenarios/library.js \
+          git add trpg-dm-assistant/README.md \
+                  trpg-dm-assistant/src/scenarios/library.js \
                   trpg-dm-assistant/src/npc-knowledge-boundary.js \
                   trpg-dm-assistant/build/test-v1510-authored-threat-clock.js \
                   trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js \
@@ -86,6 +90,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "Release wiring already synchronized"
           else
-            git commit -m "Finalize TRPG DM Assistant v1.5.11 wiring"
+            git commit -m "Finalize TRPG DM Assistant v1.5.11 documentation"
             git push origin HEAD:agent/v1.5.11-npc-knowledge-boundary
           fi
