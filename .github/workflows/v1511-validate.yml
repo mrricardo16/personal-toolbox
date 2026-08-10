@@ -23,21 +23,8 @@ jobs:
       - name: Preserve NPC knowledge facts in scenario normalizer
         run: node trpg-dm-assistant/build/patch-v1511-normalizer.js
 
-      - name: Fix v1.5.11 test harness escaping
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js')
-          text = path.read_text(encoding='utf-8')
-          old = r'function __prompt(){return buildSystemPrompt()+"\n"+buildUserPrompt(__payload())}'
-          new = r'function __prompt(){return buildSystemPrompt()+"\\n"+buildUserPrompt(__payload())}'
-          if old in text:
-              text = text.replace(old, new)
-          if new not in text:
-              raise SystemExit('v1.5.11 harness escape fix failed')
-          path.write_text(text, encoding='utf-8')
-          PY
+      - name: Normalize v1.5.11 test harness
+        run: node trpg-dm-assistant/build/patch-v1511-test-harness.js
 
       - name: v1.5.11 NPC knowledge boundary regression
         run: node trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js
