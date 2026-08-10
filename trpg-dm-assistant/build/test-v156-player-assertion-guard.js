@@ -13,7 +13,7 @@ function ready(){api.reset();api.activateScenario(api.scenarioById("scenario-old
 function envelope(action,stage="action_adjudication",extra={}){const s=api.snapshot();return api.buildRequestPayload(stage,"r-guard",s.revision,{playerAction:action,...extra})}
 function raw(baseRevision,overrides={}){return{protocolVersion:"1.3",requestId:"r-guard",baseRevision,decision:"no_check",narrative:"你仍在当前地点。",check:null,stateChanges:[],campaignChanges:[],locationEffect:{type:"stay",targetNodeId:null},nodeProposal:null,endingProposal:null,actionSuggestions:[],...overrides}}
 
-test("版本为 v1.5.6",()=>{ready();assert.ok(Number(api.APP_VERSION.split(".")[2])>=6)});
+test("版本为 v1.5.6",()=>{ready();assert.ok((()=>{const v=api.APP_VERSION.split(".").map(Number);return v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=6)})())});
 test("Schema 保持 8",()=>{ready();assert.equal(api.SCHEMA_VERSION,8)});
 test("普通寻找是意图而不是完成式结果",()=>{const g=api.analyzePlayerActionGuard("我寻找地下室入口");assert.equal(g.assertions.length,0);assert.equal(g.firstStepKind,"investigate")});
 test("我找到了会识别为 discovery assertion",()=>{const g=api.analyzePlayerActionGuard("我找到了地下室入口");assert(g.flags.includes("outcome_assertion"));assert.equal(g.assertions[0].type,"discovery")});

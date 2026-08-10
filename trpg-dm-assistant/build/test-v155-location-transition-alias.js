@@ -12,7 +12,7 @@ const api=sandbox.__test;let passed=0;function test(name,fn){fn();passed++;conso
 function ready(){api.reset();api.activateScenario(api.scenarioById("scenario-old-house"));return api.snapshot()}
 function rawMove(baseRevision,{type="transition",targetNodeId="old-servant-room",nodeProposal={id:"old-servant-room"}}={}){return{protocolVersion:"1.3",requestId:"r-move",baseRevision,decision:"no_check",narrative:"你离开大厅，进入管家房。",check:null,stateChanges:[],campaignChanges:[],locationEffect:{type,targetNodeId},nodeProposal,endingProposal:null,actionSuggestions:[]}}
 
-test("版本为 v1.5.5",()=>assert.ok(Number(api.APP_VERSION.split(".")[2])>=5));
+test("版本为 v1.5.5",()=>assert.ok((()=>{const v=api.APP_VERSION.split(".").map(Number);return v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=5)})()));
 test("Schema 保持 8",()=>assert.equal(api.SCHEMA_VERSION,8));
 test("transition 安全归一为 transition_proposal",()=>{const s=ready(),parsed=api.validateAiResponse(rawMove(s.revision),{requestId:"r-move",baseRevision:s.revision,stage:"action_adjudication"});assert.equal(parsed.locationEffect.type,"transition_proposal")});
 test("transition + nodeProposal.id 可通过完整合法出口事务",()=>{const s=ready(),parsed=api.validateAiResponse(rawMove(s.revision),{requestId:"r-move",baseRevision:s.revision,stage:"action_adjudication"}),tx=api.prepareAiTransaction(parsed);assert.equal(tx.proposal.targetNodeId,"old-servant-room")});

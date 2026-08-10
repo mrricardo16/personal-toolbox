@@ -32,7 +32,7 @@ function baseCheck(extra={}){return api.normalize({required:true,mandatory:false
 function roll(total,target=60,difficulty="regular",rank,result){const computed=rank||(()=>{if(total===1)return"critical";if(target<50&&total>=96||target>=50&&total===100)return"fumble";if(total<=Math.floor(target/5))return"extreme";if(total<=Math.floor(target/2))return"hard";if(total<=target)return"regular";return"failure"})();const order={fumble:0,failure:0,regular:1,hard:2,extreme:3,critical:4},need={regular:1,hard:2,extreme:3}[difficulty]||1;return{expression:"1d100",rawRolls:[total],modifier:0,total,target,difficulty,difficultyTarget:difficulty==="hard"?Math.floor(target/2):difficulty==="extreme"?Math.floor(target/5):target,rank:computed,result:result??order[computed]>=need}}
 
 api.ready();
-test("v1.6 Resolution Engine 模块已加载且 Schema/协议保持稳定",()=>{assert.equal(api.COC_RESOLUTION_ENGINE_VERSION,"1.0");assert.equal(api.COC_RESOLUTION_AUTHORITY,"browser_coc_resolution");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+test("v1.6 Resolution Engine 模块已加载且 Schema/协议保持稳定",()=>{assert.equal(api.APP_VERSION,"1.6.0");assert.equal(api.COC_RESOLUTION_ENGINE_VERSION,"1.0");assert.equal(api.COC_RESOLUTION_AUTHORITY,"browser_coc_resolution");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 
 test("AI 提供的 skill target 不具有权威，浏览器使用角色卡技能值",()=>{const c=baseCheck({target:99});assert.equal(c.target,60);assert.equal(c.resolutionContract.target,60)});
 test("属性检定目标来自角色卡属性",()=>{const c=baseCheck({type:"attribute",skillId:"dex",label:"敏捷"});assert.equal(c.target,65);assert.equal(c.resolutionContract.target,65)});

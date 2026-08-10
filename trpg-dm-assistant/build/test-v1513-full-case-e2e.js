@@ -39,7 +39,7 @@ function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
 function current(){return api.state()}
 
 api.ready();
-test("版本为 v1.5.13 且 Schema/协议保持稳定",()=>{assert.equal(api.APP_VERSION,"1.5.13");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+test("版本为 v1.5.13 且 Schema/协议保持稳定",()=>{const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=13));assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 test("addRevealedTruth description 可窄归一为 text",()=>{const n=api.normalize({protocolVersion:"1.3",stateChanges:[],campaignChanges:[{operation:"addRevealedTruth",description:"已确认事实"}]});assert.equal(n.campaignChanges[0].text,"已确认事实");assert.equal(n.campaignChanges[0].operation,"addRevealedTruth")});
 test("核心防御模块全部在同一运行态加载",()=>{assert.equal(api.PLAYER_ACTION_GUARD_VERSION,"1.0");assert.equal(api.INTERACTION_AVAILABILITY_VERSION,"1.0");assert.equal(api.PROGRESS_SEMANTICS_VERSION,"1.0");assert.equal(api.AUTHORED_THREAT_CLOCK_VERSION,"1.0");assert.equal(api.NPC_KNOWLEDGE_BOUNDARY_VERSION,"1.0");assert.equal(api.ENDING_RESOLUTION_GATE_VERSION,"1.0")});
 test("完整案件从大厅开始且管家实体化",()=>{const s=current();assert.equal(s.campaign.currentNodeId,"node-hall");assert(s.npcs.some(n=>n.id==="npc-butler"))});
