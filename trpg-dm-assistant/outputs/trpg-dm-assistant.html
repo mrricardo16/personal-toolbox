@@ -2100,7 +2100,7 @@ const ENDING_GATE_SEMANTIC_KINDS=new Set(["DISCOVERY","ACCESS","SOCIAL","THREAT"
 
 function normalizeEndingGateClockRequirement(raw,index=0){
   const item=isPlainObject(raw)?raw:{};
-  return{clockId:asString(item.clockId,120)||`clock-${index+1}`,state:ENDING_GATE_CLOCK_STATES.has(String(item.state||""))?String(item.state):"resolved"}
+  return{clockId:asString(item.clockId,120)||`clock-${index+1}`,state:asString(item.state,40)||"resolved"}
 }
 function normalizeEndingGateDefinition(raw){
   const ending=isPlainObject(raw)?raw:{};
@@ -2113,7 +2113,7 @@ function normalizeEndingGateDefinition(raw){
     requiredResolvedLeadIds:listStrings(ending.requiredResolvedLeadIds,16,120),
     requiredResolvedQuestionIds:listStrings(ending.requiredResolvedQuestionIds,16,120),
     requiredNodeIds:listStrings(ending.requiredNodeIds,16,120),
-    requiredSemanticKinds:listStrings(ending.requiredSemanticKinds,8,40).filter(kind=>ENDING_GATE_SEMANTIC_KINDS.has(kind)),
+    requiredSemanticKinds:listStrings(ending.requiredSemanticKinds,8,40),
     requiredClockStates:Array.isArray(ending.requiredClockStates)?ending.requiredClockStates.map(normalizeEndingGateClockRequirement).slice(0,16):[],
     requireNoActiveThreats:Boolean(ending.requireNoActiveThreats),
     minClues:clamp(Number(ending.minClues||0),0,50),
@@ -2129,7 +2129,8 @@ function endingGateClockMatches(clock,required){
   if(!clock)return false;
   if(required==="resolved")return Boolean(clock.resolved);
   if(required==="triggered")return Boolean(clock.triggered);
-  return Boolean(clock.active)&&!clock.triggered&&!clock.resolved
+  if(required==="active")return Boolean(clock.active)&&!clock.triggered&&!clock.resolved;
+  return false
 }
 function endingGateEvaluate(ending,campaign=state.campaign,clues=state.clues){
   const e=normalizeEndingGateDefinition(ending),missing=[],flags=campaign?.flags||{},outcomes={...defaultOutcomes(),...(campaign?.outcomes||{})},clueIds=new Set((clues||[]).map(clue=>clue?.id).filter(Boolean)),leads=new Map((campaign?.activeLeads||[]).map(item=>[item.id,item])),questions=new Map((campaign?.unresolvedQuestions||[]).map(item=>[item.id,item])),clocks=new Map((campaign?.directorState?.clocks||[]).map(clock=>[clock.id,clock])),semanticKinds=endingGateSemanticKinds(campaign);
@@ -2144,12 +2145,12 @@ function endingGateEvaluate(ending,campaign=state.campaign,clues=state.clues){
   if(e.requiredNodeIds.length&&!e.requiredNodeIds.includes(campaign?.currentNodeId))missing.push({code:"required_node",ids:e.requiredNodeIds,actual:campaign?.currentNodeId||null});
   for(const requirement of e.requiredClockStates){const clock=clocks.get(requirement.clockId);if(!endingGateClockMatches(clock,requirement.state))missing.push({code:"clock_state",id:requirement.clockId,state:requirement.state});}
   if(e.requireNoActiveThreats&&(campaign?.directorState?.activeThreats||[]).length)missing.push({code:"active_threats",count:(campaign.directorState.activeThreats||[]).length});
-  for(const kind of e.requiredSemanticKinds)if(!semanticKinds.has(kind))missing.push({code:"semantic",kind});
+  for(const kind of e.requiredSemanticKinds)if(!ENDING_GATE_SEMANTIC_KINDS.has(kind))missing.push({code:"semantic_invalid",kind});else if(!semanticKinds.has(kind))missing.push({code:"semantic",kind});
   if(e.outcomeRequirements)for(const [key,value] of Object.entries(e.outcomeRequirements)){const allowed=Array.isArray(value)?value:[value];if(!allowed.includes(outcomes[key]))missing.push({code:"outcome",key,allowed,actual:outcomes[key]})}
   return{version:ENDING_RESOLUTION_GATE_VERSION,endingId:e.id||null,ready:missing.length===0,alwaysAvailable:false,missing,checkedAt:nowIso()}
 }
 function endingGateMissingLabel(item){
-  const map={required_flag:"缺少必要剧情旗标",forbidden_flag:"存在禁止剧情旗标",min_clues:"线索数量不足",required_clue:"缺少必要线索",any_clue:"缺少任一可接受线索",resolved_lead:"调查方向尚未解决",resolved_question:"核心问题尚未解决",required_node:"尚未到达允许收束的节点",clock_state:"威胁时钟状态未满足",active_threats:"仍有活动威胁",semantic:"缺少浏览器确认的进展语义",outcome:"案件结果状态未满足"};
+  const map={required_flag:"缺少必要剧情旗标",forbidden_flag:"存在禁止剧情旗标",min_clues:"线索数量不足",required_clue:"缺少必要线索",any_clue:"缺少任一可接受线索",resolved_lead:"调查方向尚未解决",resolved_question:"核心问题尚未解决",required_node:"尚未到达允许收束的节点",clock_state:"威胁时钟状态未满足",active_threats:"仍有活动威胁",semantic:"缺少浏览器确认的进展语义",semantic_invalid:"结局声明了非法进展语义",outcome:"案件结果状态未满足"};
   return map[item?.code]||"结局条件尚未满足"
 }
 function endingGateContext(campaign=state.campaign,clues=state.clues){
@@ -2212,6 +2213,8 @@ const __endingGateValidateCaseIntegrity=validateCaseIntegrity;
 validateCaseIntegrity=function(scenario){
   const report=__endingGateValidateCaseIntegrity(scenario),issues=[...(report.issues||[])],nodes=new Set(allScenarioNodes(scenario).map(node=>node.id)),clues=new Set(allScenarioNodes(scenario).flatMap(node=>(node.clues||[]).map(clue=>clue.id))),clocks=new Set((scenario?.director?.threatClocks||[]).map(clock=>clock.id)),leadIds=new Set((scenario?.initialLeads||[]).map(item=>item.id)),questionIds=new Set((scenario?.initialQuestions||[]).map(item=>item.id));
   for(const raw of scenario?.endings||[]){const ending=normalizeEndingGateDefinition(raw),title=ending.playerTitle||ending.title||ending.id||"未命名结局";
+    for(const kind of listStrings(raw?.requiredSemanticKinds,8,40))if(!ENDING_GATE_SEMANTIC_KINDS.has(kind))issues.push(caseIntegrityIssue("ERROR","ENDING_GATE_SEMANTIC_INVALID",`结局“${title}”声明了非法 Progress Semantic：${kind}。`,{endingId:ending.id,kind}));
+    for(const requirement of Array.isArray(raw?.requiredClockStates)?raw.requiredClockStates:[]){const stateName=asString(requirement?.state,40)||"resolved";if(!ENDING_GATE_CLOCK_STATES.has(stateName))issues.push(caseIntegrityIssue("ERROR","ENDING_GATE_CLOCK_STATE_INVALID",`结局“${title}”声明了非法威胁时钟状态：${stateName}。`,{endingId:ending.id,clockId:asString(requirement?.clockId,120),state:stateName}))}
     for(const nodeId of ending.requiredNodeIds)if(!nodes.has(nodeId))issues.push(caseIntegrityIssue("ERROR","ENDING_GATE_NODE_MISSING",`结局“${title}”要求不存在节点 ${nodeId}。`,{endingId:ending.id,nodeId}));
     for(const requirement of ending.requiredClockStates)if(!clocks.has(requirement.clockId))issues.push(caseIntegrityIssue("ERROR","ENDING_GATE_CLOCK_MISSING",`结局“${title}”要求不存在威胁时钟 ${requirement.clockId}。`,{endingId:ending.id,clockId:requirement.clockId}));
     for(const clueId of ending.requiredClueIds)if(!clues.has(clueId))issues.push(caseIntegrityIssue("WARN","ENDING_GATE_CLUE_SOURCE_UNPROVEN",`结局“${title}”要求线索 ${clueId}，静态剧本中未找到；运行时合法动态线索仍可满足。`,{endingId:ending.id,clueId}));
