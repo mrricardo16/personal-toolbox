@@ -20,6 +20,7 @@ const requiredSources = [
   "src/api-response-resilience.js",
   "src/progress-semantics.js",
   "src/authored-threat-clock.js",
+  "src/npc-knowledge-boundary.js",
   "src/scenarios/library.js",
   "src/styles.css",
   "src/shell.template"
@@ -53,6 +54,7 @@ const appVersion = librarySource.match(/const APP_VERSION = "([^"]+)";/)?.[1];
 const schemaVersion = librarySource.match(/const SCHEMA_VERSION = (\d+);/)?.[1];
 if (!appVersion || !html.includes(`const APP_VERSION = "${appVersion}";`)) fail("输出版本号与源码不一致");
 if (!schemaVersion || !html.includes(`const SCHEMA_VERSION = ${schemaVersion};`)) fail("输出 Schema 与源码不一致");
+if (!html.includes('const NPC_KNOWLEDGE_BOUNDARY_VERSION="1.0";')) fail("输出缺少 NPC Knowledge Boundary 模块");
 if (/\b(?:eval|Function)\s*\(/.test(html)) fail("输出包含 eval/new Function 风险调用");
 if (html.includes("window.__TRPG_TEST_API__")) fail("生产输出暴露测试接口");
 if (/<script\b[^>]+\bsrc\s*=|<link\b[^>]+\bhref\s*=\s*["']https?:\/\//i.test(html)) fail("输出包含外部运行时资源");
