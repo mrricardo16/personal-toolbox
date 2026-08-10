@@ -22,4 +22,11 @@ const fixed='assert(n.continuity.claims.some(x=>x.includes("地下入口")))});'
 if(e2e.includes(malformed))e2e=e2e.replace(malformed,fixed);
 if(e2e.includes(malformed)||!e2e.includes(fixed))throw new Error("v1.5.13 E2E syntax patch failed");
 write("build/test-v1513-full-case-e2e.js",e2e);
+
+let real=read("build/test-real-api-v1513.js");
+const realOld=';scheduleAutosave=()=>{};renderAll=()=>{};';
+const realNew=';scheduleAutosave=()=>{};maybeAutoSummarize=()=>{};renderAll=()=>{};';
+if(real.includes(realOld))real=real.replace(realOld,realNew);
+if(!real.includes('maybeAutoSummarize=()=>{};'))throw new Error("real API summarization isolation patch failed");
+write("build/test-real-api-v1513.js",real);
 console.log("V1513_RELEASE_PATCH:PASS");
