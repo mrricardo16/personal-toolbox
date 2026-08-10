@@ -15,6 +15,14 @@ function npcKnowledgeFactById(factId,scenario=state.scenario){const id=asString(
 function npcKnowledgeAllNpcIds(scenario){const ids=new Set();for(const node of allScenarioNodes(scenario))for(const npc of node.npcs||[])if(npc?.id)ids.add(npc.id);return ids}
 function validateNpcKnowledgeDefinitions(scenario){const raw=scenario?.director?.knowledgeFacts;if(raw===undefined)return[];if(!Array.isArray(raw))return["director.knowledgeFacts 必须是数组"];const errors=[];if(raw.length>NPC_KNOWLEDGE_MAX_FACTS)errors.push(`director.knowledgeFacts 超过 ${NPC_KNOWLEDGE_MAX_FACTS} 条上限`);const npcIds=npcKnowledgeAllNpcIds(scenario),clueIds=new Set(allScenarioNodes(scenario).flatMap(node=>(node.clues||[]).map(clue=>clue.id).filter(Boolean))),factIds=new Set(),termOwners=new Map();raw.slice(0,NPC_KNOWLEDGE_MAX_FACTS).forEach((item,index)=>{if(!isPlainObject(item)){errors.push(`NPC 知识事实 #${index+1} 必须是对象`);return}const fact=normalizeNpcKnowledgeFact(item,index);if(!asString(item.id,120).trim())errors.push(`NPC 知识事实 #${index+1} 缺少 id`);else if(factIds.has(fact.id))errors.push(`NPC 知识事实 ID 重复：${fact.id}`);else factIds.add(fact.id);if(!fact.text)errors.push(`NPC 知识事实 ${fact.id} 缺少 text`);if(!fact.aliases.length)errors.push(`NPC 知识事实 ${fact.id} 至少需要一个可识别文本/alias`);for(const npcId of fact.knownBy)if(!npcIds.has(npcId))errors.push(`NPC 知识事实 ${fact.id} 的 knownBy 引用了不存在 NPC：${npcId}`);for(const clueId of fact.learnableFromClueIds)if(!clueIds.has(clueId))errors.push(`NPC 知识事实 ${fact.id} 的 learnableFromClueIds 引用了不存在 clue：${clueId}`);for(const term of fact.aliases){const key=npcKnowledgeNormalizeText(term);if(key.length<2)continue;const owner=termOwners.get(key);if(owner&&owner!==fact.id)errors.push(`NPC 知识事实 alias 冲突：${term} 同时属于 ${owner} / ${fact.id}`);else termOwners.set(key,fact.id)}});return errors}
 
+
+const __npcKnowledgeBaseNormalizeDirectorSituation=normalizeDirectorSituation;
+normalizeDirectorSituation=function(raw){
+  const source=isPlainObject(raw)?raw:{},normalized=__npcKnowledgeBaseNormalizeDirectorSituation(raw);
+  normalized.knowledgeFacts=Array.isArray(source.knowledgeFacts)?source.knowledgeFacts.map(normalizeNpcKnowledgeFact).slice(0,NPC_KNOWLEDGE_MAX_FACTS):[];
+  return normalized
+};
+
 function npcKnowledgeInitialFactIds(npcId){const id=asString(npcId,120).trim();return npcKnowledgeFacts().filter(fact=>fact.knownBy.includes(id)).map(fact=>fact.id)}
 const __npcKnowledgeBaseEnsureNpcContinuity=ensureNpcContinuity;
 ensureNpcContinuity=function(npc){const source=isPlainObject(npc?.continuity)?deepClone(npc.continuity):{},continuity=__npcKnowledgeBaseEnsureNpcContinuity(npc);continuity.knownFactIds=npcKnowledgeUniqueIds([...(source.knownFactIds||[]),...npcKnowledgeInitialFactIds(npc?.id)]);continuity.knownClueIds=npcKnowledgeUniqueIds(source.knownClueIds||[]);return continuity};
@@ -33,10 +41,44 @@ function npcKnowledgeCanLearnFact(npc,factId,action=npcKnowledgeCurrentAction())
 function npcKnowledgeSanitizeLearnIds(change,npc){const requestedClues=npcKnowledgeUniqueIds(change.learnClueIds||[],30),requestedFacts=npcKnowledgeUniqueIds(change.learnFactIds||[],30),allowedClues=requestedClues.filter(id=>npcKnowledgeCanLearnClue(npc,id)),allowedFacts=requestedFacts.filter(id=>npcKnowledgeCanLearnFact(npc,id));delete change.learnClueIds;delete change.learnFactIds;if(allowedClues.length||allowedFacts.length){change.knowledgeClueIds=allowedClues;change.knowledgeFactIds=allowedFacts;change.__npcKnowledgeValidated=NPC_KNOWLEDGE_BOUNDARY_VERSION}return{allowedClues,allowedFacts,blockedClues:requestedClues.filter(id=>!allowedClues.includes(id)),blockedFacts:requestedFacts.filter(id=>!allowedFacts.includes(id))}}
 function npcKnowledgeOperationHasEffect(change){if(!change)return false;return ["description","attitude","claim","relationship","currentIntent","lastInteraction"].some(key=>change[key]!==undefined)||(change.knowledgeClueIds||[]).length||(change.knowledgeFactIds||[]).length}
 function npcKnowledgeSanitizeNpcChange(change,violations){if(!["updateNpc","addNpc"].includes(change?.operation))return change;const npcId=asString(change.npcId,120).trim(),existing=(state.npcs||[]).find(item=>item.id===npcId),npc=existing||{id:npcId,name:asString(change.name,160),continuity:{claims:[],knownFactIds:[],knownClueIds:[]}},learn=npcKnowledgeSanitizeLearnIds(change,npc),additional=learn.allowedFacts;if(learn.blockedClues.length||learn.blockedFacts.length)violations.push({type:"invalid_learning",npcId,blockedClueIds:learn.blockedClues,blockedFactIds:learn.blockedFacts});for(const field of ["claim","lastInteraction","description"]){if(change[field]===undefined)continue;const facts=npcKnowledgeUnauthorizedFactsInText(change[field],npc,additional);if(!facts.length)continue;violations.push({type:"unauthorized_state_knowledge",npcId,field,factIds:facts.map(fact=>fact.id)});delete change[field]}return npcKnowledgeOperationHasEffect(change)?change:null}
+
+const __npcKnowledgeBaseSanitizeNpcChange=npcKnowledgeSanitizeNpcChange;
+npcKnowledgeSanitizeNpcChange=function(change,violations){
+  if(change&&["updateNpc","addNpc"].includes(change.operation)){
+    delete change.knowledgeClueIds;
+    delete change.knowledgeFactIds;
+    delete change.__npcKnowledgeValidated;
+  }
+  return __npcKnowledgeBaseSanitizeNpcChange(change,violations)
+};
+
 function npcKnowledgeNarrativeSegmentLeaks(segment,npc,fact,additionalFactIds=[]){const known=new Set([...(ensureNpcContinuity(npc).knownFactIds||[]),...additionalFactIds]);if(known.has(fact.id)||!npcKnowledgeTextMatchesFact(segment,fact)||npcKnowledgeNegativeNearFact(segment,fact))return false;const normalized=npcKnowledgeNormalizeText(segment);if(!npcKnowledgeNpcAliases(npc).some(alias=>normalized.includes(npcKnowledgeNormalizeText(alias))))return false;return NPC_KNOWLEDGE_SPEECH.test(segment)}
 function npcKnowledgeSplitNarrative(text){return String(text||"").match(/[^。！？\n]+[。！？]?|\n/gu)||[]}
 function npcKnowledgeRedactNarrative(narrative,grantsByNpc,violations){const npcs=new Map();for(const npc of state.npcs||[])if(npc?.id)npcs.set(npc.id,npc);for(const npc of getCurrentNode()?.npcs||[])if(npc?.id&&!npcs.has(npc.id))npcs.set(npc.id,npc);const facts=npcKnowledgeFacts(),replaced=new Set();return npcKnowledgeSplitNarrative(narrative).map(segment=>{for(const npc of npcs.values()){const additional=grantsByNpc.get(npc.id)||[];for(const fact of facts){if(!npcKnowledgeNarrativeSegmentLeaks(segment,npc,fact,additional))continue;violations.push({type:"unauthorized_narrative_knowledge",npcId:npc.id,factIds:[fact.id]});const key=npc.id+"|"+fact.id;if(replaced.has(key))return"";replaced.add(key);return `${npc.name||"对方"}没有提供能够确认这项信息的说法。`}}return segment}).join("").trim()}
 function npcKnowledgeBoundaryApply(out){if(!npcKnowledgeFacts().length)return out;const result=deepClone(out),violations=[],grantsByNpc=new Map(),next=[];for(const raw of result.stateChanges||[]){const change=deepClone(raw),sanitized=npcKnowledgeSanitizeNpcChange(change,violations);if(!sanitized)continue;if(["updateNpc","addNpc"].includes(sanitized.operation)&&sanitized.npcId){grantsByNpc.set(sanitized.npcId,[...(sanitized.knowledgeFactIds||[])])}next.push(sanitized)}result.stateChanges=next;const redacted=npcKnowledgeRedactNarrative(result.narrative,grantsByNpc,violations);if(redacted!==String(result.narrative||""))result.narrative=redacted||"对方没有提供超出其知识范围的可确认信息，但交互仍可继续。";if(violations.length)result.npcKnowledgeRecovery={recovered:true,version:NPC_KNOWLEDGE_BOUNDARY_VERSION,policy:"block_unsafe_state_not_player_action",violations:deepClone(violations)};return result}
+
+
+function npcKnowledgeTraditionalNpcPatchEffect(change){return ["description","attitude","claim","relationship","currentIntent","lastInteraction"].some(key=>change?.[key]!==undefined)}
+const __npcKnowledgeBasePrepareStateChanges=prepareStateChanges;
+prepareStateChanges=function(changes,campaignChanges=[],validationContext={}){
+  const source=Array.isArray(changes)?changes:[],knowledgeOnly=[];
+  const routed=source.filter(change=>{
+    const trusted=change?.operation==="updateNpc"&&change?.__npcKnowledgeValidated===NPC_KNOWLEDGE_BOUNDARY_VERSION;
+    const hasKnowledge=(change?.knowledgeClueIds||[]).length||(change?.knowledgeFactIds||[]).length;
+    if(trusted&&hasKnowledge&&!npcKnowledgeTraditionalNpcPatchEffect(change)){knowledgeOnly.push(deepClone(change));return false}
+    return true
+  });
+  const prepared=__npcKnowledgeBasePrepareStateChanges(routed,campaignChanges,validationContext);
+  for(const change of knowledgeOnly){
+    const npc=prepared.draft.npcs.find(item=>item.id===change.npcId);
+    if(!npc)throw protocolError("STATE_CHANGE_PARAMETER_INVALID","NPC 不存在："+change.npcId);
+    applyNpcContinuityPatch(npc,change);
+    prepared.summaries.push("NPC 知识更新："+(npc.name||npc.id));
+    prepared.count=Number(prepared.count||0)+1;
+    prepared.stateCount=Number(prepared.stateCount||0)+1
+  }
+  return prepared
+};
 
 function npcKnowledgeContext(){const facts=npcKnowledgeFacts(),entries=[];const merged=new Map();for(const npc of getCurrentNode()?.npcs||[])if(npc?.id)merged.set(npc.id,deepClone(npc));for(const npc of state.npcs||[])if(npc?.id)merged.set(npc.id,{...(merged.get(npc.id)||{}),...deepClone(npc)});for(const npc of merged.values()){const continuity=ensureNpcContinuity(npc),known=new Set(continuity.knownFactIds||[]);entries.push({npcId:npc.id,name:npc.name||npc.id,knownFactIds:[...known],knownClueIds:[...(continuity.knownClueIds||[])],allowedFacts:facts.filter(fact=>known.has(fact.id)).map(fact=>({id:fact.id,text:fact.text})),forbiddenFacts:facts.filter(fact=>!known.has(fact.id)).map(fact=>({id:fact.id,text:fact.text}))})}return{version:NPC_KNOWLEDGE_BOUNDARY_VERSION,authority:"browser_validated_npc_knowledge",facts:facts.map(fact=>({id:fact.id,text:fact.text,knownBy:fact.knownBy,learnableFromClueIds:fact.learnableFromClueIds})),npcs:entries}}
 
