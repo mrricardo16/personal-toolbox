@@ -16,11 +16,27 @@ if(historical.includes(exact))historical=historical.replace(exact,forward);
 if(!historical.includes('v[2]>=12'))throw new Error("v1.5.12 forward identity patch failed");
 write("build/test-v1512-ending-resolution-gate.js",historical);
 
+let protocol=read("src/ai-protocol.js");
+const aliasOld='  const amountOps=new Set(["adjustHp","adjustSan","adjustResource","adjustTension","adjustProgress","advanceClock"]);for(const list of [obj.stateChanges,obj.campaignChanges])if(Array.isArray(list))for(const item of list){if(!isPlainObject(item))continue;if(typeof item.operation==="string")item.operation=item.operation.trim();const idField=operationIdFields[item.operation];if(idField&&item[idField]===undefined&&typeof item.id==="string")item[idField]=item.id.trim();if(!amountOps.has(item.operation)||item.amount!==undefined)continue;for(const alias of ["by","delta"]){if(item[alias]!==undefined&&Number.isFinite(Number(item[alias]))){item.amount=Number(item[alias]);break}}}';
+const aliasNew='  const amountOps=new Set(["adjustHp","adjustSan","adjustResource","adjustTension","adjustProgress","advanceClock"]);for(const list of [obj.stateChanges,obj.campaignChanges])if(Array.isArray(list))for(const item of list){if(!isPlainObject(item))continue;if(typeof item.operation==="string")item.operation=item.operation.trim();const idField=operationIdFields[item.operation];if(idField&&item[idField]===undefined&&typeof item.id==="string")item[idField]=item.id.trim();if(item.operation==="addRevealedTruth"&&item.text===undefined&&typeof item.description==="string"&&item.description.trim())item.text=item.description.trim();if(!amountOps.has(item.operation)||item.amount!==undefined)continue;for(const alias of ["by","delta"]){if(item[alias]!==undefined&&Number.isFinite(Number(item[alias]))){item.amount=Number(item[alias]);break}}}';
+if(protocol.includes(aliasOld))protocol=protocol.replace(aliasOld,aliasNew);
+if(!protocol.includes('item.operation==="addRevealedTruth"&&item.text===undefined&&typeof item.description==="string"'))throw new Error("addRevealedTruth description alias patch failed");
+write("src/ai-protocol.js",protocol);
+
 let e2e=read("build/test-v1513-full-case-e2e.js");
 const malformed='assert(n.continuity.claims.some(x=>x.includes("地下入口"))});';
 const fixed='assert(n.continuity.claims.some(x=>x.includes("地下入口")))});';
 if(e2e.includes(malformed))e2e=e2e.replace(malformed,fixed);
-if(e2e.includes(malformed)||!e2e.includes(fixed))throw new Error("v1.5.13 E2E syntax patch failed");
+const exposeOld='sanitize:__sanitize};`';
+const exposeNew='sanitize:__sanitize,normalize:raw=>deepClone(normalizeAiProtocolShape(raw))};`';
+if(e2e.includes(exposeOld))e2e=e2e.replace(exposeOld,exposeNew);
+if(!e2e.includes('addRevealedTruth description 可窄归一为 text')){
+  const anchor='test("核心防御模块全部在同一运行态加载"';
+  const at=e2e.indexOf(anchor);if(at<0)throw new Error("v1.5.13 alias test anchor missing");
+  const extra='test("addRevealedTruth description 可窄归一为 text",()=>{const n=api.normalize({protocolVersion:"1.3",stateChanges:[],campaignChanges:[{operation:"addRevealedTruth",description:"已确认事实"}]});assert.equal(n.campaignChanges[0].text,"已确认事实");assert.equal(n.campaignChanges[0].operation,"addRevealedTruth")});\n';
+  e2e=e2e.slice(0,at)+extra+e2e.slice(at);
+}
+if(e2e.includes(malformed)||!e2e.includes(fixed)||!e2e.includes('normalize:raw=>deepClone(normalizeAiProtocolShape(raw))')||!e2e.includes('addRevealedTruth description 可窄归一为 text'))throw new Error("v1.5.13 E2E formal patch failed");
 write("build/test-v1513-full-case-e2e.js",e2e);
 
 let real=read("build/test-real-api-v1513.js");
