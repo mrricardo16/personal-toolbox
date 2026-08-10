@@ -20,6 +20,22 @@ jobs:
       - name: Prepare v1.5.11 release wiring
         run: node trpg-dm-assistant/build/patch-v1511-release.js
 
+      - name: Fix v1.5.11 test harness escaping
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js')
+          text = path.read_text(encoding='utf-8')
+          old = r'function __prompt(){return buildSystemPrompt()+"\n"+buildUserPrompt(__payload())}'
+          new = r'function __prompt(){return buildSystemPrompt()+"\\n"+buildUserPrompt(__payload())}'
+          if old in text:
+              text = text.replace(old, new)
+          if new not in text:
+              raise SystemExit('v1.5.11 harness escape fix failed')
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: v1.5.11 NPC knowledge boundary regression
         run: node trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js
 
@@ -74,6 +90,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add trpg-dm-assistant/src/scenarios/library.js \
                   trpg-dm-assistant/build/test-v1510-authored-threat-clock.js \
+                  trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js \
                   trpg-dm-assistant/outputs/trpg-dm-assistant.html
           if git diff --cached --quiet; then
             echo "Release wiring already synchronized"
