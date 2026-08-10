@@ -1,0 +1,14 @@
+"use strict";
+const fs=require("fs"),path=require("path");
+const file=path.resolve(__dirname,"test-v1511-npc-knowledge-boundary.js");
+let text=fs.readFileSync(file,"utf8");
+const oldPrompt='function __prompt(){return buildSystemPrompt()+"\\n"+buildUserPrompt(__payload())}';
+const newPrompt='function __prompt(){return buildSystemPrompt()+"\\\\n"+buildUserPrompt(__payload())}';
+if(text.includes(oldPrompt))text=text.replace(oldPrompt,newPrompt);
+const oldCommit='function __commitPrepared(out){const prepared=prepareStateChanges(out.stateChanges,out.campaignChanges,{});state=prepared.draft;sanitizeRuntimeAfterLoad();return deepClone(state)}';
+const newCommit='function __commitPrepared(out){const prepared=prepareStateChanges(out.stateChanges,out.campaignChanges,{});Object.assign(state,{character:prepared.draft.character,campaign:prepared.draft.campaign,context:prepared.draft.context,clues:prepared.draft.clues,npcs:prepared.draft.npcs,items:prepared.draft.items,statuses:prepared.draft.statuses,resources:prepared.draft.resources});sanitizeRuntimeAfterLoad();return deepClone(state)}';
+if(text.includes(oldCommit))text=text.replace(oldCommit,newCommit);
+if(!text.includes(newPrompt))throw new Error("v1.5.11 prompt harness fix missing");
+if(!text.includes(newCommit))throw new Error("v1.5.11 canonical commit harness fix missing");
+fs.writeFileSync(file,text,"utf8");
+console.log("V1511_TEST_HARNESS_PATCH:PASS");
