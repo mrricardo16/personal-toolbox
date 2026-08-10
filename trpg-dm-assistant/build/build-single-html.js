@@ -22,7 +22,8 @@ const moduleFiles = [
   "progress-semantics.js",
   "authored-threat-clock.js",
   "npc-knowledge-boundary.js",
-  "ending-resolution-gate.js"
+  "ending-resolution-gate.js",
+  "coc-resolution-engine.js"
 ];
 
 function readUtf8(filePath) {
