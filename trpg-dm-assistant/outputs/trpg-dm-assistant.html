@@ -89,7 +89,7 @@ button,input,select,textarea{font:inherit}button{cursor:pointer}.hidden{display:
 /* =========================
    常量与默认数据
 ========================= */
-const APP_VERSION = "1.5.12";
+const APP_VERSION = "1.5.13";
 const SCHEMA_VERSION = 8;
 const STORAGE_INDEX_KEY = "trpg-dm-assistant:index:v1";
 const STORAGE_SLOT_PREFIX = "trpg-dm-assistant:slot:";
@@ -1009,7 +1009,7 @@ function normalizeAiProtocolShape(input,{stage=""}={}){
     if(obj.nodeProposal.title===undefined&&typeof obj.nodeProposal.name==="string")obj.nodeProposal.title=obj.nodeProposal.name.trim()
   }
   const operationIdFields={removeItem:"itemId",updateItemQuantity:"itemId",removeStatus:"statusId",revealClue:"clueId",updateClue:"clueId",updateNpc:"npcId",resolveLead:"leadId",resolveQuestion:"questionId",advanceClock:"clockId",resolveClock:"clockId"};
-  const amountOps=new Set(["adjustHp","adjustSan","adjustResource","adjustTension","adjustProgress","advanceClock"]);for(const list of [obj.stateChanges,obj.campaignChanges])if(Array.isArray(list))for(const item of list){if(!isPlainObject(item))continue;if(typeof item.operation==="string")item.operation=item.operation.trim();const idField=operationIdFields[item.operation];if(idField&&item[idField]===undefined&&typeof item.id==="string")item[idField]=item.id.trim();if(!amountOps.has(item.operation)||item.amount!==undefined)continue;for(const alias of ["by","delta"]){if(item[alias]!==undefined&&Number.isFinite(Number(item[alias]))){item.amount=Number(item[alias]);break}}}
+  const amountOps=new Set(["adjustHp","adjustSan","adjustResource","adjustTension","adjustProgress","advanceClock"]);for(const list of [obj.stateChanges,obj.campaignChanges])if(Array.isArray(list))for(const item of list){if(!isPlainObject(item))continue;if(typeof item.operation==="string")item.operation=item.operation.trim();const idField=operationIdFields[item.operation];if(idField&&item[idField]===undefined&&typeof item.id==="string")item[idField]=item.id.trim();if(item.operation==="addRevealedTruth"&&item.text===undefined&&typeof item.description==="string"&&item.description.trim())item.text=item.description.trim();if(!amountOps.has(item.operation)||item.amount!==undefined)continue;for(const alias of ["by","delta"]){if(item[alias]!==undefined&&Number.isFinite(Number(item[alias]))){item.amount=Number(item[alias]);break}}}
   if(Array.isArray(obj.stateChanges)&&Array.isArray(obj.campaignChanges)){
     const routedState=[],routedCampaign=[];
     for(const [origin,list] of [["state",obj.stateChanges],["campaign",obj.campaignChanges]])for(const item of list){

@@ -92,6 +92,9 @@ jobs:
       - name: v1.5.12 ending resolution gate regression
         run: node trpg-dm-assistant/build/test-v1512-ending-resolution-gate.js
 
+      - name: v1.5.13 full-case E2E regression
+        run: node trpg-dm-assistant/build/test-v1513-full-case-e2e.js
+
       - name: JavaScript syntax
         shell: bash
         run: |

@@ -35,7 +35,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,ENDING_RESOLUT
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v1512-ending-resolution-gate-runtime.js"});const api=sandbox.__test;let passed=0;function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
 function code(fn){try{fn();return null}catch(error){return error.code||error.message}}
 
-test("版本升级为 v1.5.12 且 Schema/协议不变",()=>{api.ready();assert.equal(api.APP_VERSION,"1.5.12");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.ENDING_RESOLUTION_GATE_VERSION,"1.0")});
+test("版本升级为 v1.5.12 且 Schema/协议不变",()=>{api.ready();const v=api.APP_VERSION.split(".").map(Number);assert(v[0]>1||v[0]===1&&(v[1]>5||v[1]===5&&v[2]>=12));assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.ENDING_RESOLUTION_GATE_VERSION,"1.0")});
 test("alwaysAvailable 结局始终 ready",()=>{api.ready();api.addEnding({alwaysAvailable:true,requiredFlags:["never"]});assert.equal(api.evaluate().ready,true)});
 test("legacy requiredFlags 未满足时阻止结局",()=>{api.ready();api.addEnding({requiredFlags:["done"]});const g=api.evaluate();assert.equal(g.ready,false);assert(g.missing.some(x=>x.code==="required_flag"))});
 test("legacy requiredFlags 满足后允许结局",()=>{api.ready();api.addEnding({requiredFlags:["done"]});api.flag("done");assert.equal(api.evaluate().ready,true)});
