@@ -20,7 +20,8 @@ const moduleFiles = [
   "ui.js",
   "api-response-resilience.js",
   "progress-semantics.js",
-  "authored-threat-clock.js"
+  "authored-threat-clock.js",
+  "npc-knowledge-boundary.js"
 ];
 
 function readUtf8(filePath) {
