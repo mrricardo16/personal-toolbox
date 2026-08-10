@@ -89,6 +89,9 @@ jobs:
       - name: v1.5.11 NPC knowledge boundary regression
         run: node trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js
 
+      - name: v1.5.12 ending resolution gate regression
+        run: node trpg-dm-assistant/build/test-v1512-ending-resolution-gate.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
