@@ -86,6 +86,9 @@ jobs:
       - name: v1.5.10 authored threat clock regression
         run: node trpg-dm-assistant/build/test-v1510-authored-threat-clock.js
 
+      - name: v1.5.11 NPC knowledge boundary regression
+        run: node trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
