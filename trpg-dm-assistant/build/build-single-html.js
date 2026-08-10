@@ -21,7 +21,8 @@ const moduleFiles = [
   "api-response-resilience.js",
   "progress-semantics.js",
   "authored-threat-clock.js",
-  "npc-knowledge-boundary.js"
+  "npc-knowledge-boundary.js",
+  "ending-resolution-gate.js"
 ];
 
 function readUtf8(filePath) {
