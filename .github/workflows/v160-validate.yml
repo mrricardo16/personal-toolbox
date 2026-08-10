@@ -1,0 +1,45 @@
+name: Validate TRPG v1.6 CoC Resolution Engine
+
+on:
+  push:
+    branches:
+      - agent/v1.6.0-coc-resolution-engine
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: v1.6 CoC Resolution Engine
+        run: node trpg-dm-assistant/build/test-v160-coc-resolution-engine.js
+
+      - name: Focused historical regressions
+        run: |
+          node trpg-dm-assistant/build/test-coc-outcomes.js
+          node trpg-dm-assistant/build/test-v153-clue-routes.js
+          node trpg-dm-assistant/build/test-v158-api-response-resilience.js
+          node trpg-dm-assistant/build/test-v1513-full-case-e2e.js
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+
+      - name: Build and verify
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          git diff --check
