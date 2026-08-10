@@ -20,6 +20,31 @@ jobs:
       - name: Prepare v1.5.11 release wiring
         run: node trpg-dm-assistant/build/patch-v1511-release.js
 
+      - name: Preserve NPC knowledge facts in scenario normalizer
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('trpg-dm-assistant/src/npc-knowledge-boundary.js')
+          text = path.read_text(encoding='utf-8')
+          anchor = '\nfunction npcKnowledgeInitialFactIds(npcId)'
+          block = '''
+const __npcKnowledgeBaseNormalizeDirectorSituation=normalizeDirectorSituation;
+normalizeDirectorSituation=function(raw){
+  const source=isPlainObject(raw)?raw:{},normalized=__npcKnowledgeBaseNormalizeDirectorSituation(raw);
+  normalized.knowledgeFacts=Array.isArray(source.knowledgeFacts)?source.knowledgeFacts.map(normalizeNpcKnowledgeFact).slice(0,NPC_KNOWLEDGE_MAX_FACTS):[];
+  return normalized
+};
+'''
+          if '__npcKnowledgeBaseNormalizeDirectorSituation' not in text:
+              if anchor not in text:
+                  raise SystemExit('NPC knowledge normalizer anchor missing')
+              text = text.replace(anchor, '\n'+block+anchor)
+          if '__npcKnowledgeBaseNormalizeDirectorSituation' not in text:
+              raise SystemExit('NPC knowledge normalizer patch failed')
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Fix v1.5.11 test harness escaping
         shell: bash
         run: |
@@ -89,6 +114,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add trpg-dm-assistant/src/scenarios/library.js \
+                  trpg-dm-assistant/src/npc-knowledge-boundary.js \
                   trpg-dm-assistant/build/test-v1510-authored-threat-clock.js \
                   trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js \
                   trpg-dm-assistant/outputs/trpg-dm-assistant.html
