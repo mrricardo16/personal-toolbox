@@ -68,3 +68,10 @@ jobs:
           test "$first" = "$second"
           test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
           git diff --check
+
+      - name: Real DeepSeek current-runtime E2E
+        env:
+          TRPG_TEST_API_KEY: ${{ secrets.DS_KEY }}
+          TRPG_TEST_API_URL: https://api.deepseek.com/v1/chat/completions
+          TRPG_TEST_MODEL: deepseek-v4-flash
+        run: node trpg-dm-assistant/build/test-real-api-v1513.js
