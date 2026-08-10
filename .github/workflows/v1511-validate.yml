@@ -21,29 +21,7 @@ jobs:
         run: node trpg-dm-assistant/build/patch-v1511-release.js
 
       - name: Preserve NPC knowledge facts in scenario normalizer
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('trpg-dm-assistant/src/npc-knowledge-boundary.js')
-          text = path.read_text(encoding='utf-8')
-          anchor = '\nfunction npcKnowledgeInitialFactIds(npcId)'
-          block = '''
-const __npcKnowledgeBaseNormalizeDirectorSituation=normalizeDirectorSituation;
-normalizeDirectorSituation=function(raw){
-  const source=isPlainObject(raw)?raw:{},normalized=__npcKnowledgeBaseNormalizeDirectorSituation(raw);
-  normalized.knowledgeFacts=Array.isArray(source.knowledgeFacts)?source.knowledgeFacts.map(normalizeNpcKnowledgeFact).slice(0,NPC_KNOWLEDGE_MAX_FACTS):[];
-  return normalized
-};
-'''
-          if '__npcKnowledgeBaseNormalizeDirectorSituation' not in text:
-              if anchor not in text:
-                  raise SystemExit('NPC knowledge normalizer anchor missing')
-              text = text.replace(anchor, '\n'+block+anchor)
-          if '__npcKnowledgeBaseNormalizeDirectorSituation' not in text:
-              raise SystemExit('NPC knowledge normalizer patch failed')
-          path.write_text(text, encoding='utf-8')
-          PY
+        run: node trpg-dm-assistant/build/patch-v1511-normalizer.js
 
       - name: Fix v1.5.11 test harness escaping
         shell: bash
