@@ -32,7 +32,7 @@ function __state(){return deepClone(state)}
 function __context(){return deepClone(buildContextSnapshot("继续",{debug:true}))}
 function __diagnostic(){return deepClone(buildDiagnosticPackage({includeSecrets:false}))}
 function __sanitize(){sanitizeRuntimeAfterLoad();return deepClone(state)}
-globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,PLAYER_ACTION_GUARD_VERSION,INTERACTION_AVAILABILITY_VERSION,PROGRESS_SEMANTICS_VERSION,AUTHORED_THREAT_CLOCK_VERSION,NPC_KNOWLEDGE_BOUNDARY_VERSION,ENDING_RESOLUTION_GATE_VERSION,ready:__ready,turn:__turn,neutral:__neutral,reveal:__reveal,move:__move,npc:__npc,flags:__flags,resolveQuestion:__resolveQuestion,prematureEnding:__prematureEnding,proposeEnding:__proposeEnding,confirmEnding:__confirmEnding,setTurns:__setTurns,pace:__pace,gate:__gate,knowledge:__knowledge,state:__state,context:__context,diagnostic:__diagnostic,sanitize:__sanitize};`;
+globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,PLAYER_ACTION_GUARD_VERSION,INTERACTION_AVAILABILITY_VERSION,PROGRESS_SEMANTICS_VERSION,AUTHORED_THREAT_CLOCK_VERSION,NPC_KNOWLEDGE_BOUNDARY_VERSION,ENDING_RESOLUTION_GATE_VERSION,ready:__ready,turn:__turn,neutral:__neutral,reveal:__reveal,move:__move,npc:__npc,flags:__flags,resolveQuestion:__resolveQuestion,prematureEnding:__prematureEnding,proposeEnding:__proposeEnding,confirmEnding:__confirmEnding,setTurns:__setTurns,pace:__pace,gate:__gate,knowledge:__knowledge,state:__state,context:__context,diagnostic:__diagnostic,sanitize:__sanitize,normalize:raw=>deepClone(normalizeAiProtocolShape(raw))};`;
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v1513-full-case-e2e-runtime.js"});
 const api=sandbox.__test;let passed=0;
 function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
@@ -40,6 +40,7 @@ function current(){return api.state()}
 
 api.ready();
 test("版本为 v1.5.13 且 Schema/协议保持稳定",()=>{assert.equal(api.APP_VERSION,"1.5.13");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+test("addRevealedTruth description 可窄归一为 text",()=>{const n=api.normalize({protocolVersion:"1.3",stateChanges:[],campaignChanges:[{operation:"addRevealedTruth",description:"已确认事实"}]});assert.equal(n.campaignChanges[0].text,"已确认事实");assert.equal(n.campaignChanges[0].operation,"addRevealedTruth")});
 test("核心防御模块全部在同一运行态加载",()=>{assert.equal(api.PLAYER_ACTION_GUARD_VERSION,"1.0");assert.equal(api.INTERACTION_AVAILABILITY_VERSION,"1.0");assert.equal(api.PROGRESS_SEMANTICS_VERSION,"1.0");assert.equal(api.AUTHORED_THREAT_CLOCK_VERSION,"1.0");assert.equal(api.NPC_KNOWLEDGE_BOUNDARY_VERSION,"1.0");assert.equal(api.ENDING_RESOLUTION_GATE_VERSION,"1.0")});
 test("完整案件从大厅开始且管家实体化",()=>{const s=current();assert.equal(s.campaign.currentNodeId,"node-hall");assert(s.npcs.some(n=>n.id==="npc-butler"))});
 test("管家初始只拥有作者授权的入口知识",()=>{const n=current().npcs.find(n=>n.id==="npc-butler");assert(n.continuity.knownFactIds.includes("fact-door"));assert(!n.continuity.knownFactIds.includes("fact-experiment"))});
@@ -76,7 +77,7 @@ test("authored 威胁推进产生 THREAT Progress Semantic",()=>{assert(current(
 api.reveal("clue-blueprint","我检查书房里的改建图。");
 test("第二条线索进入 canonical state",()=>{assert(current().clues.some(x=>x.id==="clue-blueprint"))});
 api.npc("我把改建图拿给管家看，问他书房后的入口。",{learnClueIds:["clue-blueprint"],learnFactIds:["fact-door"],claim:"书房后确实存在地下入口。"},"管家看过图纸后承认书房后确实存在地下入口。");
-test("NPC 已授权事实可以在合法来源支持下持续记录",()=>{const n=current().npcs.find(n=>n.id==="npc-butler");assert(n.continuity.knownFactIds.includes("fact-door"));assert(n.continuity.claims.some(x=>x.includes("地下入口"))});
+test("NPC 已授权事实可以在合法来源支持下持续记录",()=>{const n=current().npcs.find(n=>n.id==="npc-butler");assert(n.continuity.knownFactIds.includes("fact-door"));assert(n.continuity.claims.some(x=>x.includes("地下入口")))});
 
 api.move("node-cellar","我沿改建图标出的路线进入地下室。");
 test("第二次合法移动进入案件核心节点",()=>{assert.equal(current().campaign.currentNodeId,"node-cellar");assert(current().npcs.some(n=>n.id==="npc-captive"))});
