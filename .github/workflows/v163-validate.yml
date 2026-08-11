@@ -101,3 +101,5 @@ jobs:
             git commit -m "Finalize TRPG DM Assistant v1.6.3 SAN loss resolution"
             git push origin HEAD:agent/v1.6.3-san-loss-resolution
           fi
+
+# rerun with final ending diagnostics
