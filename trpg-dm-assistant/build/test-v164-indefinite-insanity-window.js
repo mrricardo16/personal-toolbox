@@ -21,6 +21,8 @@ function __transactionSan(delta,requestId="tx-v164"){const parsed={protocolVersi
 function __preparedSan(delta,requestId="prepared-v164"){const prepared=prepareStateChanges([{operation:"adjustSan",amount:Number(delta)}],[],{});commitPreparedChanges(prepared,requestId);return deepClone(state)}
 function __addSecondChapter(){const node={id:"node-v164-chapter-2",title:"第二章节点",background:"",goals:[],clues:[],npcs:[],mandatoryChecks:[],optionalChecks:[],exits:[]};state.scenario.chapters.push({id:"chapter-v164-2",title:"第二章",scenes:[{id:"scene-v164-2",title:"第二章场景",nodes:[node]}]});return node.id}
 function __enter(nodeId){enterNode(nodeId);return deepClone(state)}
+function __setSanAndReactivate(value){state.character.san=Number(value);const scenario=deepClone(state.scenario);activateScenario(scenario);return deepClone(state)}
+function __setTemporary(value){state.character.sanityState.temporary=deepClone(value);return deepClone(state)}
 function __legacy(){state=makeInitialState();state.character=__character(42);state.character.sanityState={version:"1.0",authority:"browser_coc_sanity",baselineSan:60,baselineSource:"creation",indefiniteTrackingReady:false,temporary:null,history:[]};return deepClone(normalizeSanityState(state.character))}
 function __snapshot(){return deepClone(sanityStateSnapshot(state.character))}
 function __context(){return deepClone(sanResolutionContext())}
@@ -29,7 +31,7 @@ function __prompt(){return buildSystemPrompt()}
 function __revision(){return state.revision}
 function __state(){return deepClone(state)}
 async function __continuation(loss,id){state.character.san=Math.max(0,state.character.san-loss);const r=__record(loss,id);state.checkRecords.push(r);await requestContinuation(r,{secret:false});return{calls:globalThis.__v164StructuredCalls,record:deepClone(r),state:deepClone(state)}}
-globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,INDEFINITE_INSANITY_WINDOW_VERSION,INDEFINITE_INSANITY_WINDOW_AUTHORITY,ready:__ready,threshold:__threshold,window:__window,condition:__condition,events:__events,recordLoss:__recordLoss,resetWindow:__resetWindow,applySanRecord:__applySanRecord,normalize:__normalize,transactionSan:__transactionSan,preparedSan:__preparedSan,addSecondChapter:__addSecondChapter,enter:__enter,legacy:__legacy,snapshot:__snapshot,context:__context,diagnostic:__diagnostic,prompt:__prompt,revision:__revision,state:__state,continuation:__continuation};`;
+globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,INDEFINITE_INSANITY_WINDOW_VERSION,INDEFINITE_INSANITY_WINDOW_AUTHORITY,ready:__ready,threshold:__threshold,window:__window,condition:__condition,events:__events,recordLoss:__recordLoss,resetWindow:__resetWindow,applySanRecord:__applySanRecord,normalize:__normalize,transactionSan:__transactionSan,preparedSan:__preparedSan,addSecondChapter:__addSecondChapter,enter:__enter,setSanAndReactivate:__setSanAndReactivate,setTemporary:__setTemporary,legacy:__legacy,snapshot:__snapshot,context:__context,diagnostic:__diagnostic,prompt:__prompt,revision:__revision,state:__state,continuation:__continuation};`;
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v164-indefinite-insanity-window-runtime.js"});
 const api=sandbox.__test;let passed=0;async function test(name,fn){await fn();passed++;console.log(`PASS ${name}`)}
 (async()=>{
@@ -69,9 +71,9 @@ await test("同章节普通节点切换不重置窗口",async()=>{api.recordLoss
 api.ready(60);
 await test("真实跨章节 enterNode 自动按当前 SAN 重置窗口",async()=>{api.recordLoss(4,"before-chapter");const id=api.addSecondChapter();api.enter(id);const w=api.window();assert.equal(w.source,"chapter");assert.equal(w.sourceId,"chapter-v164-2");assert.equal(w.baselineSan,60);assert.equal(w.accumulatedLoss,0)});
 api.ready(60);
-await test("scenario 重新启用使用当时 Current SAN 作为新 Starting SAN",async()=>{api.recordLoss(5,"pre-reset");const scenario=api.state().scenario;api.state().character.san=55;sandbox.activateScenario(sandbox.deepClone(scenario));assert.equal(api.window().baselineSan,55);assert.equal(api.window().thresholdLoss,11);assert.equal(api.window().accumulatedLoss,0)});
+await test("scenario 重新启用使用当时 Current SAN 作为新 Starting SAN",async()=>{api.recordLoss(5,"pre-reset");api.setSanAndReactivate(55);assert.equal(api.window().baselineSan,55);assert.equal(api.window().thresholdLoss,11);assert.equal(api.window().accumulatedLoss,0)});
 api.ready(60);
-await test("temporary insanity 与 indefinite window 可共存",async()=>{const r=api.applySanRecord(12,"both");assert(r.sanResolution);api.state().character.sanityState.temporary={active:true,durationHours:3};api.recordLoss(0,"noop");assert.equal(api.snapshot().temporary.active,true);assert.equal(api.condition().active,true)});
+await test("temporary insanity 与 indefinite window 可共存",async()=>{const r=api.applySanRecord(12,"both");assert(r.sanResolution);api.setTemporary({active:true,durationHours:3});api.recordLoss(0,"noop");assert.equal(api.snapshot().temporary.active,true);assert.equal(api.condition().active,true)});
 api.ready(60);
 await test("窗口事件历史固定最多 80 条",async()=>{for(let i=0;i<85;i++)api.recordLoss(1,`e-${i}`);const events=api.events();assert.equal(events.length,80);assert.equal(events[0].sourceId,"e-5");assert.equal(events.at(-1).sourceId,"e-84")});
 api.ready(60);
