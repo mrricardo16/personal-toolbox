@@ -24,7 +24,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,COC_CONSEQUENC
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v161-mechanical-consequence-runtime.js"});
 const api=sandbox.__test;let passed=0;function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
 api.ready();
-test("v1.6.1 Consequence Contract 模块加载且 Schema/协议稳定",()=>{assert.equal(api.COC_CONSEQUENCE_CONTRACT_VERSION,"1.0");assert.equal(api.COC_CONSEQUENCE_AUTHORITY,"browser_coc_consequence");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+test("v1.6.1 Consequence Contract 模块加载且 Schema/协议稳定",()=>{assert.equal(api.APP_VERSION,"1.6.1");assert.equal(api.COC_CONSEQUENCE_CONTRACT_VERSION,"1.0");assert.equal(api.COC_CONSEQUENCE_AUTHORITY,"browser_coc_consequence");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 let r=api.record({total:70});
 test("AI 自报失败 HP 损失会被剥离",()=>{const g=api.govern(api.parsed([{operation:"adjustHp",amount:-5}]),r);assert.equal(g.parsed.stateChanges.length,0);assert.equal(g.contract.stripped[0].operation,"adjustHp")});
 test("非惩罚性 HP 恢复不在本阶段误杀",()=>{const g=api.govern(api.parsed([{operation:"adjustHp",amount:2}]),r);assert.equal(g.parsed.stateChanges[0].amount,2)});
