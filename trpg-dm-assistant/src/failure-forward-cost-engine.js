@@ -47,6 +47,15 @@ function failureForwardCostContext(){
 }
 function ensureFailureForwardCostRuntime(){state.runtime.failureForwardCostEngine=isPlainObject(state.runtime.failureForwardCostEngine)?state.runtime.failureForwardCostEngine:{};const runtime=state.runtime.failureForwardCostEngine;runtime.version=FAILURE_FORWARD_COST_ENGINE_VERSION;runtime.last=runtime.last||null;runtime.history=Array.isArray(runtime.history)?runtime.history:[];return runtime}
 
+/* Keep the old route proof, but remove its tension side effect. v1.6.2 applies the full cost exactly once. */
+const __failureForwardValidateClueAcquisition=validateClueAcquisition;
+validateClueAcquisition=function(raw,clue,validationContext={}){
+  const routeId=asString(raw?.sourceRouteId,120),route=(clue?.acquisitionRoutes||[]).map(normalizeAcquisitionRoute).find(item=>item.id===routeId);if(!route||route.type!=="failure_forward")return __failureForwardValidateClueAcquisition(raw,clue,validationContext);
+  const had=Object.prototype.hasOwnProperty.call(validationContext,"failureForwardTension"),previous=validationContext.failureForwardTension;let authorization;
+  try{authorization=__failureForwardValidateClueAcquisition(raw,clue,validationContext)}finally{if(had)validationContext.failureForwardTension=previous;else delete validationContext.failureForwardTension}
+  return{...authorization,tensionCost:0,costManagedBy:FAILURE_FORWARD_COST_AUTHORITY}
+};
+
 /* Replace v1.6.1's tension-only compatibility path with the full authored bundle. */
 const __failureForwardLegacyTension=cocConsequenceFailureForwardTension;
 cocConsequenceFailureForwardTension=function(){return 0};
