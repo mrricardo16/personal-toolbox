@@ -108,7 +108,7 @@ async function callChatCompletion(messages,{timeoutMs=state.config.timeoutMs,jso
     let attempt=await requestOnce(Boolean(jsonMode));
     if(!attempt.response.ok){let body=redactSecrets(attempt.text),unsupported=Boolean(jsonMode)&&[400,404,415,422].includes(attempt.response.status)&&/response[_ -]?format|json[_ -]?object|json mode|unsupported/i.test(body);if(unsupported){addLog("api","当前兼容接口不支持 response_format，已安全回退为普通 JSON 提示请求");attempt=await requestOnce(false);body=redactSecrets(attempt.text)}if(!attempt.response.ok){const map={401:"API Key 无效或未授权",403:"API 无权限",404:"API 地址或模型路径错误",429:"请求频率过高或额度不足"};throw new Error(`${map[attempt.response.status]||`API 返回 ${attempt.response.status}`}：${body.slice(0,500)}`)}}
     return parseChatCompletionBody(attempt.text)
-  }catch(error){if(error.name==="AbortError")throw new Error("请求已取消或超时");if(error instanceof TypeError)throw new Error("网络请求失败，可能是 CORS、网络不可达或本地 file:// 来源被服务端拒绝");throw error}
+  }catch(error){const abortReason=controller.signal?.aborted?controller.signal.reason:null;if(abortReason==="timeout")throw protocolError("AI_PROVIDER_TIMEOUT","AI 服务响应超时",{retryable:true});if(abortReason==="user")throw protocolError("AI_REQUEST_CANCELLED","请求已取消");if(error.name==="AbortError")throw new Error("请求已取消或超时");if(error instanceof TypeError)throw new Error("网络请求失败，可能是 CORS、网络不可达或本地 file:// 来源被服务端拒绝");throw error}
   finally{clearTimeout(timeout);if(activeAbortController===controller)activeAbortController=null}
 }
 function normalizeCheck(check){

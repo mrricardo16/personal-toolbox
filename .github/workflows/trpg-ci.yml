@@ -95,6 +95,15 @@ jobs:
       - name: v1.5.13 full-case E2E regression
         run: node trpg-dm-assistant/build/test-v1513-full-case-e2e.js
 
+      - name: v1.6.0 CoC resolution engine regression
+        run: node trpg-dm-assistant/build/test-v160-coc-resolution-engine.js
+
+      - name: v1.6.0 CoC resolution diagnostic boundary regression
+        run: node trpg-dm-assistant/build/test-v160-coc-resolution-diagnostics.js
+
+      - name: v1.6.0 transport abort classification regression
+        run: node trpg-dm-assistant/build/test-v160-transport-abort-classification.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
