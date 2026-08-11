@@ -110,6 +110,9 @@ jobs:
       - name: v1.6.2 failure-forward cost engine regression
         run: node trpg-dm-assistant/build/test-v162-failure-forward-cost-engine.js
 
+      - name: v1.6.3 SAN loss resolution regression
+        run: node trpg-dm-assistant/build/test-v163-san-loss-resolution.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
