@@ -1,0 +1,47 @@
+name: Validate TRPG v1.6.4 Indefinite Insanity Window Dev
+
+on:
+  push:
+    branches:
+      - agent/v1.6.4-indefinite-insanity-window
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    if: github.event.head_commit.message == 'Run v1.6.4 dev gate'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: v1.6.4 focused regression
+        run: node trpg-dm-assistant/build/test-v164-indefinite-insanity-window.js
+      - name: Full deterministic regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in trpg-dm-assistant/build/test-*.js; do
+            case "$(basename "$file")" in
+              test-real-api-*.js|test-v164-indefinite-insanity-window.js) continue ;;
+            esac
+            node "$file"
+          done
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+      - name: Build and verify
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          git diff --check
