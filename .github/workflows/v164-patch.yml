@@ -1,0 +1,26 @@
+name: Apply v1.6.4 Test Harness Patch
+
+on:
+  push:
+    branches:
+      - agent/v1.6.4-indefinite-insanity-window
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Apply v1.6.4 test harness patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node trpg-dm-assistant/build/patch-v164-test-harness.js
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/build/test-v164-indefinite-insanity-window.js
+          git commit -m "Fix v1.6.4 VM test harness" || true
+          git push origin HEAD:agent/v1.6.4-indefinite-insanity-window
