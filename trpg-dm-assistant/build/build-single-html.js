@@ -26,7 +26,8 @@ const moduleFiles = [
   "coc-resolution-engine.js",
   "coc-consequence-contract.js",
   "failure-forward-cost-engine.js",
-  "san-loss-resolution.js"
+  "san-loss-resolution.js",
+  "indefinite-insanity-window.js"
 ];
 
 function readUtf8(filePath) {
