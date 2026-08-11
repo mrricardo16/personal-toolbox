@@ -1,0 +1,72 @@
+name: Validate TRPG v1.6.2 Failure-Forward Cost Engine
+
+on:
+  push:
+    branches:
+      - agent/v1.6.2-failure-forward-cost-engine
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: v1.6.2 Failure-Forward Cost Engine
+        run: node trpg-dm-assistant/build/test-v162-failure-forward-cost-engine.js
+
+      - name: Full permanent deterministic regressions
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/test-security-hardening.js
+          node trpg-dm-assistant/build/test-save-ui.js
+          node trpg-dm-assistant/build/test-coc-outcomes.js
+          node trpg-dm-assistant/build/test-situation-ui.js
+          node trpg-dm-assistant/build/test-ai-json-repair.js
+          node trpg-dm-assistant/build/test-v150-experience.js
+          node trpg-dm-assistant/build/test-v151-investigation-stability.js
+          node trpg-dm-assistant/build/test-v152-long-session.js
+          node trpg-dm-assistant/build/test-v153-clue-routes.js
+          node trpg-dm-assistant/build/test-v154-protocol-routing.js
+          node trpg-dm-assistant/build/test-v154-npc-materialization.js
+          node trpg-dm-assistant/build/test-v154-location-alias.js
+          node trpg-dm-assistant/build/test-v154-empty-response-retry.js
+          node trpg-dm-assistant/build/test-v154-operation-id-alias.js
+          node trpg-dm-assistant/build/test-v155-location-transition-alias.js
+          node trpg-dm-assistant/build/test-v156-player-assertion-guard.js
+          node trpg-dm-assistant/build/test-v157-case-integrity.js
+          node trpg-dm-assistant/build/test-v157-canonical-assertion-state.js
+          node trpg-dm-assistant/build/test-v158-api-response-resilience.js
+          node trpg-dm-assistant/build/test-v159-progress-semantics.js
+          node trpg-dm-assistant/build/test-v1510-authored-threat-clock.js
+          node trpg-dm-assistant/build/test-v1511-npc-knowledge-boundary.js
+          node trpg-dm-assistant/build/test-v1512-ending-resolution-gate.js
+          node trpg-dm-assistant/build/test-v1513-full-case-e2e.js
+          node trpg-dm-assistant/build/test-v160-coc-resolution-engine.js
+          node trpg-dm-assistant/build/test-v160-coc-resolution-diagnostics.js
+          node trpg-dm-assistant/build/test-v160-transport-abort-classification.js
+          node trpg-dm-assistant/build/test-v161-mechanical-consequence-contract.js
+
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+
+      - name: Build and verify
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
