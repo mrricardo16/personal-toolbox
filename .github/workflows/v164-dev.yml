@@ -45,3 +45,5 @@ jobs:
           second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
           test "$first" = "$second"
           git diff --check
+
+# rerun after VM harness fix
