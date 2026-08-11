@@ -26,6 +26,7 @@ const requiredSources = [
   "src/coc-consequence-contract.js",
   "src/failure-forward-cost-engine.js",
   "src/san-loss-resolution.js",
+  "src/indefinite-insanity-window.js",
   "src/scenarios/library.js",
   "src/styles.css",
   "src/shell.template"
@@ -65,6 +66,7 @@ if (!html.includes('const COC_RESOLUTION_ENGINE_VERSION="1.0";')) fail("输出�
 if (!html.includes('const COC_CONSEQUENCE_CONTRACT_VERSION="1.0";')) fail("输出缺少 Mechanical Consequence Contract 模块");
 if (!html.includes('const FAILURE_FORWARD_COST_ENGINE_VERSION="1.0";')) fail("输出缺少 Failure-Forward Cost Engine 模块");
 if (!html.includes('const SAN_LOSS_RESOLUTION_VERSION="1.0";')) fail("输出缺少 SAN Loss Resolution 模块");
+if (!html.includes('const INDEFINITE_INSANITY_WINDOW_VERSION="1.0";')) fail("输出缺少 Indefinite Insanity Window 模块");
 if (/\b(?:eval|Function)\s*\(/.test(html)) fail("输出包含 eval/new Function 风险调用");
 if (html.includes("window.__TRPG_TEST_API__")) fail("生产输出暴露测试接口");
 if (/<script\b[^>]+\bsrc\s*=|<link\b[^>]+\bhref\s*=\s*["']https?:\/\//i.test(html)) fail("输出包含外部运行时资源");
