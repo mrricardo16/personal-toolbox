@@ -1,0 +1,42 @@
+name: Validate TRPG v1.6.2 Documentation
+
+on:
+  push:
+    branches:
+      - agent/v1.6.2-failure-forward-cost-engine
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: github.event.head_commit.message == 'Run v1.6.2 docs gate'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Patch README
+        run: node trpg-dm-assistant/build/patch-v162-docs.js
+      - name: Verify v1.6.2 docs
+        shell: bash
+        run: |
+          grep -q '# TRPG AI 主持助手 v1.6.2' trpg-dm-assistant/README.md
+          grep -q '576 PASS / 0 FAIL' trpg-dm-assistant/README.md
+          grep -q 'Failure-Forward Cost Engine' trpg-dm-assistant/README.md
+          grep -q 'APP_VERSION = "1.6.2"' trpg-dm-assistant/src/scenarios/library.js
+          test -f trpg-dm-assistant/reports/trpg-dm-assistant-v1.6.2-test-report.md
+          git diff --check
+      - name: Commit README
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/README.md
+          if git diff --cached --quiet; then
+            echo "README already synchronized"
+          else
+            git commit -m "Document TRPG DM Assistant v1.6.2"
+            git push origin HEAD:agent/v1.6.2-failure-forward-cost-engine
+          fi
