@@ -66,6 +66,7 @@ async function runAction(text,options={}){const before=api.state().revision,ok=a
   if(api.state().runtime.phase!=="campaign_ended"){
     await runAction("我明确选择完成本案并提交当前 ready 的解决型结局，请返回对应 endingProposal 供确认。",{confirmFinalEnding:true});
   }
+  if(api.state().runtime.phase!=="campaign_ended"){const finalState=api.state(),reliability=api.diag(),aiTail=(finalState.messages||[]).filter(x=>x.role==="ai").slice(-4).map(x=>String(x.content||"").slice(0,1200));console.error("REAL_API_V1513_FINAL_DIAGNOSTICS:"+JSON.stringify({phase:finalState.runtime.phase,pendingEndingProposal:finalState.runtime.pendingEndingProposal||null,endingGate:api.gate(),failedRequest:finalState.runtime.failedRequest?{kind:finalState.runtime.failedRequest.kind,errorCode:finalState.runtime.failedRequest.errorCode,recoverable:finalState.runtime.failedRequest.recoverable}:null,reliability,stats,aiTail}))}
   assert.equal(api.state().runtime.phase,"campaign_ended");assert.equal(api.state().campaign.ending?.id,"ending-solved");
   assert.equal(stats.hardFailures,0);assert.equal(stats.technicalLeaks,0);assert(stats.actions>=7);assert(stats.endingConfirmed>=1);
   const reliability=api.diag();assert.equal(Number(reliability.hardFailures||0),0);
