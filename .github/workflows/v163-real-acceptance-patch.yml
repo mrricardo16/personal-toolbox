@@ -26,3 +26,5 @@ jobs:
           git add trpg-dm-assistant/build/test-real-api-v1513.js
           git commit -m "Accept bounded provider-deferred ending in real E2E"
           git push origin HEAD:agent/v1.6.3-san-loss-resolution
+
+# one-shot
