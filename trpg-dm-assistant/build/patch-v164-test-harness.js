@@ -1,0 +1,11 @@
+"use strict";
+const fs=require("fs"),path=require("path");
+const file=path.resolve(__dirname,"test-v164-indefinite-insanity-window.js");
+let s=fs.readFileSync(file,"utf8");
+s=s.replace('function __enter(nodeId){enterNode(nodeId);return deepClone(state)}','function __enter(nodeId){enterNode(nodeId);return deepClone(state)}\nfunction __setSanAndReactivate(value){state.character.san=Number(value);const scenario=deepClone(state.scenario);activateScenario(scenario);return deepClone(state)}\nfunction __setTemporary(value){state.character.sanityState.temporary=deepClone(value);return deepClone(state)}');
+s=s.replace('addSecondChapter:__addSecondChapter,enter:__enter,legacy:__legacy','addSecondChapter:__addSecondChapter,enter:__enter,setSanAndReactivate:__setSanAndReactivate,setTemporary:__setTemporary,legacy:__legacy');
+s=s.replace('api.recordLoss(5,"pre-reset");const scenario=api.state().scenario;api.state().character.san=55;sandbox.activateScenario(sandbox.deepClone(scenario));','api.recordLoss(5,"pre-reset");api.setSanAndReactivate(55);');
+s=s.replace('api.state().character.sanityState.temporary={active:true,durationHours:3};api.recordLoss(0,"noop");','api.setTemporary({active:true,durationHours:3});api.recordLoss(0,"noop");');
+if(!s.includes('setSanAndReactivate:__setSanAndReactivate'))throw new Error("v164 harness patch failed");
+fs.writeFileSync(file,s,"utf8");
+console.log("V164_TEST_HARNESS_PATCH:PASS");
