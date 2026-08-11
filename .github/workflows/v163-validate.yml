@@ -102,4 +102,4 @@ jobs:
             git push origin HEAD:agent/v1.6.3-san-loss-resolution
           fi
 
-# rerun with final ending diagnostics
+# provider-deferred ending acceptance aligned with API resilience
