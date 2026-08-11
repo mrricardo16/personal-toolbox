@@ -44,3 +44,5 @@ jobs:
             git commit -m "Document TRPG DM Assistant v1.6.1"
             git push origin HEAD:agent/v1.6.1-mechanical-consequence-contract
           fi
+
+# one-shot documentation gate
