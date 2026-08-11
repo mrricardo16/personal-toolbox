@@ -39,7 +39,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,FAILURE_FORWAR
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v162-failure-forward-runtime.js"});
 const api=sandbox.__test;let passed=0;function test(name,fn){fn();passed++;console.log(`PASS ${name}`)}
 api.ready();
-test("v1.6.2 Failure-Forward Cost Engine 加载且 Schema/协议稳定",()=>{assert.equal(api.FAILURE_FORWARD_COST_ENGINE_VERSION,"1.0");assert.equal(api.FAILURE_FORWARD_COST_AUTHORITY,"browser_authored_failure_forward");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+test("v1.6.2 Failure-Forward Cost Engine 加载且 Schema/协议稳定",()=>{assert.equal(api.APP_VERSION,"1.6.2");assert.equal(api.FAILURE_FORWARD_COST_ENGINE_VERSION,"1.0");assert.equal(api.FAILURE_FORWARD_COST_AUTHORITY,"browser_authored_failure_forward");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 test("旧 failure-forward 无 cost 时保持 legacy tension=1",()=>{const c=api.normalize(null);assert.equal(c.tension,1);assert.equal(c.hp,0);assert.equal(c.san,0)});
 test("复合成本未声明 tension 时仍默认 legacy tension=1",()=>{const c=api.normalize({hp:2});assert.equal(c.tension,1);assert.equal(c.hp,2)});
 test("显式 tension=0 可声明纯非张力成本",()=>{const c=api.normalize({tension:0,hp:2});assert.equal(c.tension,0);assert.equal(c.hp,2)});
