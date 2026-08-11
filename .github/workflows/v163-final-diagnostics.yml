@@ -1,0 +1,35 @@
+name: Persist v1.6.3 Final Ending Diagnostics
+
+on:
+  push:
+    branches:
+      - agent/v1.6.3-san-loss-resolution
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Persist v1.6.3 final ending diagnostics'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add final-state diagnostics
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const file='trpg-dm-assistant/build/test-real-api-v1513.js';
+          let s=fs.readFileSync(file,'utf8');
+          const target='  assert.equal(api.state().runtime.phase,"campaign_ended");assert.equal(api.state().campaign.ending?.id,"ending-solved");';
+          const replacement='  if(api.state().runtime.phase!=="campaign_ended"){const finalState=api.state(),reliability=api.diag(),aiTail=(finalState.messages||[]).filter(x=>x.role==="ai").slice(-4).map(x=>String(x.content||"").slice(0,1200));console.error("REAL_API_V1513_FINAL_DIAGNOSTICS:"+JSON.stringify({phase:finalState.runtime.phase,pendingEndingProposal:finalState.runtime.pendingEndingProposal||null,endingGate:api.gate(),failedRequest:finalState.runtime.failedRequest?{kind:finalState.runtime.failedRequest.kind,errorCode:finalState.runtime.failedRequest.errorCode,recoverable:finalState.runtime.failedRequest.recoverable}:null,reliability,stats,aiTail}))}\n  assert.equal(api.state().runtime.phase,"campaign_ended");assert.equal(api.state().campaign.ending?.id,"ending-solved");';
+          if(!s.includes(target))throw new Error('final assertion target not found');
+          s=s.replace(target,replacement);
+          fs.writeFileSync(file,s,'utf8');
+          NODE
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/build/test-real-api-v1513.js
+          git commit -m "Add real API final ending diagnostics"
+          git push origin HEAD:agent/v1.6.3-san-loss-resolution
