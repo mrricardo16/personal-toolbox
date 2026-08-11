@@ -32,7 +32,7 @@ function cocConsequenceTrustedEffect(raw,record){
   const effect=deepClone(raw||{});if(effect.operation==="revealClue"&&!effect.sourceCheckRecordId)effect.sourceCheckRecordId=record.id;return effect
 }
 function cocConsequenceAuthoredEffects(record){
-  if(!record||record.skipped)return[];const definition=cocConsequenceAuthoredCheck(record);if(!definition)return[];
+  if(!record||record.skipped||record.visibility==="secret")return[];const definition=cocConsequenceAuthoredCheck(record);if(!definition)return[];
   const source=record.result===true?definition.successStateChanges:definition.failureStateChanges;
   return(Array.isArray(source)?source:[]).filter(isPlainObject).map(effect=>cocConsequenceTrustedEffect(effect,record))
 }
@@ -97,8 +97,7 @@ function ensureCocConsequenceRuntime(){
 
 /* Tell continuation AI what it may narrate before it replies. */
 const __cocConsequenceCheckOutcomeGuidance=checkOutcomeGuidance;
-checkOutcomeGuidance=function(record){const guidance=__cocConsequenceCheckOutcomeGuidance(record);if(record?.system!=="coc7")return guidance;return{...guidance,consequencePolicy:cocConsequenceContext(record),prohibited:[...(guidance.prohibited||[]),"do_not_invent_punitive_mechanical_consequences","do_not_apply_san_loss_twice"]}}
-;
+checkOutcomeGuidance=function(record){const guidance=__cocConsequenceCheckOutcomeGuidance(record);if(record?.system!=="coc7")return guidance;return{...guidance,consequencePolicy:cocConsequenceContext(record),prohibited:[...(guidance.prohibited||[]),"do_not_invent_punitive_mechanical_consequences","do_not_apply_san_loss_twice"]}};
 
 /* Final consequence authorization happens immediately before canonical transaction preparation. */
 const __cocConsequencePrepareAiTransaction=prepareAiTransaction;
