@@ -33,7 +33,7 @@ vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v163-san-los
 const api=sandbox.__test;let passed=0;async function test(name,fn){await fn();passed++;console.log(`PASS ${name}`)}
 (async()=>{
 api.ready();
-await test("v1.6.3 SAN Loss Resolution 模块加载且 Schema/协议稳定",async()=>{assert.equal(api.SAN_LOSS_RESOLUTION_VERSION,"1.0");assert.equal(api.SAN_LOSS_RESOLUTION_AUTHORITY,"browser_coc_sanity");assert.equal(api.SAN_TEMPORARY_INSANITY_THRESHOLD,5);assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+await test("v1.6.3 SAN Loss Resolution 模块加载且 Schema/协议稳定",async()=>{assert.equal(api.APP_VERSION,"1.6.3");assert.equal(api.SAN_LOSS_RESOLUTION_VERSION,"1.0");assert.equal(api.SAN_LOSS_RESOLUTION_AUTHORITY,"browser_coc_sanity");assert.equal(api.SAN_TEMPORARY_INSANITY_THRESHOLD,5);assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 await test("0 SAN 损失不要求即时反应也不触发 INT",async()=>{const out=api.build(api.record(0),[1]);assert.equal(out.resolution.momentaryReactionRequired,false);assert.equal(out.resolution.majorShock,false);assert.equal(out.resolution.intCheck,null);assert.equal(out.calls,0)});
 await test("1-4 SAN 损失要求即时反应但不触发 INT",async()=>{for(const loss of [1,2,3,4]){const out=api.build(api.record(loss),[1]);assert.equal(out.resolution.momentaryReactionRequired,true);assert.equal(out.resolution.majorShock,false);assert.equal(out.resolution.intCheck,null);assert.equal(out.calls,0)}});
 await test("恰好损失 5 SAN 开始触发 INT 冲击检定",async()=>{const out=api.build(api.record(5),[71]);assert.equal(out.resolution.majorShock,true);assert.equal(out.resolution.intCheck.roll,71);assert.equal(out.resolution.intCheck.target,70)});
