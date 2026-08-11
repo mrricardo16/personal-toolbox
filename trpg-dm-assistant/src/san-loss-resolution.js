@@ -27,11 +27,12 @@ function sanityStateDefault(character=state.character){
   const current=Math.max(0,Number(character?.san||0));
   return{version:SAN_LOSS_RESOLUTION_VERSION,authority:SAN_LOSS_RESOLUTION_AUTHORITY,baselineSan:current,baselineSource:"legacy_current",indefiniteTrackingReady:false,temporary:null,history:[]}
 }
+function sanityStateSnapshot(character=state.character){
+  if(!character||character.system!=="coc7")return null;const existing=isPlainObject(character.sanityState)?character.sanityState:{},base=sanityStateDefault(character),candidate=Number(existing.baselineSan),baseline=Number.isFinite(candidate)?clamp(Math.floor(candidate),0,99):base.baselineSan;
+  return{version:SAN_LOSS_RESOLUTION_VERSION,authority:SAN_LOSS_RESOLUTION_AUTHORITY,baselineSan:baseline,baselineSource:asString(existing.baselineSource,40)||base.baselineSource,indefiniteTrackingReady:existing.indefiniteTrackingReady===true,temporary:isPlainObject(existing.temporary)?deepClone(existing.temporary):null,history:Array.isArray(existing.history)?existing.history.slice(-SAN_LOSS_RESOLUTION_HISTORY_LIMIT).map(deepClone):[]}
+}
 function normalizeSanityState(character=state.character,{newCharacter=false}={}){
-  if(!character||character.system!=="coc7")return null;const existing=isPlainObject(character.sanityState)?character.sanityState:{},current=Math.max(0,Number(character.san||0)),baselineCandidate=Number(existing.baselineSan),baseline=Number.isFinite(baselineCandidate)?clamp(Math.floor(baselineCandidate),0,99):current,source=asString(existing.baselineSource,40)||(newCharacter?"creation":"legacy_current");
-  character.sanityState={version:SAN_LOSS_RESOLUTION_VERSION,authority:SAN_LOSS_RESOLUTION_AUTHORITY,baselineSan:baseline,baselineSource:source,indefiniteTrackingReady:existing.indefiniteTrackingReady===true,temporary:isPlainObject(existing.temporary)?deepClone(existing.temporary):null,history:Array.isArray(existing.history)?existing.history.slice(-SAN_LOSS_RESOLUTION_HISTORY_LIMIT).map(deepClone):[]};
-  if(newCharacter){character.sanityState.baselineSan=current;character.sanityState.baselineSource="creation";character.sanityState.indefiniteTrackingReady=false}
-  return character.sanityState
+  if(!character||character.system!=="coc7")return null;character.sanityState=sanityStateSnapshot(character);if(newCharacter){const current=Math.max(0,Number(character.san||0));character.sanityState.baselineSan=current;character.sanityState.baselineSource="creation";character.sanityState.indefiniteTrackingReady=false}return character.sanityState
 }
 function sanBoutDefinition(roll){const value=clamp(Math.floor(Number(roll)||1),1,10);return{roll:value,...SAN_BOUT_TABLE[value]}}
 function sanResolutionRollD10(roller=randomInt){return clamp(Math.floor(Number(roller(1,10))||1),1,10)}
@@ -46,7 +47,7 @@ function ensureSanLossResolution(record,{roller=randomInt}={}){
   const sanity=normalizeSanityState(state.character),resolution=buildSanLossResolution(record,{roller});record.sanResolution=deepClone(resolution);if(resolution.temporaryInsanity){sanity.temporary={...deepClone(resolution.temporaryInsanity),sourceRecordId:record.id,startedAt:nowIso()}}sanity.history.push(deepClone(resolution));if(sanity.history.length>SAN_LOSS_RESOLUTION_HISTORY_LIMIT)sanity.history.splice(0,sanity.history.length-SAN_LOSS_RESOLUTION_HISTORY_LIMIT);return record.sanResolution
 }
 function sanResolutionContext(record=null){
-  const sanity=state.character?.system==="coc7"?normalizeSanityState(state.character):null,resolution=record?.system==="coc7"&&record?.type==="san"?record.sanResolution||null:null;
+  const sanity=state.character?.system==="coc7"?sanityStateSnapshot(state.character):null,resolution=record?.system==="coc7"&&record?.type==="san"?record.sanResolution||null:null;
   return{version:SAN_LOSS_RESOLUTION_VERSION,authority:SAN_LOSS_RESOLUTION_AUTHORITY,temporaryInsanityThreshold:SAN_TEMPORARY_INSANITY_THRESHOLD,boutTable:deepClone(SAN_BOUT_TABLE),current:resolution?deepClone(resolution):null,temporary:sanity?.temporary?deepClone(sanity.temporary):null,indefiniteInsanity:{implemented:false,reason:"requires authoritative starting-SAN baseline and cumulative-loss window"},policy:"browser_resolves_single_san_shock_ai_narrates_selected_result"}
 }
 
@@ -74,5 +75,5 @@ buildUserPrompt=function(payload){return `${__sanBuildUserPrompt(payload)}\nSAN 
 
 if(typeof buildDiagnosticPackage==="function"){
   const __sanBuildDiagnosticPackage=buildDiagnosticPackage;
-  buildDiagnosticPackage=function(options={}){const pack=__sanBuildDiagnosticPackage(options),sanity=state.character?.system==="coc7"?normalizeSanityState(state.character):null;pack.sanLossResolution={...sanResolutionContext(),state:sanity?deepClone(sanity):null};return pack}
+  buildDiagnosticPackage=function(options={}){const pack=__sanBuildDiagnosticPackage(options),sanity=state.character?.system==="coc7"?sanityStateSnapshot(state.character):null;pack.sanLossResolution={...sanResolutionContext(),state:sanity?deepClone(sanity):null};return pack}
 }
