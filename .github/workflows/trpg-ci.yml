@@ -107,6 +107,9 @@ jobs:
       - name: v1.6.1 mechanical consequence contract regression
         run: node trpg-dm-assistant/build/test-v161-mechanical-consequence-contract.js
 
+      - name: v1.6.2 failure-forward cost engine regression
+        run: node trpg-dm-assistant/build/test-v162-failure-forward-cost-engine.js
+
       - name: JavaScript syntax
         shell: bash
         run: |

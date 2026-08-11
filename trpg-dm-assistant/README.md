@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.6.1
+# TRPG AI 主持助手 v1.6.2
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.6.1。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.6.2。
 
 ## 快速开始
 
@@ -13,7 +13,21 @@
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
 
+## v1.6.2 更新内容
+
+- 新增 Failure-Forward Cost Engine 1.0：失败前进的机械代价改为‘剧本作者声明、浏览器执行’，AI 只可选择/叙述合法 route，不能增减、替换或另造代价。
+- `failure_forward` route.cost 现支持 tension / hp / san / progress / resources；未声明 tension 时保持旧兼容默认 1，显式 tension:0 可用于纯非张力代价，但全零成本会被 Case Integrity 阻断。
+- 浏览器会去重同一 clue+route、先聚合作者成本，再按当前 canonical HP/SAN/调查进度/资源库存/张力空间截断；failure-forward HP 成本保持非致死，最低保留 1 HP。
+- 大失败只在 authored tension > 0 时保持至少 2 点张力；显式 tension:0 不会因为 fumble 被强行改回张力成本。
+- v1.6.2 完整接管旧 failure-forward 张力结算：既有 validateClueAcquisition 仍负责证明 route 合法，但旧 tension side effect 被中和，完整成本包只由 Cost Engine 结算一次，避免双扣并允许 tension:0。
+- 既有 revealClue 调查进度奖励继续保留；例如初始 progress 7、失败线索 +3、作者 progress cost -4，实际净值为 6，而不是删除旧奖励。
+- v1.6.1 Mechanical Consequence Contract 继续先剥离 AI 自报的 HP/SAN/resource/tension 等惩罚，再由 v1.6.2 注入作者定义成本，因此模型无法把合法失败前进代价放大。
+- 新增 41 条 v1.6.2 deterministic 回归；连同既有 535 条，正式 release gate 为 576 PASS / 0 FAIL，并通过 JavaScript syntax、deterministic double build 和 single-HTML verifier。
+- 真实 DeepSeek Run 31453752316：8 actions / 8 structured requests / 10 API attempts / 2 retries / 3 provider empty / 1 retry exhaustion / 1 graceful fallback / 0 technical leaks，最终正常 ending-solved。该样本未触发 failure-forward，因此机械正确性以 41 条 deterministic 专项为证。
+- APP_VERSION 为 v1.6.2，Save Schema 仍为 8，AI protocol 仍为 1.3，正常成功回合不增加 API 请求；正式单 HTML 为 538000 bytes。
+
 ## v1.6.1 更新内容
+
 
 - 新增 Mechanical Consequence Contract 1.0：在 v1.6.0 已由浏览器决定骰点和成功等级的基础上，继续把‘检定后允许落地什么惩罚性机械后果’收回浏览器权威层。
 - CoC 检定续写中，AI 不能凭一次失败自行扣除 HP/SAN/资源、删除或减少物品、调整张力、新增威胁、推进威胁时钟或降低调查进度；未经浏览器证据授权的惩罚性操作会在 canonical transaction 前被剥离。
