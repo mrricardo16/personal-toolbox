@@ -46,4 +46,4 @@ jobs:
           test "$first" = "$second"
           git diff --check
 
-# rerun after VM harness fix
+# rerun after diagnostic purity assertion fix
