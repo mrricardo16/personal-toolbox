@@ -23,7 +23,8 @@ const moduleFiles = [
   "authored-threat-clock.js",
   "npc-knowledge-boundary.js",
   "ending-resolution-gate.js",
-  "coc-resolution-engine.js"
+  "coc-resolution-engine.js",
+  "coc-consequence-contract.js"
 ];
 
 function readUtf8(filePath) {
