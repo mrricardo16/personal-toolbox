@@ -73,3 +73,5 @@ jobs:
                   trpg-dm-assistant/outputs/trpg-dm-assistant.html
           git commit -m "Finalize TRPG DM Assistant v1.6.4 indefinite insanity tracking"
           git push origin HEAD:agent/v1.6.4-indefinite-insanity-tracking
+
+# release trigger
