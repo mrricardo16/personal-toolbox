@@ -53,3 +53,5 @@ jobs:
           git add trpg-dm-assistant/README.md
           git commit -m "Document TRPG DM Assistant v1.6.5 HP damage state"
           git push origin HEAD:agent/v1.6.5-hp-damage-state
+
+# trigger
