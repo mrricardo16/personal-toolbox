@@ -25,7 +25,7 @@ jobs:
           p=Path('trpg-dm-assistant/src/scenarios/library.js');s=p.read_text();s=s.replace('const APP_VERSION = "1.6.3";','const APP_VERSION = "1.6.4";',1);p.write_text(s)
           p=Path('trpg-dm-assistant/build/test-v163-san-loss-resolution.js');s=p.read_text();s=s.replace('assert.equal(api.APP_VERSION,"1.6.3")','assert.equal(api.APP_VERSION,"1.6.4")',1);p.write_text(s)
           p=Path('trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js');s=p.read_text();s=s.replace('assert.equal(api.APP_VERSION,"1.6.3")','assert.equal(api.APP_VERSION,"1.6.4")',1);p.write_text(s)
-          p=Path('trpg-dm-assistant/build/test-real-api-v1513.js');s=p.read_text();s=s.replace('"failure-forward-cost-engine.js","san-loss-resolution.js"]','"failure-forward-cost-engine.js","san-loss-resolution.js","san-loss-window.js"]',1);p.write_text(s)
+          p=Path('trpg-dm-assistant/build/test-real-api-v1513.js');s=p.read_text();s=s.replace('"failure-forward-cost-engine.js","san-loss-resolution.js"]','"failure-forward-cost-engine.js","san-loss-resolution.js","san-loss-window.js"]',1);s=s.replace('assert.equal(api.APP_VERSION,"1.6.3")','assert.equal(api.APP_VERSION,"1.6.4")',1);p.write_text(s)
           PY
       - name: v1.6.4 focused deterministic
         run: node trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js
@@ -74,4 +74,4 @@ jobs:
           git commit -m "Finalize TRPG DM Assistant v1.6.4 indefinite insanity tracking"
           git push origin HEAD:agent/v1.6.4-indefinite-insanity-tracking
 
-# release trigger
+# release retrigger with real harness version sync
