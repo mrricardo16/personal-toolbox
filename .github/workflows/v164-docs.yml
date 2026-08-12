@@ -41,3 +41,5 @@ jobs:
           git add trpg-dm-assistant/README.md
           git commit -m "Document TRPG DM Assistant v1.6.4"
           git push origin HEAD:agent/v1.6.4-indefinite-insanity-tracking
+
+# docs trigger
