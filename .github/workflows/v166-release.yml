@@ -1,0 +1,85 @@
+name: Validate TRPG v1.6.6 Health Stabilization Release
+
+on:
+  push:
+    branches:
+      - agent/v1.6.6-health-stabilization
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.head_commit.message == 'Run v1.6.6 release gate'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prepare v1.6.6 release identity
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('trpg-dm-assistant/src/scenarios/library.js')
+          s=p.read_text().replace('const APP_VERSION = "1.6.5";','const APP_VERSION = "1.6.6";',1)
+          p.write_text(s)
+          for name in ['test-v163-san-loss-resolution.js','test-v164-indefinite-insanity-tracking.js','test-v165-hp-damage-state.js','test-v166-health-stabilization.js']:
+              p=Path('trpg-dm-assistant/build')/name
+              s=p.read_text().replace('assert.equal(api.APP_VERSION,"1.6.5")','assert.equal(api.APP_VERSION,"1.6.6")',1)
+              p.write_text(s)
+          p=Path('trpg-dm-assistant/build/test-real-api-v1513.js')
+          s=p.read_text()
+          s=s.replace('"hp-damage-state.js"]','"hp-damage-state.js","health-stabilization.js"]',1)
+          s=s.replace('SAN_LOSS_RESOLUTION_VERSION,HP_DAMAGE_STATE_VERSION,ready:', 'SAN_LOSS_RESOLUTION_VERSION,HP_DAMAGE_STATE_VERSION,HEALTH_STABILIZATION_VERSION,ready:',1)
+          s=s.replace('assert.equal(api.APP_VERSION,"1.6.5")','assert.equal(api.APP_VERSION,"1.6.6")',1)
+          s=s.replace('assert.equal(api.HP_DAMAGE_STATE_VERSION,"1.0");','assert.equal(api.HP_DAMAGE_STATE_VERSION,"1.0");assert.equal(api.HEALTH_STABILIZATION_VERSION,"1.0");',1)
+          p.write_text(s)
+          PY
+      - name: v1.6.6 focused deterministic
+        run: node trpg-dm-assistant/build/test-v166-health-stabilization.js
+      - name: Full deterministic regression suite
+        shell: bash
+        run: |
+          for f in trpg-dm-assistant/build/test-*.js; do
+            case "$f" in
+              *test-real-api*) continue ;;
+              *test-v166-health-stabilization.js) continue ;;
+            esac
+            node "$f"
+          done
+      - name: JavaScript syntax and deterministic build
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
+      - name: Real DeepSeek current-runtime E2E
+        env:
+          TRPG_TEST_API_KEY: ${{ secrets.DS_KEY }}
+          TRPG_TEST_API_URL: https://api.deepseek.com/v1/chat/completions
+          TRPG_TEST_MODEL: deepseek-v4-flash
+        run: |
+          test -n "$TRPG_TEST_API_KEY"
+          node trpg-dm-assistant/build/test-real-api-v1513.js
+      - name: Persist validated v1.6.6 release files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/src/scenarios/library.js \
+                  trpg-dm-assistant/build/test-v163-san-loss-resolution.js \
+                  trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js \
+                  trpg-dm-assistant/build/test-v165-hp-damage-state.js \
+                  trpg-dm-assistant/build/test-v166-health-stabilization.js \
+                  trpg-dm-assistant/build/test-real-api-v1513.js \
+                  trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git commit -m "Finalize TRPG DM Assistant v1.6.6 health stabilization"
+          git push origin HEAD:agent/v1.6.6-health-stabilization
