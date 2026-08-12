@@ -17,6 +17,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Apply narrow source and harness cleanup
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('trpg-dm-assistant/src/health-stabilization.js')
+          s=p.read_text()
+          old='base.dying.nextRoundOrdinal=Math.max(1,Math.floor(Number(rawDying.nextRoundOrdinal)||base.dying.checks.length+1)}'
+          new='base.dying.nextRoundOrdinal=Math.max(1,Math.floor(Number(rawDying.nextRoundOrdinal)||base.dying.checks.length+1))}'
+          if old in s: s=s.replace(old,new,1)
+          s=s.replace('Number.isFinite(Number(raw.firstAidTarget))?clamp(Math.floor(Number(raw.firstAidTarget)),1,100):null','raw.firstAidTarget!=null&&Number.isFinite(Number(raw.firstAidTarget))?clamp(Math.floor(Number(raw.firstAidTarget)),1,100):null')
+          s=s.replace('Number.isFinite(Number(raw.firstAidRoll))?clamp(Math.floor(Number(raw.firstAidRoll)),1,100):null','raw.firstAidRoll!=null&&Number.isFinite(Number(raw.firstAidRoll))?clamp(Math.floor(Number(raw.firstAidRoll)),1,100):null')
+          p.write_text(s)
+          p=Path('trpg-dm-assistant/build/test-v166-health-stabilization.js')
+          s=p.read_text().replace('const damage=sandbox.__test?null:null;','')
+          p.write_text(s)
+          PY
       - name: v1.6.6 syntax
         run: |
           node --check trpg-dm-assistant/src/health-stabilization.js
@@ -44,11 +61,13 @@ jobs:
           test "$first" = "$second"
           test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
           git diff --check
-      - name: Persist green development output
+      - name: Persist green development state
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git add trpg-dm-assistant/src/health-stabilization.js \
+                  trpg-dm-assistant/build/test-v166-health-stabilization.js \
+                  trpg-dm-assistant/outputs/trpg-dm-assistant.html
           git commit -m "Validate v1.6.6 health stabilization development" || true
           git push origin HEAD:agent/v1.6.6-health-stabilization
