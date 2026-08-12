@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Prepare v1.6.6 release identity
+      - name: Prepare v1.6.6 release identity and stabilization invalidation fix
         shell: bash
         run: |
           python3 - <<'PY'
@@ -35,6 +35,22 @@ jobs:
           s=s.replace('SAN_LOSS_RESOLUTION_VERSION,HP_DAMAGE_STATE_VERSION,ready:', 'SAN_LOSS_RESOLUTION_VERSION,HP_DAMAGE_STATE_VERSION,HEALTH_STABILIZATION_VERSION,ready:',1)
           s=s.replace('assert.equal(api.APP_VERSION,"1.6.5")','assert.equal(api.APP_VERSION,"1.6.6")',1)
           s=s.replace('assert.equal(api.HP_DAMAGE_STATE_VERSION,"1.0");','assert.equal(api.HP_DAMAGE_STATE_VERSION,"1.0");assert.equal(api.HEALTH_STABILIZATION_VERSION,"1.0");',1)
+          p.write_text(s)
+
+          p=Path('trpg-dm-assistant/src/health-stabilization.js')
+          s=p.read_text()
+          marker='function healthStabilizationResolveDyingRound({roller=()=>randomInt(1,100),sourceId=null}={}){'
+          injection='''/* A prior stabilization cannot remain active if a later trusted damage event creates\n * a fresh dying/dead state. This wrapper invalidates only that stale stabilization. */\nconst __healthStabilizationHpDamageApplyEvent=hpDamageApplyEvent;\nhpDamageApplyEvent=function(raw,options={}){\n  const result=__healthStabilizationHpDamageApplyEvent(raw,options),health=state.character?.healthState;\n  if(result?.tracked&&!result.deduped&&(health?.dying?.active||health?.dead?.active)&&health?.stabilized?.active){health.stabilized=null;if(result.state)result.state.stabilized=null}\n  return result\n};\n'''
+          if '__healthStabilizationHpDamageApplyEvent' not in s:
+              s=s.replace(marker,injection+marker,1)
+          p.write_text(s)
+
+          p=Path('trpg-dm-assistant/build/test-v166-health-stabilization.js')
+          s=p.read_text()
+          marker='await test("dying 急救失败不稳定也不恢复 HP",async()=>{api.makeDying();const out=api.firstAid(30,80,true);assert.equal(out.record.success,false);assert.equal(out.state.dying.active,true);assert.equal(out.state.stabilized,null);assert.equal(out.state.hp,0)});'
+          addition='''await test("稳定后再次受伤进入 dying 会清除旧 stabilized",async()=>{api.makeDying();api.firstAid(70,20,true);vm.runInContext('const before=state.character.hp;state.character.hp=0;hpDamageApplyEvent({eventKey:"new-dying",source:"test",sourceId:"new-dying",index:0,damage:1,hpBefore:before,hpAfter:0,maxHp:state.character.maxHp},{roller:()=>1})',sandbox);const s=api.snapshot();assert.equal(s.dying.active,true);assert.equal(s.stabilized,null)});\n'''
+          if '稳定后再次受伤进入 dying 会清除旧 stabilized' not in s:
+              s=s.replace(marker,addition+marker,1)
           p.write_text(s)
           PY
       - name: v1.6.6 focused deterministic
@@ -74,12 +90,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trpg-dm-assistant/src/scenarios/library.js \
+          git add trpg-dm-assistant/src/health-stabilization.js \
+                  trpg-dm-assistant/src/scenarios/library.js \
                   trpg-dm-assistant/build/test-v163-san-loss-resolution.js \
                   trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js \
                   trpg-dm-assistant/build/test-v165-hp-damage-state.js \
                   trpg-dm-assistant/build/test-v166-health-stabilization.js \
                   trpg-dm-assistant/build/test-real-api-v1513.js \
                   trpg-dm-assistant/outputs/trpg-dm-assistant.html
-          git commit -m "Finalize TRPG DM Assistant v1.6.6 health stabilization"
+          git commit -m "Finalize TRPG DM Assistant v1.6.6 health stabilization" || true
           git push origin HEAD:agent/v1.6.6-health-stabilization
