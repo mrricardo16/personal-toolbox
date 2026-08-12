@@ -15,7 +15,8 @@ const HP_DAMAGE_EVENT_LIMIT=80;
 function hpMajorWoundThreshold(maxHp){return Math.max(1,Math.ceil(Math.max(1,Number(maxHp)||1)/2))}
 function normalizeHpCondition(raw,kind){
   if(!isPlainObject(raw)||raw.active!==true)return null;
-  return{active:true,kind,authority:HP_DAMAGE_STATE_AUTHORITY,sourceEventKey:asString(raw.sourceEventKey,180)||null,at:asString(raw.at,80)||nowIso(),reason:asString(raw.reason,160)||kind,...(kind==="dying"?{stabilized:raw.stabilized===true,roundChecksManaged:false}:{} )}
+  return{active:true,kind,authority:HP_DAMAGE_STATE_AUTHORITY,sourceEventKey:asString(raw.sourceEventKey,180)||null,at:asString(raw.at,80)||nowIso(),reason:asString(raw.reason,160)||kind,...(kind==="dying"?{stabilized:raw.stabilized===true,roundChecksManaged:false}:{})}
+}
 function hpDamageStateSnapshot(character=state.character){
   if(character?.system!=="coc7")return null;const raw=isPlainObject(character.healthState)?character.healthState:{};
   const history=Array.isArray(raw.history)?raw.history.slice(-HP_DAMAGE_EVENT_LIMIT).map(deepClone):[];
