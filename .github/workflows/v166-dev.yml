@@ -1,0 +1,54 @@
+name: Validate TRPG v1.6.6 Health Stabilization Development
+
+on:
+  push:
+    branches:
+      - agent/v1.6.6-health-stabilization
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.event.head_commit.message == 'Run v1.6.6 development gate'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: v1.6.6 syntax
+        run: |
+          node --check trpg-dm-assistant/src/health-stabilization.js
+          node --check trpg-dm-assistant/build/test-v166-health-stabilization.js
+      - name: v1.6.6 focused deterministic
+        run: node trpg-dm-assistant/build/test-v166-health-stabilization.js
+      - name: Existing deterministic regressions
+        shell: bash
+        run: |
+          for f in trpg-dm-assistant/build/test-*.js; do
+            case "$f" in
+              *test-real-api*) continue ;;
+              *test-v166-health-stabilization.js) continue ;;
+            esac
+            node "$f"
+          done
+      - name: Deterministic single HTML build
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
+      - name: Persist green development output
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git commit -m "Validate v1.6.6 health stabilization development" || true
+          git push origin HEAD:agent/v1.6.6-health-stabilization
