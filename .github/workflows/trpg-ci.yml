@@ -116,6 +116,9 @@ jobs:
       - name: v1.6.4 indefinite insanity tracking regression
         run: node trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js
 
+      - name: v1.6.5 HP damage state regression
+        run: node trpg-dm-assistant/build/test-v165-hp-damage-state.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
