@@ -119,6 +119,9 @@ jobs:
       - name: v1.6.5 HP damage state regression
         run: node trpg-dm-assistant/build/test-v165-hp-damage-state.js
 
+      - name: v1.6.6 health stabilization regression
+        run: node trpg-dm-assistant/build/test-v166-health-stabilization.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
