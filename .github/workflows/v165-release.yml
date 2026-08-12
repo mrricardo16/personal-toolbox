@@ -69,3 +69,5 @@ jobs:
                   trpg-dm-assistant/outputs/trpg-dm-assistant.html
           git commit -m "Finalize TRPG DM Assistant v1.6.5 HP damage state"
           git push origin HEAD:agent/v1.6.5-hp-damage-state
+
+# trigger
