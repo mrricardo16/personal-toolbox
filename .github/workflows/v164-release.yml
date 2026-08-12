@@ -1,0 +1,75 @@
+name: Validate TRPG v1.6.4 Indefinite Insanity Tracking
+
+on:
+  push:
+    branches:
+      - agent/v1.6.4-indefinite-insanity-tracking
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.head_commit.message == 'Run v1.6.4 release gate'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Prepare v1.6.4 release identity
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('trpg-dm-assistant/src/scenarios/library.js');s=p.read_text();s=s.replace('const APP_VERSION = "1.6.3";','const APP_VERSION = "1.6.4";',1);p.write_text(s)
+          p=Path('trpg-dm-assistant/build/test-v163-san-loss-resolution.js');s=p.read_text();s=s.replace('assert.equal(api.APP_VERSION,"1.6.3")','assert.equal(api.APP_VERSION,"1.6.4")',1);p.write_text(s)
+          p=Path('trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js');s=p.read_text();s=s.replace('assert.equal(api.APP_VERSION,"1.6.3")','assert.equal(api.APP_VERSION,"1.6.4")',1);p.write_text(s)
+          p=Path('trpg-dm-assistant/build/test-real-api-v1513.js');s=p.read_text();s=s.replace('"failure-forward-cost-engine.js","san-loss-resolution.js"]','"failure-forward-cost-engine.js","san-loss-resolution.js","san-loss-window.js"]',1);p.write_text(s)
+          PY
+      - name: v1.6.4 focused deterministic
+        run: node trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js
+      - name: Full permanent deterministic suite
+        shell: bash
+        run: |
+          for f in \
+            test-security-hardening.js test-save-ui.js test-coc-outcomes.js test-situation-ui.js test-ai-json-repair.js \
+            test-v150-experience.js test-v151-investigation-stability.js test-v152-long-session.js test-v153-clue-routes.js \
+            test-v154-protocol-routing.js test-v154-npc-materialization.js test-v154-location-alias.js test-v154-empty-response-retry.js test-v154-operation-id-alias.js \
+            test-v155-location-transition-alias.js test-v156-player-assertion-guard.js test-v157-case-integrity.js test-v157-canonical-assertion-state.js \
+            test-v158-api-response-resilience.js test-v159-progress-semantics.js test-v1510-authored-threat-clock.js test-v1511-npc-knowledge-boundary.js \
+            test-v1512-ending-resolution-gate.js test-v1513-full-case-e2e.js test-v160-coc-resolution-engine.js test-v160-coc-resolution-diagnostics.js \
+            test-v160-transport-abort-classification.js test-v161-mechanical-consequence-contract.js test-v162-failure-forward-cost-engine.js \
+            test-v163-san-loss-resolution.js; do node "trpg-dm-assistant/build/$f"; done
+      - name: JavaScript syntax and deterministic build
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          test "$(find trpg-dm-assistant -type f -name '*.html' | wc -l)" -eq 1
+          git diff --check
+      - name: Real DeepSeek current-runtime E2E
+        env:
+          TRPG_TEST_API_KEY: ${{ secrets.DS_KEY }}
+          TRPG_TEST_API_URL: https://api.deepseek.com/v1/chat/completions
+          TRPG_TEST_MODEL: deepseek-v4-flash
+        run: |
+          test -n "$TRPG_TEST_API_KEY"
+          node trpg-dm-assistant/build/test-real-api-v1513.js
+      - name: Persist validated v1.6.4 release files
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/src/scenarios/library.js \
+                  trpg-dm-assistant/build/test-v163-san-loss-resolution.js \
+                  trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js \
+                  trpg-dm-assistant/build/test-real-api-v1513.js \
+                  trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git commit -m "Finalize TRPG DM Assistant v1.6.4 indefinite insanity tracking"
+          git push origin HEAD:agent/v1.6.4-indefinite-insanity-tracking
