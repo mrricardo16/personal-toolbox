@@ -28,7 +28,8 @@ const moduleFiles = [
   "failure-forward-cost-engine.js",
   "san-loss-resolution.js",
   "san-loss-window.js",
-  "hp-damage-state.js"
+  "hp-damage-state.js",
+  "health-stabilization.js"
 ];
 
 function readUtf8(filePath) {
