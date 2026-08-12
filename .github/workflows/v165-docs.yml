@@ -1,0 +1,55 @@
+name: Finalize TRPG v1.6.5 Documentation
+
+on:
+  push:
+    branches:
+      - agent/v1.6.5-hp-damage-state
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: github.event.head_commit.message == 'Run v1.6.5 documentation finalization'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update README for v1.6.5
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('trpg-dm-assistant/README.md')
+          s=p.read_text()
+          s=s.replace('# TRPG AI 主持助手 v1.6.4','# TRPG AI 主持助手 v1.6.5',1)
+          s=s.replace('当前版本为 v1.6.4。','当前版本为 v1.6.5。',1)
+          marker='## v1.6.4 更新内容'
+          section='''## v1.6.5 更新内容
+
+- 新增 HP Damage State / Major Wound 1.0：可信 `adjustHp` 伤害落地后，浏览器继续负责单次伤害严重度、Major Wound、CON 昏迷、0 HP、dying 与 instant death；AI 只在 browser-owned 结果内叙述。
+- 每一条负向 `adjustHp` 都是独立伤害事件，绝不把多次小伤合并成一次重伤。例如 Max HP 12 时连续 `-3/-3` 仍是两次 3 点伤害，不会被伪造成一次 6 点 Major Wound。
+- Major Wound 阈值按 `ceil(Max HP / 2)`；单次伤害达到阈值会由浏览器立即执行 CON 检定，`roll <= CON` 成功，失败则写入昏迷状态。
+- HP 降到 0 会写入 unconscious；只有已经存在 Major Wound 时，0 HP 才进入 dying。单次原始伤害达到 Max HP 时直接标记 instant death，不按 HP clamp 后实际减少量降级。
+- HP 恢复不会生成伤害事件，也不会擅自清除 Major Wound 等既有 condition；First Aid、Medicine、Major Wound 恢复、dying 每轮 CON 继续明确留给后续版本。
+- 新增 `character.healthState`，继续沿用 Save Schema 8。旧存档若已经是 0 HP，只会保守补 unconscious，不凭空反推 Major Wound、dying 或 death。
+- v1.6.5 从经过 v1.6.1/v1.6.2 过滤后的 `transaction.parsed.stateChanges` 提取可信伤害，因此被 Mechanical Consequence Contract 剥离的 AI 非法扣血不会重新变成合法伤势；作者定义的可信 HP 成本仍正常进入伤势状态。
+- 防御继续遵守 **BLOCK UNSAFE STATE, NOT PLAYER ACTION**：伤势状态可以严肃落地，但不会因为角色受伤而把正常玩家交互变成技术拒绝。
+- 新增 32 条 v1.6.5 deterministic 回归；连同既有 644 条，正式 release gate 为 **676 PASS / 0 FAIL**，并通过 JavaScript syntax、deterministic double build 与 single-HTML verifier。
+- 真实 DeepSeek Run `31555873032`：8 actions / 8 structured requests / 7 usable provider responses / 14 API attempts / 6 retries / 7 provider empty / 1 retry exhaustion / 1 graceful fallback / 0 technical leaks；本次通过 provider-deferred-ending 路径保持 `awaiting_player_action` 可继续交互。该样本没有触发 HP 伤害，因此 HP 机械正确性以 32 条 deterministic 专项为证。
+- APP_VERSION 为 v1.6.5，Save Schema 仍为 8，AI protocol 仍为 1.3，不增加正常 AI 请求；正式单 HTML 为 **567950 bytes**。
+- First Aid / 稳定、Medicine / Major Wound 恢复、dying 连续检定、战斗/护甲/伤害生成，以及 SAN 状态恢复仍留在后续 v1.6.x，不把未实现内容包装成已完成。
+
+'''
+          if marker not in s:
+              raise SystemExit('README v1.6.4 marker not found')
+          s=s.replace(marker,section+marker,1)
+          p.write_text(s)
+          PY
+      - name: Persist documentation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/README.md
+          git commit -m "Document TRPG DM Assistant v1.6.5 HP damage state"
+          git push origin HEAD:agent/v1.6.5-hp-damage-state
