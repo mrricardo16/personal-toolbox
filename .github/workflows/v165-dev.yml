@@ -62,3 +62,5 @@ jobs:
           git add trpg-dm-assistant/build/test-v165-hp-damage-state.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
           git commit -m "Validate v1.6.5 HP damage state development"
           git push origin HEAD:agent/v1.6.5-hp-damage-state
+
+# trigger
