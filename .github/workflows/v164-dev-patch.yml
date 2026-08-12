@@ -1,0 +1,83 @@
+name: Patch and Validate TRPG v1.6.4 Development
+
+on:
+  push:
+    branches:
+      - agent/v1.6.4-indefinite-insanity-tracking
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.event.head_commit.message == 'Run v1.6.4 development patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Fix harness and wire permanent CI
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js')
+          s=p.read_text()
+          old='function __state(){return deepClone(state)}\nfunction __threshold(v)'
+          new='function __state(){return deepClone(state)}\nfunction __dropWindow(){delete state.character.sanityState.lossWindow;state.character.sanityState.indefiniteTrackingReady=false}\nfunction __threshold(v)'
+          if old not in s: raise SystemExit('helper insertion point not found')
+          s=s.replace(old,new,1)
+          old='ready:__ready,state:__state,threshold:__threshold'
+          new='ready:__ready,state:__state,dropWindow:__dropWindow,threshold:__threshold'
+          if old not in s: raise SystemExit('api export point not found')
+          s=s.replace(old,new,1)
+          old='api.ready(60);delete sandbox.state.character.sanityState.lossWindow;sandbox.state.character.sanityState.indefiniteTrackingReady=false;const out=api.register(5,"no-window")'
+          new='api.ready(60);api.dropWindow();const out=api.register(5,"no-window")'
+          if old not in s: raise SystemExit('sandbox.state test point not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+
+          p=Path('.github/workflows/trpg-ci.yml')
+          s=p.read_text()
+          marker='      - name: JavaScript syntax\n'
+          block='      - name: v1.6.4 indefinite insanity tracking regression\n        run: node trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js\n\n'
+          if block not in s:
+              if marker not in s: raise SystemExit('CI insertion point not found')
+              s=s.replace(marker,block+marker,1)
+          p.write_text(s)
+          PY
+      - name: v1.6.4 focused tests
+        run: node trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js
+      - name: Existing permanent deterministic regressions
+        shell: bash
+        run: |
+          for f in \
+            test-security-hardening.js test-save-ui.js test-coc-outcomes.js test-situation-ui.js test-ai-json-repair.js \
+            test-v150-experience.js test-v151-investigation-stability.js test-v152-long-session.js test-v153-clue-routes.js \
+            test-v154-protocol-routing.js test-v154-npc-materialization.js test-v154-location-alias.js test-v154-empty-response-retry.js test-v154-operation-id-alias.js \
+            test-v155-location-transition-alias.js test-v156-player-assertion-guard.js test-v157-case-integrity.js test-v157-canonical-assertion-state.js \
+            test-v158-api-response-resilience.js test-v159-progress-semantics.js test-v1510-authored-threat-clock.js test-v1511-npc-knowledge-boundary.js \
+            test-v1512-ending-resolution-gate.js test-v1513-full-case-e2e.js test-v160-coc-resolution-engine.js test-v160-coc-resolution-diagnostics.js \
+            test-v160-transport-abort-classification.js test-v161-mechanical-consequence-contract.js test-v162-failure-forward-cost-engine.js test-v163-san-loss-resolution.js; do
+            node "trpg-dm-assistant/build/$f"
+          done
+      - name: JavaScript syntax and build
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          git diff --check
+      - name: Persist green development state
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/trpg-ci.yml trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git commit -m "Validate v1.6.4 SAN loss window development"
+          git push origin HEAD:agent/v1.6.4-indefinite-insanity-tracking
