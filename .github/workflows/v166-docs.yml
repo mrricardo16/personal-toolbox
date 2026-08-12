@@ -14,40 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Update README for v1.6.6
+      - name: Update README
+        run: python3 trpg-dm-assistant/build/patch-v166-readme.py
+      - name: Validate documentation
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p=Path('trpg-dm-assistant/README.md')
-          s=p.read_text()
-          s=s.replace('# TRPG AI 主持助手 v1.6.5','# TRPG AI 主持助手 v1.6.6',1)
-          s=s.replace('当前版本为 v1.6.5。','当前版本为 v1.6.6。',1)
-          marker='## v1.6.5 更新内容'
-          section='''## v1.6.6 更新内容
-
-- 新增 Health Stabilization / Dying Round Checks 1.0：v1.6.5 的 dying 状态现在可由浏览器继续执行逐轮 CON、生死转换与 First Aid 稳定，AI 只负责叙述 browser-owned 结果。
-- 不把聊天消息、玩家行动次数或普通 scene turn 偷偷等同为 CoC 战斗轮；未建立完整 Combat Round Engine 前，濒死 CON 只通过本地“结算下一轮 CON”显式推进。
-- 未稳定 dying 的逐轮 CON 由浏览器读取角色 CON 并掷百分骰；成功仍保持 dying、等待下一轮或急救，失败立即写入 canonical death，AI 无权翻转结果。
-- First Aid 需要显式确认仍在受伤后一小时内，并由浏览器按救助者 1-100 的急救技能值掷骰；成功固定恢复 1 HP，可唤醒昏迷者，并可将 dying 角色稳定；Major Wound 本身不会被急救直接清除。
-- 急救失败不会恢复 HP 或稳定 dying；角色已死亡时不能通过 First Aid 逆转。
-- 修复跨状态边界：角色曾被成功稳定后，如果后续新的可信伤害再次造成 dying/dead，旧 `stabilized` 标记会立即失效，不能跨新的致命伤错误沿用。
-- First Aid continuation 中 AI 自报的正向 `adjustHp` 会在 canonical commit 前被剥离；同响应中的安全旗标/NPC/普通叙事仍可继续，继续遵守 **BLOCK UNSAFE STATE, NOT PLAYER ACTION**。
-- 侧栏在对应伤势状态下提供本地“结算下一轮 CON”和“浏览器急救检定”入口；这些本地机械不增加正常 AI 请求。
-- Save Schema 仍为 8，AI protocol 仍为 1.3；旧 Schema 8 dying 存档会保守补齐空的逐轮检定历史，不伪造过去骰点。
-- 新增 38 条 v1.6.6 deterministic 回归；连同既有 676 条，正式 release gate 为 **714 PASS / 0 FAIL**，并通过 JavaScript syntax、deterministic double build 与 single-HTML verifier。
-- 真实 DeepSeek final Run `31568850359`：8 actions / 8 structured requests / 8 usable provider responses / 11 API attempts / 3 retries / 3 provider empty / 0 retry exhaustion / 0 graceful fallback / 0 technical leaks；最终正常 `campaign_ended`，结局为 `ending-solved`。该样本未触发 First Aid/dying，因此其机械正确性以 38 条 deterministic 专项为证。
-- APP_VERSION 为 v1.6.6，正式单 HTML 为 **582277 bytes**。
-- Medicine、Major Wound 周期恢复、自然 HP 恢复、完整战斗轮/攻击/护甲/伤害生成，以及 SAN 状态恢复继续留给后续 v1.6.x，不把未实现内容包装成已完成。
-
-'''
-          if '## v1.6.6 更新内容' not in s:
-              s=s.replace(marker,section+marker,1)
-          p.write_text(s)
-          PY
-      - name: Validate documentation identity
-        run: |
-          grep -q '# TRPG AI 主持助手 v1.6.6' trpg-dm-assistant/README.md
+          grep -q 'TRPG AI 主持助手 v1.6.6' trpg-dm-assistant/README.md
           grep -q '714 PASS / 0 FAIL' trpg-dm-assistant/README.md
           grep -q '31568850359' trpg-dm-assistant/README.md
           grep -q '582277 bytes' trpg-dm-assistant/README.md
@@ -56,8 +28,8 @@ jobs:
       - name: Persist documentation
         shell: bash
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add trpg-dm-assistant/README.md
-          git commit -m "Document TRPG DM Assistant v1.6.6"
+          git commit -m 'Document TRPG DM Assistant v1.6.6'
           git push origin HEAD:agent/v1.6.6-health-stabilization
