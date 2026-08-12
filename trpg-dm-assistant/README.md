@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.6.3
+# TRPG AI 主持助手 v1.6.4
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.6.3。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.6.4。
 
 ## 快速开始
 
@@ -12,6 +12,21 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.6.4 更新内容
+
+- 新增 SAN Loss Window / Indefinite Insanity Tracking 1.0：浏览器现在拥有 Starting SAN 基线窗口、窗口内累计 SAN 损失与不定期疯狂 1/5 阈值；AI 只可叙述 browser-owned 结果。
+- 启用结构化剧本时，以当前 SAN 建立 authoritative scenario window；跨 authored chapter 时用当时 current SAN 建立新窗口，同 chapter 内节点移动不会重置累计值。
+- 阈值固定为窗口起始 SAN 的五分之一（向下取整，极低 SAN 至少需要实际损失 1 点），后续 current SAN 变化不会反向移动阈值。
+- v1.6.3 SAN check 的实际损失与 trusted canonical transaction 的 SAN 下降都会进入同一累计窗口；相同 source event 自动去重，SAN 恢复不会被误记为损失。
+- 累计损失首次达到或超过阈值时，浏览器写入 canonical indefinite condition，并记录来源窗口、阈值、触发时累计损失与触发事件；后续损失继续累计但不会重复触发。
+- 新窗口只重置新的累计基线，不恢复 SAN，也不会擅自清除已经存在的不定期疯狂状态；本版明确不伪造恢复/过期时长。
+- 旧 Schema 8 状态如果没有 authoritative window，不会根据“当前 SAN 比旧基线低多少”反推一个虚假的连续窗口；sanityStateSnapshot 继续保持纯读取。
+- 系统提示与 SAN context 明确 Starting SAN window、累计值和 indefinite condition 均为浏览器权威；AI 不得重置窗口、篡改累计损失、提前宣告或解除不定期疯狂，且防御不能阻断正常玩家交互。
+- 新增 31 条 v1.6.4 deterministic 回归；连同既有 613 条，正式 release gate 为 **644 PASS / 0 FAIL**，并通过 JavaScript syntax、deterministic double build 与 single-HTML verifier。
+- 真实 DeepSeek final Run `31553994885`：8 actions / 8 structured requests / 7 usable provider responses / 14 API attempts / 6 retries / 7 provider empty / 1 retry exhaustion / 1 graceful fallback / 0 technical leaks；最终正常 `campaign_ended`，结局为 `ending-solved`。该样本未触发 SAN 累计阈值，因此 SAN window 机械正确性以 31 条 deterministic 专项为证。
+- APP_VERSION 为 v1.6.4，Save Schema 仍为 8，AI protocol 仍为 1.3，不增加正常 AI 请求；正式单 HTML 为 **556994 bytes**。
+- 临时疯狂过期/恢复、不定期疯狂恢复，以及 HP/重伤/昏迷/濒死规则仍留在后续 v1.6.x，不把未实现内容包装成已完成。
 
 ## v1.6.3 更新内容
 

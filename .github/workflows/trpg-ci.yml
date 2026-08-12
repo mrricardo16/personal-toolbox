@@ -113,6 +113,9 @@ jobs:
       - name: v1.6.3 SAN loss resolution regression
         run: node trpg-dm-assistant/build/test-v163-san-loss-resolution.js
 
+      - name: v1.6.4 indefinite insanity tracking regression
+        run: node trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js
+
       - name: JavaScript syntax
         shell: bash
         run: |

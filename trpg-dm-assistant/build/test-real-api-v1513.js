@@ -1,7 +1,7 @@
 "use strict";
 const fs=require("fs"),path=require("path"),vm=require("vm"),assert=require("assert"),{webcrypto}=require("crypto"),{TextEncoder,TextDecoder}=require("util");
 const root=path.resolve(__dirname,"..");
-const files=["scenarios/library.js","state.js","check-engine.js","scenario-engine.js","case-integrity.js","memory.js","ai-protocol.js","player-action-guard.js","interaction-availability.js","saves.js","api-response-resilience.js","progress-semantics.js","authored-threat-clock.js","npc-knowledge-boundary.js","ending-resolution-gate.js","coc-resolution-engine.js","coc-consequence-contract.js","failure-forward-cost-engine.js","san-loss-resolution.js"];
+const files=["scenarios/library.js","state.js","check-engine.js","scenario-engine.js","case-integrity.js","memory.js","ai-protocol.js","player-action-guard.js","interaction-availability.js","saves.js","api-response-resilience.js","progress-semantics.js","authored-threat-clock.js","npc-knowledge-boundary.js","ending-resolution-gate.js","coc-resolution-engine.js","coc-consequence-contract.js","failure-forward-cost-engine.js","san-loss-resolution.js","san-loss-window.js"];
 function storage(){const map=new Map();return{getItem:k=>map.has(String(k))?map.get(String(k)):null,setItem:(k,v)=>map.set(String(k),String(v)),removeItem:k=>map.delete(String(k)),clear:()=>map.clear(),key:i=>Array.from(map.keys())[i]??null,get length(){return map.size}}}
 const localStorage=storage(),sessionStorage=storage();
 function node(){return{className:"",textContent:"",innerHTML:"",value:"",checked:false,disabled:false,style:{},dataset:{},classList:{add(){},remove(){},toggle(){}},appendChild(){},remove(){},click(){},insertAdjacentHTML(){},setAttribute(){},removeAttribute(){},addEventListener(){},querySelector(){return null},querySelectorAll(){return[]},scrollHeight:0,scrollTop:0}}
@@ -43,7 +43,7 @@ async function runAction(text,options={}){const before=api.state().revision,ok=a
 
 (async()=>{
   api.ready();api.configure(key,apiUrl,model);
-  assert.equal(api.APP_VERSION,"1.6.3");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.API_RESPONSE_RESILIENCE_VERSION,"1.0");assert.equal(api.COC_RESOLUTION_ENGINE_VERSION,"1.0");assert.equal(api.COC_CONSEQUENCE_CONTRACT_VERSION,"1.0");assert.equal(api.FAILURE_FORWARD_COST_ENGINE_VERSION,"1.0");assert.equal(api.SAN_LOSS_RESOLUTION_VERSION,"1.0");
+  assert.equal(api.APP_VERSION,"1.6.4");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.API_RESPONSE_RESILIENCE_VERSION,"1.0");assert.equal(api.COC_RESOLUTION_ENGINE_VERSION,"1.0");assert.equal(api.COC_CONSEQUENCE_CONTRACT_VERSION,"1.0");assert.equal(api.FAILURE_FORWARD_COST_ENGINE_VERSION,"1.0");assert.equal(api.SAN_LOSS_RESOLUTION_VERSION,"1.0");
 
   await runAction("我问管家周铭：你是否知道地下是否在进行非法实验？如果你不知道，就明确说不知道，不要替你不知道的事作证。");
   await runAction("我再观察一下大厅和管家的反应；如果没有新的可确认信息，就如实告诉我没有新的发现。");
