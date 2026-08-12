@@ -1,7 +1,7 @@
 "use strict";
 const fs=require("fs"),path=require("path"),vm=require("vm"),assert=require("assert"),{webcrypto}=require("crypto"),{TextEncoder,TextDecoder}=require("util");
 const root=path.resolve(__dirname,"..");
-const files=["scenarios/library.js","state.js","check-engine.js","scenario-engine.js","case-integrity.js","memory.js","ai-protocol.js","player-action-guard.js","interaction-availability.js","saves.js","api-response-resilience.js","progress-semantics.js","authored-threat-clock.js","npc-knowledge-boundary.js","ending-resolution-gate.js","coc-resolution-engine.js","coc-consequence-contract.js","failure-forward-cost-engine.js","san-loss-resolution.js","san-loss-window.js","hp-damage-state.js"];
+const files=["scenarios/library.js","state.js","check-engine.js","scenario-engine.js","case-integrity.js","memory.js","ai-protocol.js","player-action-guard.js","interaction-availability.js","saves.js","api-response-resilience.js","progress-semantics.js","authored-threat-clock.js","npc-knowledge-boundary.js","ending-resolution-gate.js","coc-resolution-engine.js","coc-consequence-contract.js","failure-forward-cost-engine.js","san-loss-resolution.js","san-loss-window.js","hp-damage-state.js","health-stabilization.js"];
 function storage(){const map=new Map();return{getItem:k=>map.has(String(k))?map.get(String(k)):null,setItem:(k,v)=>map.set(String(k),String(v)),removeItem:k=>map.delete(String(k)),clear:()=>map.clear(),key:i=>Array.from(map.keys())[i]??null,get length(){return map.size}}}
 const localStorage=storage(),sessionStorage=storage();
 function node(){return{className:"",textContent:"",innerHTML:"",value:"",checked:false,disabled:false,style:{},dataset:{},classList:{add(){},remove(){},toggle(){}},appendChild(){},remove(){},click(){},insertAdjacentHTML(){},setAttribute(){},removeAttribute(){},addEventListener(){},querySelector(){return null},querySelectorAll(){return[]},scrollHeight:0,scrollTop:0}}
@@ -27,7 +27,7 @@ function __confirmEnding(){return confirmEndingProposal()}
 function __dismissRecovery(){if(state.runtime.failedRequest?.recoverable)dismissApiRecovery();return deepClone(state)}
 function __state(){return deepClone(state)}
 function __diag(){return deepClone(apiReliabilityState())}
-globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,API_RESPONSE_RESILIENCE_VERSION,COC_RESOLUTION_ENGINE_VERSION,COC_CONSEQUENCE_CONTRACT_VERSION,FAILURE_FORWARD_COST_ENGINE_VERSION,SAN_LOSS_RESOLUTION_VERSION,HP_DAMAGE_STATE_VERSION,ready:__ready,configure:__configure,seedClue:__seedClue,enter:__enter,resolveQuestion:__resolveQuestion,advanceThreat:__advanceThreat,finishFlags:__finishFlags,gate:__gate,dismissEnding:__dismissEnding,action:__action,roll:__roll,confirmNode:__confirmNode,confirmEnding:__confirmEnding,dismissRecovery:__dismissRecovery,state:__state,diag:__diag};`;
+globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,API_RESPONSE_RESILIENCE_VERSION,COC_RESOLUTION_ENGINE_VERSION,COC_CONSEQUENCE_CONTRACT_VERSION,FAILURE_FORWARD_COST_ENGINE_VERSION,SAN_LOSS_RESOLUTION_VERSION,HP_DAMAGE_STATE_VERSION,HEALTH_STABILIZATION_VERSION,ready:__ready,configure:__configure,seedClue:__seedClue,enter:__enter,resolveQuestion:__resolveQuestion,advanceThreat:__advanceThreat,finishFlags:__finishFlags,gate:__gate,dismissEnding:__dismissEnding,action:__action,roll:__roll,confirmNode:__confirmNode,confirmEnding:__confirmEnding,dismissRecovery:__dismissRecovery,state:__state,diag:__diag};`;
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v1513-real-api-runtime.js"});
 const api=sandbox.__test;
 const key=String(process.env.TRPG_TEST_API_KEY||"").trim();
@@ -43,7 +43,7 @@ async function runAction(text,options={}){const before=api.state().revision,ok=a
 
 (async()=>{
   api.ready();api.configure(key,apiUrl,model);
-  assert.equal(api.APP_VERSION,"1.6.5");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.API_RESPONSE_RESILIENCE_VERSION,"1.0");assert.equal(api.COC_RESOLUTION_ENGINE_VERSION,"1.0");assert.equal(api.COC_CONSEQUENCE_CONTRACT_VERSION,"1.0");assert.equal(api.FAILURE_FORWARD_COST_ENGINE_VERSION,"1.0");assert.equal(api.SAN_LOSS_RESOLUTION_VERSION,"1.0");assert.equal(api.HP_DAMAGE_STATE_VERSION,"1.0");
+  assert.equal(api.APP_VERSION,"1.6.6");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3");assert.equal(api.API_RESPONSE_RESILIENCE_VERSION,"1.0");assert.equal(api.COC_RESOLUTION_ENGINE_VERSION,"1.0");assert.equal(api.COC_CONSEQUENCE_CONTRACT_VERSION,"1.0");assert.equal(api.FAILURE_FORWARD_COST_ENGINE_VERSION,"1.0");assert.equal(api.SAN_LOSS_RESOLUTION_VERSION,"1.0");assert.equal(api.HP_DAMAGE_STATE_VERSION,"1.0");assert.equal(api.HEALTH_STABILIZATION_VERSION,"1.0");
 
   await runAction("我问管家周铭：你是否知道地下是否在进行非法实验？如果你不知道，就明确说不知道，不要替你不知道的事作证。");
   await runAction("我再观察一下大厅和管家的反应；如果没有新的可确认信息，就如实告诉我没有新的发现。");
