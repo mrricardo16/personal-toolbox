@@ -30,7 +30,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,SAN_LOSS_WINDO
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v164-indefinite-insanity-tracking-runtime.js"});
 const api=sandbox.__test;let passed=0;async function test(name,fn){await fn();passed++;console.log(`PASS ${name}`)}
 (async()=>{
-await test("v1.6.4 SAN Loss Window 模块加载且 Schema/协议未变",async()=>{assert.equal(api.APP_VERSION,"1.6.3");assert.equal(api.SAN_LOSS_WINDOW_VERSION,"1.0");assert.equal(api.SAN_LOSS_WINDOW_AUTHORITY,"browser_coc_sanity_window");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+await test("v1.6.4 SAN Loss Window 模块加载且 Schema/协议未变",async()=>{assert.equal(api.APP_VERSION,"1.6.4");assert.equal(api.SAN_LOSS_WINDOW_VERSION,"1.0");assert.equal(api.SAN_LOSS_WINDOW_AUTHORITY,"browser_coc_sanity_window");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 await test("Starting SAN 75 的不定期疯狂阈值为 15",async()=>assert.equal(api.threshold(75),15));
 await test("Starting SAN 74 的五分之一向下取整为 14",async()=>assert.equal(api.threshold(74),14));
 await test("极低 Starting SAN 仍要求至少实际损失 1 点才触发",async()=>assert.equal(api.threshold(4),1));
