@@ -24,18 +24,18 @@ jobs:
           from pathlib import Path
           p=Path('trpg-dm-assistant/build/test-v164-indefinite-insanity-tracking.js')
           s=p.read_text()
-          old='function __state(){return deepClone(state)}\nfunction __threshold(v)'
-          new='function __state(){return deepClone(state)}\nfunction __dropWindow(){delete state.character.sanityState.lossWindow;state.character.sanityState.indefiniteTrackingReady=false}\nfunction __threshold(v)'
-          if old not in s: raise SystemExit('helper insertion point not found')
-          s=s.replace(old,new,1)
-          old='ready:__ready,state:__state,threshold:__threshold'
-          new='ready:__ready,state:__state,dropWindow:__dropWindow,threshold:__threshold'
-          if old not in s: raise SystemExit('api export point not found')
-          s=s.replace(old,new,1)
-          old='api.ready(60);delete sandbox.state.character.sanityState.lossWindow;sandbox.state.character.sanityState.indefiniteTrackingReady=false;const out=api.register(5,"no-window")'
-          new='api.ready(60);api.dropWindow();const out=api.register(5,"no-window")'
-          if old not in s: raise SystemExit('sandbox.state test point not found')
-          s=s.replace(old,new,1)
+          if 'function __dropWindow()' not in s:
+              old='function __state(){return deepClone(state)}\nfunction __threshold(v)'
+              new='function __state(){return deepClone(state)}\nfunction __dropWindow(){delete state.character.sanityState.lossWindow;state.character.sanityState.indefiniteTrackingReady=false}\nfunction __threshold(v)'
+              if old not in s: raise SystemExit('helper insertion point not found')
+              s=s.replace(old,new,1)
+          if 'dropWindow:__dropWindow' not in s:
+              old='ready:__ready,state:__state,threshold:__threshold'
+              new='ready:__ready,state:__state,dropWindow:__dropWindow,threshold:__threshold'
+              if old not in s: raise SystemExit('api export point not found')
+              s=s.replace(old,new,1)
+          s=s.replace('api.ready(60);delete sandbox.state.character.sanityState.lossWindow;sandbox.state.character.sanityState.indefiniteTrackingReady=false;const out=api.register(5,"no-window")','api.ready(60);api.dropWindow();const out=api.register(5,"no-window")')
+          s=s.replace('summaries:[`SAN ${delta}`]','summaries:["SAN "+delta]')
           p.write_text(s)
 
           p=Path('.github/workflows/trpg-ci.yml')
