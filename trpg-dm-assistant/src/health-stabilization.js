@@ -12,7 +12,7 @@ const HEALTH_DYING_CHECK_LIMIT=40;
 
 function healthStabilizationCondition(raw,kind){
   if(!isPlainObject(raw)||raw.active!==true)return null;
-  return{active:true,kind,authority:HEALTH_STABILIZATION_AUTHORITY,sourceId:asString(raw.sourceId,180)||null,at:asString(raw.at,80)||nowIso(),reason:asString(raw.reason,180)||kind,firstAidTarget:Number.isFinite(Number(raw.firstAidTarget))?clamp(Math.floor(Number(raw.firstAidTarget)),1,100):null,firstAidRoll:Number.isFinite(Number(raw.firstAidRoll))?clamp(Math.floor(Number(raw.firstAidRoll)),1,100):null}
+  return{active:true,kind,authority:HEALTH_STABILIZATION_AUTHORITY,sourceId:asString(raw.sourceId,180)||null,at:asString(raw.at,80)||nowIso(),reason:asString(raw.reason,180)||kind,firstAidTarget:raw.firstAidTarget!=null&&Number.isFinite(Number(raw.firstAidTarget))?clamp(Math.floor(Number(raw.firstAidTarget)),1,100):null,firstAidRoll:raw.firstAidRoll!=null&&Number.isFinite(Number(raw.firstAidRoll))?clamp(Math.floor(Number(raw.firstAidRoll)),1,100):null}
 }
 function healthStabilizationTrimHistory(value,limit){return Array.isArray(value)?value.slice(-limit).filter(isPlainObject).map(deepClone):[]}
 function healthStabilizationFirstAidSkill(character=state.character){
@@ -25,7 +25,7 @@ function healthStabilizationFirstAidSkill(character=state.character){
 const __healthStabilizationHpDamageStateSnapshot=hpDamageStateSnapshot;
 hpDamageStateSnapshot=function(character=state.character){
   const raw=isPlainObject(character?.healthState)?character.healthState:{},base=__healthStabilizationHpDamageStateSnapshot(character);if(!base)return base;
-  if(base.dying){const rawDying=isPlainObject(raw.dying)?raw.dying:{};base.dying.stabilized=rawDying.stabilized===true;base.dying.roundChecksManaged=rawDying.roundChecksManaged===true;base.dying.checks=healthStabilizationTrimHistory(rawDying.checks,HEALTH_DYING_CHECK_LIMIT);base.dying.nextRoundOrdinal=Math.max(1,Math.floor(Number(rawDying.nextRoundOrdinal)||base.dying.checks.length+1)}
+  if(base.dying){const rawDying=isPlainObject(raw.dying)?raw.dying:{};base.dying.stabilized=rawDying.stabilized===true;base.dying.roundChecksManaged=rawDying.roundChecksManaged===true;base.dying.checks=healthStabilizationTrimHistory(rawDying.checks,HEALTH_DYING_CHECK_LIMIT);base.dying.nextRoundOrdinal=Math.max(1,Math.floor(Number(rawDying.nextRoundOrdinal)||base.dying.checks.length+1))}
   base.stabilized=healthStabilizationCondition(raw.stabilized,"stabilized");
   base.treatmentHistory=healthStabilizationTrimHistory(raw.treatmentHistory,HEALTH_TREATMENT_HISTORY_LIMIT);
   return base
