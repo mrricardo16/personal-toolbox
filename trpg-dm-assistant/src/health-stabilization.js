@@ -48,6 +48,14 @@ function healthStabilizationCanAdvanceDying(character=state.character){const sna
 function healthStabilizationRecordTreatment(health,entry){
   health.treatmentHistory=healthStabilizationTrimHistory(health.treatmentHistory,HEALTH_TREATMENT_HISTORY_LIMIT);health.treatmentHistory.push(deepClone(entry));if(health.treatmentHistory.length>HEALTH_TREATMENT_HISTORY_LIMIT)health.treatmentHistory.splice(0,health.treatmentHistory.length-HEALTH_TREATMENT_HISTORY_LIMIT)
 }
+/* A prior stabilization cannot remain active if a later trusted damage event creates
+ * a fresh dying/dead state. This wrapper invalidates only that stale stabilization. */
+const __healthStabilizationHpDamageApplyEvent=hpDamageApplyEvent;
+hpDamageApplyEvent=function(raw,options={}){
+  const result=__healthStabilizationHpDamageApplyEvent(raw,options),health=state.character?.healthState;
+  if(result?.tracked&&!result.deduped&&(health?.dying?.active||health?.dead?.active)&&health?.stabilized?.active){health.stabilized=null;if(result.state)result.state.stabilized=null}
+  return result
+};
 function healthStabilizationResolveDyingRound({roller=()=>randomInt(1,100),sourceId=null}={}){
   if(state.character?.system!=="coc7")throw new Error("仅 CoC7 角色支持濒死 CON 结算");
   const health=normalizeHpDamageState(state.character);if(health.dead?.active)throw new Error("角色已经死亡，不能继续濒死检定");if(!health.dying?.active||health.dying.stabilized)throw new Error("当前没有待结算的未稳定濒死状态");
