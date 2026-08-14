@@ -1,0 +1,59 @@
+name: TRPG v1.6.7 Development Gate
+
+on:
+  push:
+    branches: [agent/v1.6.7-healing-recovery]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/v1.6.7-healing-recovery
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: v1.6.7 focused regression
+        run: node trpg-dm-assistant/build/test-v167-healing-recovery.js
+      - name: Permanent historical regression suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -oE 'node trpg-dm-assistant/build/test-[^[:space:]]+\.js' .github/workflows/trpg-ci.yml | while IFS= read -r cmd; do
+            echo "> $cmd"
+            eval "$cmd"
+          done
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+      - name: Build and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          git diff --check
+      - name: Persist deterministic product
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- trpg-dm-assistant/outputs/trpg-dm-assistant.html; then
+            echo 'Product already current.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git commit -m 'Build v1.6.7 development product'
+          git push origin HEAD:agent/v1.6.7-healing-recovery
