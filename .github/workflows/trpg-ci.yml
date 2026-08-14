@@ -122,6 +122,9 @@ jobs:
       - name: v1.6.6 health stabilization regression
         run: node trpg-dm-assistant/build/test-v166-health-stabilization.js
 
+      - name: v1.6.7 healing recovery regression
+        run: node trpg-dm-assistant/build/test-v167-healing-recovery.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
