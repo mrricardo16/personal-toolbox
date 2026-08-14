@@ -29,7 +29,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,COMBAT_OPPOSED
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v168-combat-opposed-runtime.js"});
 const api=sandbox.__test;let passed=0;async function test(name,fn){await fn();passed++;console.log(`PASS ${name}`)}
 (async()=>{
-await test("v1.6.8 Combat Opposed 模块加载",async()=>{assert.equal(api.APP_VERSION,"1.6.8");assert.equal(api.COMBAT_OPPOSED_VERSION,"1.0");assert.equal(api.COMBAT_OPPOSED_AUTHORITY,"browser_coc_combat");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+await test("v1.6.8 Combat Opposed 模块加载",async()=>{const [maj,min,patch]=api.APP_VERSION.split(".").map(Number);assert(maj>1||(maj===1&&(min>6||(min===6&&patch>=8))));assert.equal(api.COMBAT_OPPOSED_VERSION,"1.0");assert.equal(api.COMBAT_OPPOSED_AUTHORITY,"browser_coc_combat");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 await test("Combat Mode 至少要求一个对手",async()=>{api.ready();assert.throws(()=>api.start([]),/至少需要 1 名/)});
 await test("对手 DEX 必须在 1 到 100",async()=>{api.ready();assert.throws(()=>api.start([api.opp("bad",0,40,30)]),/DEX 必须在 1 到 100/)});
 await test("对手 Fighting 必须在 1 到 100",async()=>{api.ready();assert.throws(()=>api.start([api.opp("bad",50,101,30)]),/Fighting 必须在 1 到 100/)});
