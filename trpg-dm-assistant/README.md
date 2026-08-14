@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.6.7
+# TRPG AI 主持助手 v1.6.8
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.6.7。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.6.8。
 
 ## 快速开始
 
@@ -12,6 +12,22 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.6.8 更新内容
+
+- 新增 Combat Round / Melee Opposed Contract 1.0：只有显式进入 Combat Mode 后，浏览器才按战斗轮推进；普通调查/聊天消息不会被偷偷当成战斗轮。
+- 参与者按 DEX 从高到低行动；同 DEX 以稳定录入顺序作为实现层 tie-breaker。每名参与者消耗一次主要行动后轮次才 wrap，并重置该轮 response/action 计数。
+- 近战 Attack vs Dodge 由浏览器双方百分骰比较成功等级：攻击者必须取得严格更高等级才命中；相同等级时 Dodge 成功避开。
+- Attack vs Fight Back 同样由浏览器比较成功等级，但平手时发起攻击者获胜；Fight Back 即使以 Extreme/critical 获胜，也只标记普通反击伤害上限。
+- 同一轮中目标已经进行过近战防守后，后续超出 response allowance 的近战攻击获得浏览器 1 个 bonus die；新一轮自动清零。
+- 本版刻意不生成武器/护甲伤害。胜负只产生 browser-owned `damageDisposition`（regular / initiator_extreme_eligible / fight_back_regular_cap），并标记 `hpCommitted=false`；下一规则层再接武器伤害。
+- Combat Mode 激活期间，AI 返回的 `adjustHp` 会被局部剥离，但同响应中的安全旗标、NPC 连续性和普通交互继续保留，继续遵守 **BLOCK UNSAFE STATE, NOT PLAYER ACTION**。
+- v1.6.6 dying 与 Combat Round 已接轨：Combat Mode 内关闭手动 dying-round 按钮；角色首次在某轮被观察为 dying 后，不在该轮末立即检定，而从下一轮结束开始自动执行浏览器 CON，之后每轮持续；失败死亡并结束 Combat Mode。
+- 新增 `cocCombatRound` payload/diagnostic authority；AI 可以叙述浏览器已确认的战斗状态，但不能自行决定命中、Dodge/Fight Back 胜负或战斗 HP。
+- v1.6.8 focused suite 为 **42 PASS / 0 FAIL**；连同既有 757 条，永久 deterministic 基线提升到 **799 PASS / 0 FAIL**，并通过 JavaScript syntax、deterministic double build 与 single-HTML verifier。
+- 真实 DeepSeek release Run `31762927920`：8 actions / 8 structured / 6 usable / 14 API attempts / 6 retries / 8 provider empty / 2 retry exhaustion / 2 graceful fallback / 0 technical leaks；最终正常 `campaign_ended`，结局 `ending-solved`。样本未进入 Combat Mode，因此战斗机械正确性以 42 条 deterministic 专项为证。
+- APP_VERSION 为 v1.6.8，Save Schema 仍为 8，AI protocol 仍为 1.3；正式单 HTML 为 **624118 bytes**，Combat Round 不增加正常 AI 请求。
+- 武器伤害、Damage Bonus、护甲、射击/准备枪械 DEX、point-blank / dive for cover，以及更完整 NPC combat profile 留给后续 v1.6.x。
 
 ## v1.6.7 更新内容
 

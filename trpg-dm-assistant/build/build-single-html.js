@@ -30,7 +30,8 @@ const moduleFiles = [
   "san-loss-window.js",
   "hp-damage-state.js",
   "health-stabilization.js",
-  "healing-recovery.js"
+  "healing-recovery.js",
+  "combat-opposed.js"
 ];
 
 function readUtf8(filePath) {
