@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Apply narrow syntax repairs
+      - name: Apply narrow source and harness repairs
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -33,13 +33,19 @@ jobs:
 
           t=Path('trpg-dm-assistant/build/test-v169-combat-damage.js')
           x=t.read_text(encoding='utf-8')
-          old_test='weapon:{id:`${id}-weapon`,label:`${id}武器`,damage:weaponDamage'
-          new_test='weapon:{id:String(id)+"-weapon",label:String(id)+"武器",damage:weaponDamage'
-          if old_test in x:
-              x=x.replace(old_test,new_test,1)
-              t.write_text(x,encoding='utf-8')
-          elif new_test not in x:
+          helper_old='weapon:{id:`${id}-weapon`,label:`${id}武器`,damage:weaponDamage'
+          helper_new='weapon:{id:String(id)+"-weapon",label:String(id)+"武器",damage:weaponDamage'
+          if helper_old in x:
+              x=x.replace(helper_old,helper_new,1)
+          elif helper_new not in x:
               raise SystemExit('expected v1.6.9 test helper boundary not found')
+          expect_old='assert.equal(out.damage.weaponResult.total,1);assert.equal(out.damage.damageBonusResult.total,1);assert.equal(out.damage.grossDamage,2)'
+          expect_new='assert.equal(out.damage.weaponResult.total,2);assert.equal(out.damage.damageBonusResult.total,1);assert.equal(out.damage.grossDamage,3)'
+          if expect_old in x:
+              x=x.replace(expect_old,expect_new,1)
+          elif expect_new not in x:
+              raise SystemExit('expected Fight Back damage assertion boundary not found')
+          t.write_text(x,encoding='utf-8')
           PY
       - name: Syntax
         run: |
