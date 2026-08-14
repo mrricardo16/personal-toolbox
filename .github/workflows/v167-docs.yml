@@ -29,22 +29,24 @@ jobs:
           text=text.replace('# TRPG AI 主持助手 v1.6.6','# TRPG AI 主持助手 v1.6.7',1)
           text=text.replace('当前版本为 v1.6.6。','当前版本为 v1.6.7。',1)
           anchor='## v1.6.6 更新内容\n'
-          section='''## v1.6.7 更新内容
-
-- 新增 Healing Recovery 1.0：恢复期机械继续由浏览器拥有；普通聊天回合不会被偷偷当作“过了一天”或“过了一周”。
-- 无 Major Wound 且未 dying 的受伤角色，可显式确认经过 1 天并由浏览器恢复 1 HP；满 HP、dying、Major Wound 都不能误走这个每日恢复入口。
-- Major Wound 改为显式每周 CON 恢复：成功恢复 1D3；Extreme/critical 恢复 2D3；Extreme/critical 或 HP 恢复到 Max HP 一半以上时，由浏览器解除 Major Wound。
-- Medicine 由浏览器按明确施救者技能值结算；必须确认至少治疗 1 小时并具备合适设备/物资。同日为 Regular，非同日为 Hard，成功恢复 1D3 HP。
-- active dying 不能直接进入 Medicine；必须先经过 v1.6.6 的 First Aid 成功稳定，再进行后续医疗。
-- Medicine continuation 中 AI 自报的正向 `adjustHp` 会被剥离，但安全旗标、NPC 连续性和普通叙事继续保留，避免重复回血同时遵守 **BLOCK UNSAFE STATE, NOT PLAYER ACTION**。
-- 新增 `cocHealingRecovery` payload/diagnostic authority；AI 可以叙述浏览器已经确认的恢复状态，但不能自行推进天/周、决定 Medicine 成败、恢复 HP 或解除 Major Wound。
-- Real API release gate 发现 DeepSeek 会把合法 `addPinnedFact` 的 `text` 偶发写成 `fact`。现仅对已知 `addPinnedFact`、仅在 `text` 缺失且 `fact` 为非空字符串时执行窄 `fact → text` 归一；显式 `text` 优先，空 `fact` 与未知 operation 仍严格不放行。
-- v1.6.7 focused suite 最终为 **43 PASS / 0 FAIL**；连同既有 714 条，永久 deterministic 基线提升到 **757 PASS / 0 FAIL**，并通过 JavaScript syntax、deterministic double build 与 single-HTML verifier。
-- 真实 DeepSeek final Run `31761711529`：8 actions / 8 structured / 6 usable / 16 API attempts / 8 retries / 10 provider empty / 2 retry exhaustion / 2 graceful fallback / 0 technical leaks；最终正常 `campaign_ended`，结局 `ending-solved`。
-- APP_VERSION 为 v1.6.7，Save Schema 仍为 8，AI protocol 仍为 1.3；正式单 HTML 为 **599664 bytes**，恢复机械不增加正常 AI 请求。
-- Combat Round、攻击/闪避/反击、护甲与武器伤害、SAN 状态恢复/过期等继续留给后续 v1.6.x，不把未实现内容包装成已完成。
-
-'''
+          section='\n'.join([
+              '## v1.6.7 更新内容',
+              '',
+              '- 新增 Healing Recovery 1.0：恢复期机械继续由浏览器拥有；普通聊天回合不会被偷偷当作“过了一天”或“过了一周”。',
+              '- 无 Major Wound 且未 dying 的受伤角色，可显式确认经过 1 天并由浏览器恢复 1 HP；满 HP、dying、Major Wound 都不能误走这个每日恢复入口。',
+              '- Major Wound 改为显式每周 CON 恢复：成功恢复 1D3；Extreme/critical 恢复 2D3；Extreme/critical 或 HP 恢复到 Max HP 一半以上时，由浏览器解除 Major Wound。',
+              '- Medicine 由浏览器按明确施救者技能值结算；必须确认至少治疗 1 小时并具备合适设备/物资。同日为 Regular，非同日为 Hard，成功恢复 1D3 HP。',
+              '- active dying 不能直接进入 Medicine；必须先经过 v1.6.6 的 First Aid 成功稳定，再进行后续医疗。',
+              '- Medicine continuation 中 AI 自报的正向 `adjustHp` 会被剥离，但安全旗标、NPC 连续性和普通叙事继续保留，避免重复回血同时遵守 **BLOCK UNSAFE STATE, NOT PLAYER ACTION**。',
+              '- 新增 `cocHealingRecovery` payload/diagnostic authority；AI 可以叙述浏览器已经确认的恢复状态，但不能自行推进天/周、决定 Medicine 成败、恢复 HP 或解除 Major Wound。',
+              '- Real API release gate 发现 DeepSeek 会把合法 `addPinnedFact` 的 `text` 偶发写成 `fact`。现仅对已知 `addPinnedFact`、仅在 `text` 缺失且 `fact` 为非空字符串时执行窄 `fact → text` 归一；显式 `text` 优先，空 `fact` 与未知 operation 仍严格不放行。',
+              '- v1.6.7 focused suite 最终为 **43 PASS / 0 FAIL**；连同既有 714 条，永久 deterministic 基线提升到 **757 PASS / 0 FAIL**，并通过 JavaScript syntax、deterministic double build 与 single-HTML verifier。',
+              '- 真实 DeepSeek final Run `31761711529`：8 actions / 8 structured / 6 usable / 16 API attempts / 8 retries / 10 provider empty / 2 retry exhaustion / 2 graceful fallback / 0 technical leaks；最终正常 `campaign_ended`，结局 `ending-solved`。',
+              '- APP_VERSION 为 v1.6.7，Save Schema 仍为 8，AI protocol 仍为 1.3；正式单 HTML 为 **599664 bytes**，恢复机械不增加正常 AI 请求。',
+              '- Combat Round、攻击/闪避/反击、护甲与武器伤害、SAN 状态恢复/过期等继续留给后续 v1.6.x，不把未实现内容包装成已完成。',
+              '',
+              ''
+          ])
           if '## v1.6.7 更新内容' not in text:
               if text.count(anchor)!=1:
                   raise SystemExit('README v1.6.6 anchor missing')
