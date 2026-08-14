@@ -1,0 +1,112 @@
+name: TRPG v1.6.8 Combat Development Gate
+
+on:
+  push:
+    branches: [agent/v1.6.8-combat-opposed]
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/v1.6.8-combat-opposed
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply development integration fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path, old, new):
+              p=Path(path); text=p.read_text(encoding='utf-8'); count=text.count(old)
+              if count!=1: raise SystemExit(f'{path}: expected 1 match, found {count}: {old!r}')
+              p.write_text(text.replace(old,new,1),encoding='utf-8')
+
+          replace_once(
+            'trpg-dm-assistant/src/combat-opposed.js',
+            'if(healthStabilizationCanAdvanceDying(state.character))state.campaign.combat.playerDyingObservedRound=1;',
+            'if(combatDyingActuallyActive())state.campaign.combat.playerDyingObservedRound=1;'
+          )
+
+          test=Path('trpg-dm-assistant/build/test-v168-combat-opposed.js')
+          text=test.read_text(encoding='utf-8')
+          bad='await test("response allowance 可延后 outnumbered bonus",async()=>{api.ready({dex:50});api.start([api.opp("a",80,50,30,"fight_back",2),api.opp("b",70,50,30)]);let s=api.snapshot();s.participants.find(x=>x.id==="player");const first=api.melee("player","dodge",40,30);assert.equal(first.exchange.outnumberedBonus,0);const second=api.melee("player","dodge",40,30);assert.equal(second.exchange.outnumberedBonus,1)});\n'
+          if bad in text: text=text.replace(bad,'',1)
+          helper_anchor='function __source(){return fs.readFileSync(path.join(root,"src","combat-opposed.js"),"utf8")}\n'
+          helper='function __setActiveAbort(value){activeAbortController=value?{}:null}\n'
+          if helper not in text:
+              if text.count(helper_anchor)!=1: raise SystemExit('active abort helper anchor missing')
+              text=text.replace(helper_anchor,helper+helper_anchor,1)
+          export_old='legacy:__legacy,source:__source,buildSource:__buildSource,verifySource:__verifySource};'
+          export_new='legacy:__legacy,setActiveAbort:__setActiveAbort,source:__source,buildSource:__buildSource,verifySource:__verifySource};'
+          if export_new not in text:
+              if text.count(export_old)!=1: raise SystemExit('test API export anchor missing')
+              text=text.replace(export_old,export_new,1)
+          old_test='await test("AI 请求进行中不能开始或推进 Combat Mode",async()=>{api.ready();const snap=api.snapshot();assert.equal(snap.active,false);sandbox.activeAbortController={};assert.throws(()=>api.start([api.opp("enemy",50)]),/AI 请求进行中/);sandbox.activeAbortController=null});'
+          new_test='await test("AI 请求进行中不能开始或推进 Combat Mode",async()=>{api.ready();const snap=api.snapshot();assert.equal(snap.active,false);api.setActiveAbort(true);assert.throws(()=>api.start([api.opp("enemy",50)]),/AI 请求进行中/);api.setActiveAbort(false)});'
+          if old_test in text: text=text.replace(old_test,new_test,1)
+          test.write_text(text,encoding='utf-8')
+
+          build=Path('trpg-dm-assistant/build/build-single-html.js'); text=build.read_text(encoding='utf-8')
+          old='  "health-stabilization.js",\n  "healing-recovery.js"\n];'
+          new='  "health-stabilization.js",\n  "healing-recovery.js",\n  "combat-opposed.js"\n];'
+          if new not in text:
+              if text.count(old)!=1: raise SystemExit('build insertion point missing')
+              build.write_text(text.replace(old,new,1),encoding='utf-8')
+
+          verify=Path('trpg-dm-assistant/build/verify-single-html.js'); text=verify.read_text(encoding='utf-8')
+          old='  "src/health-stabilization.js",\n  "src/healing-recovery.js",\n  "src/scenarios/library.js",'
+          new='  "src/health-stabilization.js",\n  "src/healing-recovery.js",\n  "src/combat-opposed.js",\n  "src/scenarios/library.js",'
+          if new not in text:
+              if text.count(old)!=1: raise SystemExit('verify source insertion point missing')
+              text=text.replace(old,new,1)
+          old='if (!html.includes(\'const HEALING_RECOVERY_VERSION="1.0";\')) fail("输出缺少 Healing Recovery 模块");'
+          new=old+'\nif (!html.includes(\'const COMBAT_OPPOSED_VERSION="1.0";\')) fail("输出缺少 Combat Opposed 模块");'
+          if 'COMBAT_OPPOSED_VERSION' not in text:
+              if text.count(old)!=1: raise SystemExit('verify version insertion point missing')
+              text=text.replace(old,new,1)
+          verify.write_text(text,encoding='utf-8')
+          PY
+      - name: v1.6.8 focused regression
+        run: node trpg-dm-assistant/build/test-v168-combat-opposed.js
+      - name: Existing permanent deterministic suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -oE 'node trpg-dm-assistant/build/test-[^[:space:]]+\.js' .github/workflows/trpg-ci.yml | while IFS= read -r cmd; do
+            echo "> $cmd"
+            eval "$cmd"
+          done
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do node --check "$file"; done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+      - name: Build and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          git diff --check
+      - name: Persist green development files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add trpg-dm-assistant/src/combat-opposed.js trpg-dm-assistant/build/test-v168-combat-opposed.js trpg-dm-assistant/build/build-single-html.js trpg-dm-assistant/build/verify-single-html.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git commit -m 'Validate v1.6.8 combat opposed engine'
+          git push origin HEAD:agent/v1.6.8-combat-opposed
