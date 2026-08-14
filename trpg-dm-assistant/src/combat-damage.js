@@ -70,6 +70,7 @@ function combatDamageApplyDisposition(exchange,{weaponRoller=null,bonusRoller=nu
 }
 function combatDamageContext(){
   const combat=combatSnapshot(),player=combatPlayerParticipant?combatDamageEnhancePlayer({...combatPlayerParticipant()}):null;return{version:COMBAT_DAMAGE_VERSION,authority:COMBAT_DAMAGE_AUTHORITY,combatActive:combat.active,playerLoadout:player?{weapon:player.weapon,armor:player.armor,damageBonus:player.damageBonus}:null,lastDamage:combat.lastExchange?.damageResult?deepClone(combat.lastExchange.damageResult):null,policy:"browser_consumes_damage_disposition_then_rolls_non_impaling_melee_damage_and_fixed_armor",deferred:["firearms","impaling","variable_armor","fighting_maneuvers","npc_major_wound"],aiAuthority:"cannot_roll_or_commit_combat_damage"}
+}
 
 /* Extend combat participants without changing v1.6.8 opposed semantics. */
 const __combatDamagePlayerParticipant=combatPlayerParticipant;
