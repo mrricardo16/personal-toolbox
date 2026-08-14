@@ -16,8 +16,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
+      - name: Preserve optional impaling audit fields
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('trpg-dm-assistant/src/combat-damage.js')
+          s=p.read_text(encoding='utf-8')
+          old='disposition.result={authority:COMBAT_DAMAGE_AUTHORITY,weapon:deepClone(rolled.weapon),weaponResult:deepClone(rolled.weaponResult),damageBonusResult:deepClone(rolled.damageBonusResult),grossDamage:rolled.grossDamage,armor,netDamage,hpBefore,hpAfter,targetDefeated:hpAfter<=0,hpDamageState:hpDamageState?deepClone(hpDamageState.state||null):null}'
+          new='disposition.result={authority:COMBAT_DAMAGE_AUTHORITY,weapon:deepClone(rolled.weapon),weaponResult:deepClone(rolled.weaponResult),damageBonusResult:deepClone(rolled.damageBonusResult),impaling:Boolean(rolled.impaling),impaleExtraResult:rolled.impaleExtraResult?deepClone(rolled.impaleExtraResult):null,grossDamage:rolled.grossDamage,armor,netDamage,hpBefore,hpAfter,targetDefeated:hpAfter<=0,hpDamageState:hpDamageState?deepClone(hpDamageState.state||null):null}'
+          if old in s:
+              s=s.replace(old,new,1)
+              p.write_text(s,encoding='utf-8')
+          elif new not in s:
+              raise SystemExit('combat damage result boundary not found')
+          PY
       - name: Syntax
         run: |
+          node --check trpg-dm-assistant/src/combat-damage.js
           node --check trpg-dm-assistant/src/firearms-impaling.js
           node --check trpg-dm-assistant/build/test-v1610-firearms-impaling.js
       - name: v1.6.10 focused regression
@@ -33,12 +48,12 @@ jobs:
           second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
           test "$first" = "$second"
           git diff --check
-      - name: Persist deterministic product
+      - name: Persist validated source and product
         run: |
-          if ! git diff --quiet -- trpg-dm-assistant/outputs/trpg-dm-assistant.html; then
+          if ! git diff --quiet -- trpg-dm-assistant/src/combat-damage.js trpg-dm-assistant/outputs/trpg-dm-assistant.html; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add trpg-dm-assistant/outputs/trpg-dm-assistant.html
-            git commit -m "Build v1.6.10 firearms product [skip v1610-dev]"
+            git add trpg-dm-assistant/src/combat-damage.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
+            git commit -m "Preserve v1.6.10 impaling damage audit [skip v1610-dev]"
             git push
           fi
