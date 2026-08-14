@@ -1,0 +1,76 @@
+name: TRPG v1.6.7 Provider Alias Patch
+
+on:
+  push:
+    branches: [agent/v1.6.7-healing-recovery]
+
+permissions:
+  contents: write
+
+jobs:
+  patch-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/v1.6.7-healing-recovery
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply narrow addPinnedFact fact-to-text normalization and tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          protocol = Path('trpg-dm-assistant/src/ai-protocol.js')
+          text = protocol.read_text(encoding='utf-8')
+          old = 'if(item.operation==="addRevealedTruth"&&item.text===undefined&&typeof item.description==="string"&&item.description.trim())item.text=item.description.trim();if(!amountOps.has(item.operation)||item.amount!==undefined)continue;'
+          new = 'if(item.operation==="addRevealedTruth"&&item.text===undefined&&typeof item.description==="string"&&item.description.trim())item.text=item.description.trim();if(item.operation==="addPinnedFact"&&item.text===undefined&&typeof item.fact==="string"&&item.fact.trim())item.text=item.fact.trim();if(!amountOps.has(item.operation)||item.amount!==undefined)continue;'
+          if text.count(old) != 1:
+              raise SystemExit(f'ai-protocol alias insertion point count={text.count(old)}')
+          protocol.write_text(text.replace(old,new,1),encoding='utf-8')
+
+          test = Path('trpg-dm-assistant/build/test-v167-healing-recovery.js')
+          text = test.read_text(encoding='utf-8')
+          helper_anchor = 'function __source(){return fs.readFileSync(path.join(root,"src","healing-recovery.js"),"utf8")}\n'
+          helper = 'function __normalizeProtocol(input){return deepClone(normalizeAiProtocolShape(input,{stage:"action_adjudication"}))}\n'
+          if helper not in text:
+              if text.count(helper_anchor) != 1:
+                  raise SystemExit('v167 normalize helper insertion point missing')
+              text = text.replace(helper_anchor, helper + helper_anchor, 1)
+          api_anchor = 'legacy:__legacy,source:__source,buildSource:__buildSource,verifySource:__verifySource};'
+          api_new = 'legacy:__legacy,normalizeProtocol:__normalizeProtocol,source:__source,buildSource:__buildSource,verifySource:__verifySource};'
+          if api_new not in text:
+              if text.count(api_anchor) != 1:
+                  raise SystemExit('v167 API export insertion point missing')
+              text = text.replace(api_anchor, api_new, 1)
+          tests_anchor = 'console.log(`V167_HEALING_RECOVERY_RESULT ${passed} PASS / 0 FAIL`);'
+          tests = '''await test("addPinnedFact.fact 窄归一为 text",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"addPinnedFact",fact:" 沈墨确认非法实验 "}]});assert.equal(n.campaignChanges[0].text,"沈墨确认非法实验")});
+await test("addPinnedFact 显式 text 优先于 fact 别名",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"addPinnedFact",text:"正式文本",fact:"别名文本"}]});assert.equal(n.campaignChanges[0].text,"正式文本")});
+await test("addPinnedFact 空 fact 不会伪造 text",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"addPinnedFact",fact:"   "}]});assert.equal(n.campaignChanges[0].text,undefined)});
+await test("未知 operation 的 fact 不会被通用猜测为 text",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"inventPinnedFact",fact:"越权事实"}]});assert.equal(n.campaignChanges[0].text,undefined);assert.equal(n.campaignChanges[0].operation,"inventPinnedFact")});
+'''
+          if 'addPinnedFact.fact 窄归一为 text' not in text:
+              if text.count(tests_anchor) != 1:
+                  raise SystemExit('v167 test insertion point missing')
+              text = text.replace(tests_anchor, tests + tests_anchor, 1)
+          test.write_text(text,encoding='utf-8')
+          PY
+      - name: Focused provider alias and healing regression
+        run: |
+          node trpg-dm-assistant/build/test-v167-healing-recovery.js
+          node trpg-dm-assistant/build/test-v154-operation-id-alias.js
+          node --check trpg-dm-assistant/src/ai-protocol.js
+          node --check trpg-dm-assistant/build/test-v167-healing-recovery.js
+      - name: Persist narrow provider compatibility fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add trpg-dm-assistant/src/ai-protocol.js trpg-dm-assistant/build/test-v167-healing-recovery.js
+          git commit -m 'Handle addPinnedFact fact alias safely'
+          git push origin HEAD:agent/v1.6.7-healing-recovery
