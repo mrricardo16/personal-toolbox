@@ -29,6 +29,7 @@ const requiredSources = [
   "src/san-loss-window.js",
   "src/hp-damage-state.js",
   "src/health-stabilization.js",
+  "src/healing-recovery.js",
   "src/scenarios/library.js",
   "src/styles.css",
   "src/shell.template"
@@ -71,6 +72,7 @@ if (!html.includes('const SAN_LOSS_RESOLUTION_VERSION="1.0";')) fail("输出缺�
 if (!html.includes('const SAN_LOSS_WINDOW_VERSION="1.0";')) fail("输出缺少 SAN Loss Window 模块");
 if (!html.includes('const HP_DAMAGE_STATE_VERSION="1.0";')) fail("输出缺少 HP Damage State 模块");
 if (!html.includes('const HEALTH_STABILIZATION_VERSION="1.0";')) fail("输出缺少 Health Stabilization 模块");
+if (!html.includes('const HEALING_RECOVERY_VERSION="1.0";')) fail("输出缺少 Healing Recovery 模块");
 if (/\b(?:eval|Function)\s*\(/.test(html)) fail("输出包含 eval/new Function 风险调用");
 if (html.includes("window.__TRPG_TEST_API__")) fail("生产输出暴露测试接口");
 if (/<script\b[^>]+\bsrc\s*=|<link\b[^>]+\bhref\s*=\s*["']https?:\/\//i.test(html)) fail("输出包含外部运行时资源");

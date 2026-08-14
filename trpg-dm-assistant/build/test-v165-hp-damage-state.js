@@ -27,7 +27,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,HP_DAMAGE_STAT
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v165-hp-damage-state-runtime.js"});
 const api=sandbox.__test;let passed=0;async function test(name,fn){await fn();passed++;console.log(`PASS ${name}`)}
 (async()=>{
-await test("v1.6.5 HP Damage State 模块加载且开发阶段 Schema/协议稳定",async()=>{assert.equal(api.APP_VERSION,"1.6.6");assert.equal(api.HP_DAMAGE_STATE_VERSION,"1.0");assert.equal(api.HP_DAMAGE_STATE_AUTHORITY,"browser_coc_health");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+await test("v1.6.5 HP Damage State 模块加载且开发阶段 Schema/协议稳定",async()=>{{const [major,minor,patch]=api.APP_VERSION.split(".").map(Number);assert(major>1||(major===1&&(minor>6||(minor===6&&patch>=6))),`unexpected forward version ${api.APP_VERSION}`)};assert.equal(api.HP_DAMAGE_STATE_VERSION,"1.0");assert.equal(api.HP_DAMAGE_STATE_AUTHORITY,"browser_coc_health");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 await test("max HP 12 的 Major Wound 阈值为 6",async()=>assert.equal(api.threshold(12),6));
 await test("奇数 max HP 11 的 Major Wound 阈值向上取整为 6",async()=>assert.equal(api.threshold(11),6));
 await test("低于一半的单次伤害不产生 Major Wound 或 CON",async()=>{api.ready();const out=api.apply(5,{key:"minor"});assert.equal(out.event.majorWound,false);assert.equal(out.event.conCheck,null);assert.equal(out.state.majorWound,null)});
