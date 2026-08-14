@@ -48,11 +48,12 @@ jobs:
                   raise SystemExit('v167 API export insertion point missing')
               text = text.replace(api_anchor, api_new, 1)
           tests_anchor = 'console.log(`V167_HEALING_RECOVERY_RESULT ${passed} PASS / 0 FAIL`);'
-          tests = '''await test("addPinnedFact.fact 窄归一为 text",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"addPinnedFact",fact:" 沈墨确认非法实验 "}]});assert.equal(n.campaignChanges[0].text,"沈墨确认非法实验")});
-await test("addPinnedFact 显式 text 优先于 fact 别名",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"addPinnedFact",text:"正式文本",fact:"别名文本"}]});assert.equal(n.campaignChanges[0].text,"正式文本")});
-await test("addPinnedFact 空 fact 不会伪造 text",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"addPinnedFact",fact:"   "}]});assert.equal(n.campaignChanges[0].text,undefined)});
-await test("未知 operation 的 fact 不会被通用猜测为 text",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"inventPinnedFact",fact:"越权事实"}]});assert.equal(n.campaignChanges[0].text,undefined);assert.equal(n.campaignChanges[0].operation,"inventPinnedFact")});
-'''
+          tests = '\n'.join([
+              'await test("addPinnedFact.fact 窄归一为 text",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"addPinnedFact",fact:" 沈墨确认非法实验 "}]});assert.equal(n.campaignChanges[0].text,"沈墨确认非法实验")});',
+              'await test("addPinnedFact 显式 text 优先于 fact 别名",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"addPinnedFact",text:"正式文本",fact:"别名文本"}]});assert.equal(n.campaignChanges[0].text,"正式文本")});',
+              'await test("addPinnedFact 空 fact 不会伪造 text",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"addPinnedFact",fact:"   "}]});assert.equal(n.campaignChanges[0].text,undefined)});',
+              'await test("未知 operation 的 fact 不会被通用猜测为 text",async()=>{const n=api.normalizeProtocol({campaignChanges:[{operation:"inventPinnedFact",fact:"越权事实"}]});assert.equal(n.campaignChanges[0].text,undefined);assert.equal(n.campaignChanges[0].operation,"inventPinnedFact")});'
+          ]) + '\n'
           if 'addPinnedFact.fact 窄归一为 text' not in text:
               if text.count(tests_anchor) != 1:
                   raise SystemExit('v167 test insertion point missing')
