@@ -29,6 +29,16 @@ jobs:
           elif new not in s: raise SystemExit('APP_VERSION boundary not found')
           lib.write_text(s,encoding='utf-8')
 
+          previous=Path('trpg-dm-assistant/build/test-v168-combat-opposed.js')
+          p=previous.read_text(encoding='utf-8')
+          exact='assert.equal(api.APP_VERSION,"1.6.8");'
+          forward='const [maj,min,patch]=api.APP_VERSION.split(".").map(Number);assert(maj>1||(maj===1&&(min>6||(min===6&&patch>=8))));'
+          if exact in p:
+              p=p.replace(exact,forward,1)
+          elif forward not in p:
+              raise SystemExit('v1.6.8 forward-version assertion boundary not found')
+          previous.write_text(p,encoding='utf-8')
+
           real=Path('trpg-dm-assistant/build/test-real-api-v1513.js')
           x=real.read_text(encoding='utf-8')
           x=x.replace('"combat-opposed.js"]','"combat-opposed.js","combat-damage.js"]',1)
@@ -83,7 +93,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add trpg-dm-assistant/src/scenarios/library.js trpg-dm-assistant/build/test-real-api-v1513.js trpg-dm-assistant/build/test-v169-combat-damage.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          git add trpg-dm-assistant/src/scenarios/library.js trpg-dm-assistant/build/test-v168-combat-opposed.js trpg-dm-assistant/build/test-real-api-v1513.js trpg-dm-assistant/build/test-v169-combat-damage.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
           if ! git diff --cached --quiet; then
             git commit -m "Finalize v1.6.9 combat damage release [skip v169-release]"
             git push
