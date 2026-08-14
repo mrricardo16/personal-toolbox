@@ -31,7 +31,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,FIREARMS_IMPAL
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v1610-firearms-impaling-runtime.js"});
 const api=sandbox.__test;let passed=0;async function test(name,fn){await fn();passed++;console.log("PASS "+name)}
 (async()=>{
-await test("v1.6.10 模块加载",async()=>{assert.equal(api.FIREARMS_IMPALING_VERSION,"1.0");assert.equal(api.FIREARMS_IMPALING_AUTHORITY,"browser_coc_firearms_impaling");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+await test("v1.6.10 模块加载",async()=>{assert.equal(api.APP_VERSION,"1.6.10");assert.equal(api.FIREARMS_IMPALING_VERSION,"1.0");assert.equal(api.FIREARMS_IMPALING_AUTHORITY,"browser_coc_firearms_impaling");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 await test("近战穿刺武器可归一化",async()=>{const w=api.weapon({label:"刀",damage:"1d4",mode:"melee_impaling"});assert.equal(w.mode,"melee_impaling");assert.equal(w.impaling,true);assert.equal(w.addsDamageBonus,true)});
 await test("单发枪械强制不加 DB",async()=>{const w=api.weapon({label:"左轮",damage:"1d10",mode:"firearm_impaling",addsDamageBonus:true,skillId:"firearms_handgun",baseRangeFeet:45});assert.equal(w.addsDamageBonus,false);assert.equal(w.skillId,"firearms_handgun");assert.equal(w.baseRangeFeet,45)});
 await test("枪械仅允许已支持技能 ID",async()=>{assert.throws(()=>api.weapon({damage:"1d10",mode:"firearm_impaling",skillId:"firearms_smg"}),/仅支持/)});
