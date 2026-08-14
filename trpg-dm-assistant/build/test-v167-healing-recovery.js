@@ -31,7 +31,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,HEALING_RECOVE
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v167-healing-recovery-runtime.js"});
 const api=sandbox.__test;let passed=0;async function test(name,fn){await fn();passed++;console.log(`PASS ${name}`)}
 (async()=>{
-await test("v1.6.7 Healing Recovery 模块加载",async()=>{assert.equal(api.HEALING_RECOVERY_VERSION,"1.0");assert.equal(api.HEALING_RECOVERY_AUTHORITY,"browser_coc_healing_recovery");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+await test("v1.6.7 Healing Recovery 模块加载",async()=>{assert.equal(api.APP_VERSION,"1.6.7");assert.equal(api.HEALING_RECOVERY_VERSION,"1.0");assert.equal(api.HEALING_RECOVERY_AUTHORITY,"browser_coc_healing_recovery");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 await test("健康角色快照读取 Medicine 技能",async()=>{api.ready(12,12,60,67);const s=api.snapshot();assert.equal(s.medicineSkill,67);assert.equal(s.hp,12);assert.equal(s.majorWound,null)});
 await test("无 Major Wound 显式经过一天恢复 1 HP",async()=>{api.ready(8,12);const out=api.natural();assert.equal(out.record.healedHp,1);assert.equal(out.state.hp,9);assert.equal(out.record.explicitDayElapsed,true)});
 await test("自然恢复不能超过 max HP",async()=>{api.ready(12,12);assert.throws(()=>api.natural(),/HP 已满/)});

@@ -27,7 +27,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,HEALTH_STABILI
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v166-health-stabilization-runtime.js"});
 const api=sandbox.__test;let passed=0;async function test(name,fn){await fn();passed++;console.log(`PASS ${name}`)}
 (async()=>{
-await test("v1.6.6 模块加载且开发阶段版本边界稳定",async()=>{assert.equal(api.APP_VERSION,"1.6.6");assert.equal(api.HEALTH_STABILIZATION_VERSION,"1.0");assert.equal(api.HEALTH_STABILIZATION_AUTHORITY,"browser_coc_health_stabilization");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+await test("v1.6.6 模块加载且开发阶段版本边界稳定",async()=>{{const [major,minor,patch]=api.APP_VERSION.split(".").map(Number);assert(major>1||(major===1&&(minor>6||(minor===6&&patch>=6))),`unexpected forward version ${api.APP_VERSION}`)};assert.equal(api.HEALTH_STABILIZATION_VERSION,"1.0");assert.equal(api.HEALTH_STABILIZATION_AUTHORITY,"browser_coc_health_stabilization");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 await test("普通健康角色没有急救或濒死操作需求",async()=>{api.ready();const s=api.snapshot();assert.equal(s.dying,null);assert.equal(s.dead,null);assert.equal(s.hp,12)});
 await test("急救技能值从浏览器角色卡读取",async()=>{api.ready(10,12,60,67);assert.equal(api.snapshot().firstAidSkill,67)});
 await test("Major Wound 降到 0 HP 后进入未稳定 dying",async()=>{api.makeDying();const s=api.snapshot();assert.equal(s.dying.active,true);assert.equal(s.dying.stabilized,false);assert.equal(s.hp,0)});
