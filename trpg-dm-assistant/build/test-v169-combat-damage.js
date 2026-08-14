@@ -30,7 +30,7 @@ globalThis.__test={APP_VERSION,SCHEMA_VERSION,AI_PROTOCOL_VERSION,COMBAT_DAMAGE_
 vm.createContext(sandbox);vm.runInContext(source,sandbox,{filename:"v169-combat-damage-runtime.js"});
 const api=sandbox.__test;let passed=0;async function test(name,fn){await fn();passed++;console.log(`PASS ${name}`)}
 (async()=>{
-await test("v1.6.9 Combat Damage 模块加载",async()=>{assert.equal(api.APP_VERSION,"1.6.9");assert.equal(api.COMBAT_DAMAGE_VERSION,"1.0");assert.equal(api.COMBAT_DAMAGE_AUTHORITY,"browser_coc_combat_damage");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
+await test("v1.6.9 Combat Damage 模块加载",async()=>{const [maj,min,patch]=api.APP_VERSION.split(".").map(Number);assert(maj>1||(maj===1&&(min>6||(min===6&&patch>=9))));assert.equal(api.COMBAT_DAMAGE_VERSION,"1.0");assert.equal(api.COMBAT_DAMAGE_AUTHORITY,"browser_coc_combat_damage");assert.equal(api.SCHEMA_VERSION,8);assert.equal(api.AI_PROTOCOL_VERSION,"1.3")});
 await test("DB STR+SIZ 64 或以下为 -2",async()=>{assert.deepEqual(api.db(32,32),{sum:64,kind:"flat",value:-2,expression:"-2",max:-2})});
 await test("DB STR+SIZ 65-84 为 -1",async()=>{assert.equal(api.db(40,44).expression,"-1");assert.equal(api.db(40,45).expression,"0")});
 await test("DB STR+SIZ 85-124 为 0",async()=>{assert.equal(api.db(60,64).expression,"0")});
