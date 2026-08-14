@@ -29,7 +29,8 @@ const moduleFiles = [
   "san-loss-resolution.js",
   "san-loss-window.js",
   "hp-damage-state.js",
-  "health-stabilization.js"
+  "health-stabilization.js",
+  "healing-recovery.js"
 ];
 
 function readUtf8(filePath) {
