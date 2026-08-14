@@ -32,6 +32,7 @@ const requiredSources = [
   "src/healing-recovery.js",
   "src/combat-opposed.js",
   "src/combat-damage.js",
+  "src/firearms-impaling.js",
   "src/scenarios/library.js",
   "src/styles.css",
   "src/shell.template"
@@ -77,6 +78,7 @@ if (!html.includes('const HEALTH_STABILIZATION_VERSION="1.0";')) fail("输出缺
 if (!html.includes('const HEALING_RECOVERY_VERSION="1.0";')) fail("输出缺少 Healing Recovery 模块");
 if (!html.includes('const COMBAT_OPPOSED_VERSION="1.0";')) fail("输出缺少 Combat Opposed 模块");
 if (!html.includes('const COMBAT_DAMAGE_VERSION="1.0";')) fail("输出缺少 Combat Damage 模块");
+if (!html.includes('const FIREARMS_IMPALING_VERSION="1.0";')) fail("输出缺少 Firearms / Impaling 模块");
 if (/\b(?:eval|Function)\s*\(/.test(html)) fail("输出包含 eval/new Function 风险调用");
 if (html.includes("window.__TRPG_TEST_API__")) fail("生产输出暴露测试接口");
 if (/<script\b[^>]+\bsrc\s*=|<link\b[^>]+\bhref\s*=\s*["']https?:\/\//i.test(html)) fail("输出包含外部运行时资源");
