@@ -1,6 +1,6 @@
-# TRPG AI 主持助手 v1.6.9
+# TRPG AI 主持助手 v1.6.10
 
-一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.6.9。
+一个无依赖、可直接双击打开的单人 TRPG AI 主持小游戏。唯一正式产品入口为 [outputs/trpg-dm-assistant.html](outputs/trpg-dm-assistant.html)，当前版本为 v1.6.10。
 
 ## 快速开始
 
@@ -12,6 +12,22 @@
 6. 使用保存、导出和导入功能管理存档。
 
 首次体验可以先完成创角和预设剧本前情提要流程；继续进行 AI 叙事时，需要填写自己的兼容 API Key。
+
+## v1.6.10 更新内容
+
+- 新增 Firearms / Impaling Resolution 1.0：在 v1.6.8 Combat Opposed 与 v1.6.9 Combat Damage 之上补齐浏览器拥有的单发枪械与穿刺伤害层。
+- 支持 `melee_impaling` 与 Base Range 内单发 `firearm_impaling`；枪械技能仅接受 Firearms (Handgun) / Firearms (Rifle/Shotgun)，枪械不会错误加入 STR/SIZ Damage Bonus。
+- 已准备枪械按 DEX +50 参与 Combat Mode 行动顺序；point-blank 以 shooter DEX / 5 feet 判定并给 1 个 bonus die。
+- Dive for Cover 由浏览器执行 Dodge：成功时射手获得 1 个 penalty die；无论成功失败，目标都会失去下一次攻击机会。聊天回合仍不会被偷换成战斗轮。
+- Firearm Extreme/critical 使用 Impale：最大武器伤害 + 额外一次武器伤害骰，不加入 DB；近战穿刺 Extreme/critical 为最大武器伤害 + 适用的最大 DB + 额外一次武器伤害骰。
+- Fight Back 即使以 Extreme/critical 获胜也不触发 Impale，继续使用普通实际伤害，保持 v1.6.8 的反击上限语义。
+- 固定 Armor、玩家 HP Damage State、Major Wound、dying、instant death、对手 HP/defeat 与最后敌人倒下自动结束 Combat Mode 全部复用既有浏览器权威链。
+- 修复两个集成边界：通用伤害审计现在保留 `impaling / impaleExtraResult`；旧 Schema 8 firearm loadout 在内层归一化前捕获并安全恢复合法 `firearmReadied`。
+- v1.6.10 focused suite 为 **45 PASS / 0 FAIL**；永久 deterministic 基线由 847 提升到 **892 PASS / 0 FAIL**，并通过 JavaScript syntax、deterministic double build 与 single-HTML verifier。
+- 真实 DeepSeek release Run `31765966430`：8 actions / 8 structured / 6 usable / 14 API attempts / 6 retries / 8 provider empty / 2 retry exhaustion / 2 graceful fallback / 0 JSON-invalid / 0 technical leaks；浏览器结局门已 ready，provider 在结案阶段耗尽重试后保持 `awaiting_player_action`，属于严格 provider-deferred ending。
+- APP_VERSION 为 v1.6.10，Save Schema 仍为 8，AI protocol 仍为 1.3；正式单 HTML 为 **662681 bytes**，Firearms / Impaling 不增加正常 AI round trip。
+- 多发射击、自动火力、故障、Base Range 外距离档、霰弹距离伤害、reload / re-ready 行动经济继续后置，不把未实现枪械规则包装成已完成。
+- AI 只能叙述浏览器确认的 firearm / Impale 结果，不得自行决定命中、Dive、穿刺、Armor 或 HP；继续遵守 **BLOCK UNSAFE STATE, NOT PLAYER ACTION**。
 
 ## v1.6.9 更新内容
 
