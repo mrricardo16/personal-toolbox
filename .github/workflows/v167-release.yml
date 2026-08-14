@@ -40,11 +40,19 @@ jobs:
               'const APP_VERSION = "1.6.7";'
           )
 
-          replace_once(
-              'trpg-dm-assistant/build/test-v166-health-stabilization.js',
-              'assert.equal(api.APP_VERSION,"1.6.6");',
-              '{const [major,minor,patch]=api.APP_VERSION.split(".").map(Number);assert(major>1||(major===1&&(minor>6||(minor===6&&patch>=6))),`unexpected forward version ${api.APP_VERSION}`)};'
-          )
+          forward = '{const [major,minor,patch]=api.APP_VERSION.split(".").map(Number);assert(major>1||(major===1&&(minor>6||(minor===6&&patch>=6))),`unexpected forward version ${api.APP_VERSION}`)};'
+          old = 'assert.equal(api.APP_VERSION,"1.6.6");'
+          changed = []
+          for p in sorted(Path('trpg-dm-assistant/build').glob('test-v*.js')):
+              if p.name == 'test-v167-healing-recovery.js':
+                  continue
+              text = p.read_text(encoding='utf-8')
+              if old in text:
+                  p.write_text(text.replace(old, forward), encoding='utf-8')
+                  changed.append(p.name)
+          if not changed:
+              raise SystemExit('expected at least one historical 1.6.6 version assertion')
+          print('Forward-compatible historical version assertions:', ', '.join(changed))
 
           replace_once(
               'trpg-dm-assistant/build/test-v167-healing-recovery.js',
@@ -117,8 +125,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add \
             trpg-dm-assistant/src/scenarios/library.js \
-            trpg-dm-assistant/build/test-v166-health-stabilization.js \
-            trpg-dm-assistant/build/test-v167-healing-recovery.js \
+            trpg-dm-assistant/build/test-v*.js \
             trpg-dm-assistant/build/test-real-api-v1513.js \
             trpg-dm-assistant/outputs/trpg-dm-assistant.html
           if git diff --cached --quiet; then
