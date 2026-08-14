@@ -131,6 +131,9 @@ jobs:
       - name: v1.6.9 combat damage regression
         run: node trpg-dm-assistant/build/test-v169-combat-damage.js
 
+      - name: v1.6.10 firearms and impaling regression
+        run: node trpg-dm-assistant/build/test-v1610-firearms-impaling.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
