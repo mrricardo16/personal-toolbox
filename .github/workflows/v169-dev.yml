@@ -45,6 +45,12 @@ jobs:
               x=x.replace(expect_old,expect_new,1)
           elif expect_new not in x:
               raise SystemExit('expected Fight Back damage assertion boundary not found')
+          owner_old='api.ready({dex:50});api.start([api.opp("enemy",{dex:80,fighting:80,str:70,siz:60,weaponDamage:"1d6",responsePreference:"fight_back"})])'
+          owner_new='api.ready({dex:50,str:70,siz:60});api.start([api.opp("enemy",{dex:80,fighting:80,str:70,siz:60,weaponDamage:"1d6",responsePreference:"fight_back"})])'
+          if owner_old in x:
+              x=x.replace(owner_old,owner_new,1)
+          elif owner_new not in x:
+              raise SystemExit('expected Fight Back owner profile boundary not found')
           t.write_text(x,encoding='utf-8')
           PY
       - name: Syntax
