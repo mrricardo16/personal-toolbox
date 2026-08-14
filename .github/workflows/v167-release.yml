@@ -43,7 +43,7 @@ jobs:
           replace_once(
               'trpg-dm-assistant/build/test-v166-health-stabilization.js',
               'assert.equal(api.APP_VERSION,"1.6.6");',
-              'assert(/^1\\.(?:[7-9]|[1-9]\\d+)\\.|^1\\.6\\.(?:[6-9]|[1-9]\\d+)$/.test(api.APP_VERSION),`unexpected forward version ${api.APP_VERSION}`);'
+              '{const [major,minor,patch]=api.APP_VERSION.split(".").map(Number);assert(major>1||(major===1&&(minor>6||(minor===6&&patch>=6))),`unexpected forward version ${api.APP_VERSION}`)};'
           )
 
           replace_once(
@@ -69,7 +69,7 @@ jobs:
           )
           replace_once(
               'trpg-dm-assistant/build/test-real-api-v1513.js',
-              'assert.equal(api.HEALTH_STABILIZATION_VERSION,"1.0");',
+              'assert.equal(api.HEALTH_STABILIZATION_VERSION,"1.0");assert.equal(api.HEALTH_STABILIZATION_VERSION,"1.0");',
               'assert.equal(api.HEALTH_STABILIZATION_VERSION,"1.0");assert.equal(api.HEALING_RECOVERY_VERSION,"1.0");'
           )
           PY
