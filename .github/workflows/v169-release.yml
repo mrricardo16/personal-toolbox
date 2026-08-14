@@ -1,0 +1,90 @@
+name: TRPG v1.6.9 Release Gate
+
+on:
+  push:
+    branches: [agent/v1.6.9-combat-damage]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: ${{ !contains(github.event.head_commit.message, '[skip v169-release]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply v1.6.9 release identity
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          lib=Path('trpg-dm-assistant/src/scenarios/library.js')
+          s=lib.read_text(encoding='utf-8')
+          old='const APP_VERSION = "1.6.8";'
+          new='const APP_VERSION = "1.6.9";'
+          if old in s: s=s.replace(old,new,1)
+          elif new not in s: raise SystemExit('APP_VERSION boundary not found')
+          lib.write_text(s,encoding='utf-8')
+
+          real=Path('trpg-dm-assistant/build/test-real-api-v1513.js')
+          x=real.read_text(encoding='utf-8')
+          x=x.replace('"combat-opposed.js"]','"combat-opposed.js","combat-damage.js"]',1)
+          x=x.replace('COMBAT_OPPOSED_VERSION,ready:__ready','COMBAT_OPPOSED_VERSION,COMBAT_DAMAGE_VERSION,ready:__ready',1)
+          x=x.replace('assert.equal(api.APP_VERSION,"1.6.8")','assert.equal(api.APP_VERSION,"1.6.9")',1)
+          x=x.replace('assert.equal(api.COMBAT_OPPOSED_VERSION,"1.0");assert.equal(api.HEALTH_STABILIZATION_VERSION','assert.equal(api.COMBAT_OPPOSED_VERSION,"1.0");assert.equal(api.COMBAT_DAMAGE_VERSION,"1.0");assert.equal(api.HEALTH_STABILIZATION_VERSION',1)
+          if '"combat-opposed.js","combat-damage.js"]' not in x or 'api.COMBAT_DAMAGE_VERSION' not in x or 'api.APP_VERSION,"1.6.9"' not in x:
+              raise SystemExit('real API v1.6.9 patch incomplete')
+          real.write_text(x,encoding='utf-8')
+
+          focused=Path('trpg-dm-assistant/build/test-v169-combat-damage.js')
+          y=focused.read_text(encoding='utf-8')
+          anchor='assert.equal(api.COMBAT_DAMAGE_VERSION,"1.0");'
+          if 'assert.equal(api.APP_VERSION,"1.6.9")' not in y:
+              y=y.replace(anchor,'assert.equal(api.APP_VERSION,"1.6.9");'+anchor,1)
+          if 'assert.equal(api.APP_VERSION,"1.6.9")' not in y:
+              raise SystemExit('focused version assertion patch incomplete')
+          focused.write_text(y,encoding='utf-8')
+          PY
+      - name: Permanent deterministic suite
+        shell: bash
+        run: |
+          grep -o 'trpg-dm-assistant/build/test-[^ ]*\.js' .github/workflows/trpg-ci.yml | while read -r file; do
+            echo "RUN $file"
+            node "$file"
+          done
+      - name: JavaScript syntax
+        shell: bash
+        run: |
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find trpg-dm-assistant/src trpg-dm-assistant/build -name '*.js' -print0)
+      - name: Build and verify
+        shell: bash
+        run: |
+          node trpg-dm-assistant/build/build-single-html.js
+          node trpg-dm-assistant/build/verify-single-html.js
+          first=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          node trpg-dm-assistant/build/build-single-html.js
+          second=$(sha256sum trpg-dm-assistant/outputs/trpg-dm-assistant.html | cut -d' ' -f1)
+          test "$first" = "$second"
+          git diff --check
+      - name: Real DeepSeek current-runtime full-case E2E
+        env:
+          TRPG_TEST_API_KEY: ${{ secrets.DS_KEY }}
+          TRPG_TEST_API_URL: https://api.deepseek.com/v1/chat/completions
+          TRPG_TEST_MODEL: deepseek-v4-flash
+        run: |
+          test -n "$TRPG_TEST_API_KEY"
+          node trpg-dm-assistant/build/test-real-api-v1513.js
+      - name: Persist validated v1.6.9 release files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add trpg-dm-assistant/src/scenarios/library.js trpg-dm-assistant/build/test-real-api-v1513.js trpg-dm-assistant/build/test-v169-combat-damage.js trpg-dm-assistant/outputs/trpg-dm-assistant.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Finalize v1.6.9 combat damage release [skip v169-release]"
+            git push
+          fi
