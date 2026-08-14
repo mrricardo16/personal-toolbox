@@ -128,6 +128,9 @@ jobs:
       - name: v1.6.8 combat opposed regression
         run: node trpg-dm-assistant/build/test-v168-combat-opposed.js
 
+      - name: v1.6.9 combat damage regression
+        run: node trpg-dm-assistant/build/test-v169-combat-damage.js
+
       - name: JavaScript syntax
         shell: bash
         run: |
