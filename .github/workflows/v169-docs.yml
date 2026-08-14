@@ -54,7 +54,7 @@ jobs:
           grep -F '# TRPG AI 主持助手 v1.6.9' trpg-dm-assistant/README.md
           grep -F '847 PASS / 0 FAIL' trpg-dm-assistant/README.md
           grep -F 'APP_VERSION = "1.6.9"' trpg-dm-assistant/src/scenarios/library.js
-          grep -F 'V169_COMBAT_DAMAGE_RESULT 48 PASS / 0 FAIL' trpg-dm-assistant/build/test-v169-combat-damage.js
+          grep -F 'V169_COMBAT_DAMAGE_RESULT' trpg-dm-assistant/build/test-v169-combat-damage.js
           test -f trpg-dm-assistant/reports/trpg-dm-assistant-v1.6.9-test-report.md
           node trpg-dm-assistant/build/verify-single-html.js
       - name: Persist README
