@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "outlook",
+  "name": "Microsoft Outlook",
+  "workflow": "validate-login",
+  "adapter": "microsoft",
+  "targets": {
+    "login": "https://login.microsoftonline.com/",
+    "personalMailbox": "https://outlook.live.com/mail/",
+    "organizationMailbox": "https://outlook.office.com/mail/"
+  },
+  "browser": { "channel": "msedge", "headless": false },
+  "limits": { "navigationTimeoutMs": 30000, "authTimeoutMs": 90000, "totalTimeoutMs": 120000 }
+}

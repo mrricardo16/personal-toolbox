@@ -1,0 +1,17 @@
+{
+  "name": "web-validation-workflow",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test \"dist/tests/**/*.test.js\"",
+    "test:e2e": "npm run build && node --test \"dist/tests/e2e/**/*.test.js\"",
+    "validate": "npm run build && node dist/src/cli/validate.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

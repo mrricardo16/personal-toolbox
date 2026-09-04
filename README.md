@@ -85,6 +85,12 @@
 
 使用说明见 [camera-fov-calculator/README.md](camera-fov-calculator/README.md)。
 
+### Web Validation Workflow
+
+路径：[web-validation-workflow/README.md](web-validation-workflow/README.md)
+
+面向开发者自动化调用的 Node.js + Playwright 工作流，不属于纯单 HTML 工具。调用方通过统一 Profile、运行时凭据、CLI、退出码和 `result.json` 验证 Microsoft Outlook 的认证与邮箱可访问性；CI 仅使用本地 fixture，不访问真实 Microsoft。
+
 ## 未来扩展
 
 后续可以继续增加独立工具目录，例如：
