@@ -14,3 +14,14 @@ desktop.ini
 .env.*
 *.key
 *.pem
+
+# Web validation workflow runtime output
+web-validation-workflow/node_modules/
+web-validation-workflow/dist/
+web-validation-workflow/artifacts/*
+!web-validation-workflow/artifacts/.gitkeep
+web-validation-workflow/test-results/
+web-validation-workflow/playwright-report/
+web-validation-workflow/browser-profiles/
+web-validation-workflow/storageState*
+web-validation-workflow/traces/

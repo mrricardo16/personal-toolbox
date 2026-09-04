@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Local Microsoft fixture</title>
+<body>
+  <main id="app"></main>
+  <script>
+    const scenario = new URLSearchParams(location.search).get("scenario") || "ready";
+    const mailboxKind = new URLSearchParams(location.search).get("kind") || "personal";
+    const app = document.querySelector("#app");
+    const blocked = { mfa: ["MFA_REQUIRED", "Enter code from Authenticator"], captcha: ["CAPTCHA_REQUIRED", "Security challenge CAPTCHA"], locked: ["ACCOUNT_LOCKED", "Your account has been locked"], federated: ["FEDERATED_IDP_REQUIRED", "Sign in with your organization"], policy: ["POLICY_BLOCKED", "Conditional Access policy"] };
+    function state(name, text) { app.dataset.fixtureState = name; app.innerHTML = `<p>${text}</p>`; }
+    function password() {
+      if (scenario === "account-not-found") return state("ACCOUNT_NOT_FOUND", "We couldn't find an account with that username");
+      if (blocked[scenario]) return state(...blocked[scenario]);
+      if (scenario === "unknown") return state("UNRECOGNIZED", "Unexpected provider page");
+      app.dataset.fixtureState = "PASSWORD";
+      app.innerHTML = '<label>Password <input type="password" autocomplete="current-password"></label><button type="submit">Sign in</button>';
+      app.querySelector("button").onclick = authenticate;
+    }
+    function authenticate() {
+      if (scenario === "invalid-password") return state("INVALID_CREDENTIALS", "Your account or password is incorrect");
+      if (blocked[scenario]) return state(...blocked[scenario]);
+      state("AUTH_SUCCESS", "Signed in");
+    }
+    if (location.pathname.includes("mail")) {
+      if (scenario === "organization-only" && mailboxKind === "personal") state("MAILBOX_UNAVAILABLE", "Mailbox unavailable");
+      else if (scenario === "mailbox-unavailable") state("MAILBOX_UNAVAILABLE", "Mailbox unavailable");
+      else if (scenario === "policy") state("POLICY_BLOCKED", "Conditional Access policy");
+      else state("MAILBOX_READY", "Outlook Inbox Mail navigation");
+    } else {
+      app.dataset.fixtureState = "USERNAME";
+      app.innerHTML = '<label>Email, phone, or Skype <input autocomplete="username" name="loginfmt"></label><button type="submit">Next</button>';
+      app.querySelector("button").onclick = password;
+    }
+  </script>
+</body>
+</html>
