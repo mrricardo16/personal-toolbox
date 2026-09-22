@@ -1,9 +1,10 @@
-# ChatInsight：微信 / QQ 实时会话注解工具需求与架构方案
+# ChatInsight：QQ / 微信实时会话注解工具需求与架构方案
 
-> 版本：V0.1 需求冻结稿  
+> 版本：V0.2（QQ-first 架构修订稿）  
 > 目标平台：Windows  
-> 首发客户端：微信 PC  
-> 后续适配：QQ PC
+> 首发客户端：QQ NT  
+> 后续适配：微信 PC  
+> 当前核心原则：**NapCat 提供结构化消息数据，UI Automation 只负责当前 QQ 窗口与消息气泡位置。**
 
 ---
 
@@ -11,13 +12,13 @@
 
 ChatInsight 是一个 Windows 桌面端实时会话注解工具。
 
-它不负责自动回复，也不自动发送消息。其核心目标是：
+它不负责自动回复，也不自动发送消息。核心目标是：
 
-> 读取当前聊天会话的上下文，对每一条“对方消息”生成简短的隐含情绪 / 语义解读，并以类似聊天旁白的灰色卡片形式展示。
+> 读取当前聊天会话上下文，对每一条“对方消息”生成简短的隐含情绪 / 语义解读，并把分析结果以类似聊天旁白的灰色卡片展示在对应消息附近。
 
 示例：
 
-```text
+~~~text
 对方：你今天是不是又忘了我跟你说过什么？
 
 ┌ AI
@@ -29,11 +30,11 @@ ChatInsight 是一个 Windows 桌面端实时会话注解工具。
 │
 │ 当前更偏向“希望你自己想起来”。
 └────────────────────
-```
+~~~
 
 下一条消息：
 
-```text
+~~~text
 我：记得，让我自己想。
 
 对方：你最好是。
@@ -47,168 +48,350 @@ ChatInsight 是一个 Windows 桌面端实时会话注解工具。
 │
 │ 有轻微不满，但还在等你的回答。
 └────────────────────
-```
+~~~
 
 其中百分比定义为：
 
-> 模型对若干候选解释的相对权重，而不是对对方真实心理状态的客观概率测量。
+> 模型对若干候选解释的相对权重，不代表对方真实心理状态存在可客观测量的对应概率。
 
 ---
 
-## 2. V0.1 需求冻结
+## 2. V0.1 / MVP 需求冻结
 
-| 项目 | V0.1 定义 |
+| 项目 | 定义 |
 |---|---|
 | 支持平台 | Windows |
-| 首发客户端 | 微信 PC |
-| 后续客户端 | QQ PC |
-| 分析对象 | 当前打开会话中的“对方消息” |
-| 分析粒度 | 一条聊天消息，不按句号拆句 |
+| 首发客户端 | QQ NT |
+| 后续客户端 | 微信 PC |
+| 分析对象 | 当前单聊中的“对方消息” |
+| 分析粒度 | 一条聊天消息，不按句号切句 |
 | 上下文 | 当前消息之前最近 8～12 条 |
-| 分析时机 | 检测到新的对方消息后自动分析 |
+| 分析时机 | 收到新的对方消息后自动分析 |
 | 展示形式 | 消息附近的灰色 AI 注解卡片 |
 | 输出内容 | 2～3 种解释 + 相对权重 + 一句话总结 |
-| 自己消息 | 作为上下文使用，但不生成卡片 |
-| 历史回溯 | 第一版不重新修改旧分析 |
+| 自己消息 | 进入上下文，但不生成分析卡片 |
+| 历史回溯 | 第一版不根据后续消息重算旧分析 |
 | 长期记忆 | 不做 |
 | 联系人画像 | 不做 |
 | 自动回复 | 不做 |
 | 自动发送 | 不做 |
-| 图片 / 语音 | 第一版不做 |
-| 群聊 | 第一版不做 |
-| 数据保存 | 默认只存在内存 |
-| AI | 云模型优先，后续可增加本地模型 |
+| 图片 / 语音语义 | 第一版不做 |
+| 群聊分析 | 第一版不做 |
+| 数据保存 | 默认仅进程内存 |
+| AI | 云模型优先，Provider 可替换 |
 
 ---
 
-## 3. 核心产品行为
+## 3. 产品核心行为
 
-程序运行后：
+QQ 版运行逻辑：
 
-```text
-微信 / QQ 当前聊天
-        ↓
-读取当前可见消息及最近上下文
-        ↓
-区分自己 / 对方
-        ↓
-检测新消息并去重
-        ↓
+~~~text
+QQ NT
+  │
+  ├─ NapCat / OneBot
+  │      ↓
+  │   实时收到结构化消息
+  │      ↓
+  │   区分 message / message_sent
+  │
+  └─ Windows UI Automation
+         ↓
+      读取当前可见消息气泡
+         ↓
+      获取文本 + BoundingRectangle
+
+两条数据流
+    ↓
+消息标准化 + 气泡匹配
+    ↓
+ConversationStore
+    ↓
 若是自己消息：
     只进入上下文
-        ↓
+    ↓
 若是对方消息：
-    取最近 8～12 条上下文
-        ↓
-调用 LLM 分析当前消息
-        ↓
-得到 2～3 个解释 + 权重 + 总结
-        ↓
-在对应消息附近显示 AI 注解卡片
-```
+    取最近 8～12 条
+    ↓
+LLM 分析
+    ↓
+2～3 个解释 + 权重 + 总结
+    ↓
+Overlay 显示在对应消息旁边
+~~~
 
 原则：
 
-1. 每一条对方消息独立分析一次。
-2. 分析当前消息时允许使用此前上下文。
-3. 不对自己发送的消息生成卡片。
-4. 第一版不根据后续消息回头修改旧分析。
-5. 不将模型推断描述为确定事实。
+1. 每条对方消息最多分析一次。
+2. 当前消息可以使用此前短上下文。
+3. 自己消息只参与上下文，不生成卡片。
+4. 第一版不回溯修改旧分析。
+5. 不把模型推断写成确定事实。
+6. **消息内容与消息身份以 NapCat 为准，UIA 不再承担主消息采集职责。**
+7. **UIA 失败只影响“精确锚定显示”，不影响实时消息接收和 AI 分析。**
 
 ---
 
-## 4. 总体架构
+## 4. 架构决策：QQ-first 双通道
 
-技术选型：
+原始方案把 UIA / OCR 同时用于“读取消息”和“定位气泡”。经过现有成熟项目调研后，QQ 版调整为双通道。
 
-- .NET 8
-- WPF
-- Windows UI Automation
-- Windows Graphics Capture
-- OCR Fallback
-- LLM API
-- 可选内存缓存 / SQLite（后续）
+### 4.1 数据通道
 
-总体结构：
+由 NapCatQQ / OneBot 提供：
 
-```text
-┌──────────────── 微信 / QQ ────────────────┐
-│                                           │
-│  对方消息                                 │
-│  自己消息                                 │
-│  对方消息                                 │
-│                                           │
-└───────────────────────────────────────────┘
-                    │
-                    ▼
-          ┌─────────────────────┐
-          │   Chat Adapter      │
-          │                     │
-          │ WeChatAdapter       │
-          │ QQAdapter           │
-          └─────────┬───────────┘
-                    │
-                    ▼
-          ┌─────────────────────┐
-          │ Capture Engine      │
-          │                     │
-          │ UI Automation       │
-          │ OCR Fallback        │
-          └─────────┬───────────┘
-                    │
-                    ▼
-          ┌─────────────────────┐
-          │ Message Normalizer  │
-          │                     │
-          │ 谁发的              │
-          │ 消息内容            │
-          │ 消息位置            │
-          │ 去重                │
-          └─────────┬───────────┘
-                    │
-                    ▼
-          ┌─────────────────────┐
-          │ Conversation State  │
-          │                     │
-          │ 当前联系人          │
-          │ 最近 8~12 条消息    │
-          │ 已分析消息          │
-          └─────────┬───────────┘
-                    │
-             新的“对方消息”
-                    │
-                    ▼
-          ┌─────────────────────┐
-          │ Emotion Analyzer    │
-          │                     │
-          │ LLM Provider        │
-          │ JSON Schema         │
-          │ Analysis Cache      │
-          └─────────┬───────────┘
-                    │
-                    ▼
-          ┌─────────────────────┐
-          │ Overlay Engine      │
-          │                     │
-          │ 消息位置跟踪        │
-          │ AI 卡片渲染         │
-          │ 滚动同步            │
-          └─────────────────────┘
-```
+- 实时接收消息。
+- 自己发送消息事件。
+- message_id。
+- message_seq。
+- time。
+- user_id。
+- message_type。
+- sender。
+- message segments。
+- raw_message。
+- private / group 类型。
 
-架构原则：
+数据通道回答：
 
-> “微信 / QQ 怎么读取消息”必须和“AI 怎么分析消息”彻底解耦。
+> **发生了什么？谁发的？内容是什么？属于哪个会话？**
 
-以后新增 QQ 只替换 Adapter / Capture 适配层，不修改 Conversation、AI、Overlay 的核心逻辑。
+### 4.2 视觉通道
+
+由 Windows UI Automation 提供：
+
+- 当前 QQ 窗口。
+- 当前聊天区域。
+- 当前可见消息 Item。
+- 消息气泡文字。
+- 消息 UI 顺序。
+- BoundingRectangle。
+- QQ 窗口移动 / 最小化 / 滚动状态。
+
+视觉通道回答：
+
+> **这条消息现在画在哪里？**
+
+### 4.3 合并
+
+~~~text
+NapCat Message
+     │
+     │ NativeMessageId / Text / Direction / Time
+     │
+     ▼
+MessageAnchorMatcher
+     ▲
+     │ Text / Side / VisualIndex / Bounds
+     │
+UIA VisibleBubble
+~~~
+
+匹配成功：
+
+~~~text
+ChatMessage
++
+VisibleBubble
++
+MessageAnalysis
+        ↓
+MessageAnchor
+        ↓
+Overlay
+~~~
+
+匹配失败：
+
+~~~text
+ChatMessage
++
+MessageAnalysis
+        ↓
+侧边 Insight View / 等待重新匹配
+~~~
+
+不需要为了坐标失败而重新 OCR 消息正文。
 
 ---
 
-## 5. 推荐项目结构
+## 5. 总体架构
 
-建议初期保持简单：
+~~~text
+                         ┌──────────────┐
+                         │    NTQQ      │
+                         └──────┬───────┘
+                                │
+                         NapCatQQ / OneBot
+                                │
+                       WebSocket Message Event
+                                │
+                                ▼
+┌────────────────────────────────────────────────┐
+│                 ChatInsight                    │
+│                                                │
+│  ┌──────────────── 数据通道 ────────────────┐ │
+│  │ QQEventSource                            │ │
+│  │      ↓                                   │ │
+│  │ OneBotNormalizer                        │ │
+│  │      ↓                                   │ │
+│  │ ConversationStore                       │ │
+│  │      ↓                                   │ │
+│  │ InsightAnalyzer                         │ │
+│  │      ↓                                   │ │
+│  │ MessageAnalysis                         │ │
+│  └──────────────────────────────────────────┘ │
+│                                                │
+│  ┌──────────────── 视觉通道 ────────────────┐ │
+│  │ QQWindowProbe                           │ │
+│  │      ↓                                   │ │
+│  │ Windows UI Automation                   │ │
+│  │      ↓                                   │ │
+│  │ VisibleBubble[]                         │ │
+│  └──────────────────────────────────────────┘ │
+│                     │                          │
+│                     ▼                          │
+│             MessageAnchorMatcher               │
+│                     │                          │
+│                     ▼                          │
+│                OverlayHost                     │
+└────────────────────────────────────────────────┘
+~~~
 
-```text
+---
+
+## 6. 为什么不直接依赖 UIA 读取 QQ 消息
+
+成熟项目已经证明 QQ NT 的 UIA 是可用的，但它仍然存在以下天然问题：
+
+- 只看到当前已渲染 / 已加载内容。
+- Electron / Chromium Accessibility Tree 受启动状态影响。
+- QQ 更新后 Selector 可能改变。
+- 同一句“哈哈”可能连续出现多次，单靠 UI 文本不适合作为稳定消息 ID。
+- UIA 的本职更适合作为“视图定位”而不是“消息总线”。
+
+NapCat 已经提供结构化事件，因此没有必要再通过 UIA 重建：
+
+- 谁发送。
+- 消息 ID。
+- 时间戳。
+- 消息顺序。
+- 当前消息属于哪个用户。
+- 自己是否发送。
+
+因此 QQ 版中：
+
+> **NapCat 是消息真相源，UIA 是视觉定位源。**
+
+---
+
+## 7. 成熟项目调研与复用策略
+
+### 7.1 NapCatQQ
+
+项目：
+
+- https://github.com/NapNeko/NapCatQQ
+
+吸收：
+
+- OneBot 11 消息事件模型。
+- message 与 message_sent 区分。
+- message_id / message_seq。
+- 消息段模型。
+- WebSocket Server。
+- Token 鉴权。
+- Heartbeat。
+- Protocol Adapter 分层思想。
+
+不复刻：
+
+- NTQQ 协议底层。
+- NapCat 内部插件框架。
+- 发送 API。
+- Bot 管理 UI。
+
+ChatInsight 只把 NapCat 当作可替换外部消息源。
+
+### 7.2 QQ Chat Exporter
+
+项目：
+
+- https://github.com/shuakami/qq-chat-exporter
+
+吸收：
+
+- Raw Message → Clean Message 的标准化思想。
+- 第三方协议模型不得直接污染业务层。
+- ChatInfo / Sender / MessageElement / Resource 分层。
+- 本地服务边界。
+- 消息解析与资源解析分离。
+
+不复刻：
+
+- 整套聊天导出功能。
+- Rust 导出服务。
+- HTML / Excel / JSON 导出器。
+- 历史扫描与任务系统。
+
+### 7.3 QQSafeChat
+
+项目：
+
+- https://github.com/TheD0ubleC/QQSafeChat
+
+吸收：
+
+- QQ NT + UIAutomation 的零注入视觉读取路线。
+- Chromium Accessibility Tree 激活方式。
+- UI Tree Dump 工具。
+- ControlFromPoint。
+- BoundingRectangle。
+- Selector 配置化。
+- MessageList / MessageItem 的启发式查找。
+- UIA 失败后的可诊断能力。
+
+不复刻：
+
+- URL 安全扫描。
+- 文件扫描。
+- Bot 自动回写。
+- 自动发送。
+
+### 7.4 Lagrange.Core
+
+项目：
+
+- https://github.com/LagrangeDev/Lagrange.Core
+
+吸收：
+
+- 纯 C# 协议 Adapter 思想。
+- 后期替换 NapCat 的可能性。
+- .NET 原生事件源方向。
+
+第一版不直接使用。
+
+原因：
+
+- 不应让 ChatInsight 自己承担 QQ 登录、重连、协议兼容和生命周期。
+- 第一版优先验证产品链路，不验证 QQ 协议实现。
+
+后续可以增加：
+
+~~~text
+IChatEventSource
+├─ NapCatOneBotSource
+└─ LagrangeEventSource
+~~~
+
+上层无感替换。
+
+---
+
+## 8. 推荐项目结构
+
+~~~text
 ChatInsight/
 │
 ├─ src/
@@ -220,26 +403,36 @@ ChatInsight/
 │  ├─ ChatInsight.Core
 │  │   ├─ Models/
 │  │   │   ├─ ChatMessage.cs
-│  │   │   ├─ ChatSession.cs
-│  │   │   └─ MessageAnalysis.cs
+│  │   │   ├─ ChatConversation.cs
+│  │   │   ├─ MessageAnalysis.cs
+│  │   │   ├─ VisibleBubble.cs
+│  │   │   └─ MessageAnchor.cs
 │  │   │
 │  │   ├─ Conversation/
-│  │   │   └─ ConversationBuffer.cs
+│  │   │   └─ ConversationStore.cs
 │  │   │
 │  │   └─ Interfaces/
-│  │       ├─ IChatAdapter.cs
+│  │       ├─ IChatEventSource.cs
+│  │       ├─ IMessageNormalizer.cs
+│  │       ├─ IVisibleBubbleSource.cs
+│  │       ├─ IMessageAnchorMatcher.cs
 │  │       ├─ IMessageAnalyzer.cs
-│  │       └─ IAnalysisCache.cs
+│  │       └─ ILlmProvider.cs
 │  │
-│  ├─ ChatInsight.Capture
-│  │   ├─ UIAutomation/
-│  │   │   └─ UiaCaptureService.cs
-│  │   ├─ OCR/
-│  │   │   └─ OcrCaptureService.cs
-│  │   └─ WindowTracker.cs
+│  ├─ ChatInsight.QQ
+│  │   ├─ NapCat/
+│  │   │   ├─ NapCatOneBotSource.cs
+│  │   │   ├─ OneBotEventDto.cs
+│  │   │   └─ OneBotNormalizer.cs
+│  │   │
+│  │   └─ UIAutomation/
+│  │       ├─ QQWindowProbe.cs
+│  │       ├─ QQVisibleBubbleSource.cs
+│  │       ├─ QQSelectorProfile.cs
+│  │       └─ QQTreeDumper.cs
 │  │
-│  ├─ ChatInsight.AI
-│  │   ├─ LlmAnalyzer.cs
+│  ├─ ChatInsight.Analysis
+│  │   ├─ LlmMessageAnalyzer.cs
 │  │   ├─ PromptBuilder.cs
 │  │   └─ Providers/
 │  │       ├─ OpenAIProvider.cs
@@ -247,81 +440,583 @@ ChatInsight/
 │  │
 │  └─ ChatInsight.Overlay
 │      ├─ OverlayManager.cs
-│      ├─ MessageAnchor.cs
+│      ├─ MessageAnchorMatcher.cs
 │      └─ AnalysisCard.xaml
 │
 └─ tests/
-```
+   ├─ Core.Tests/
+   ├─ QQ.Tests/
+   └─ Analysis.Tests/
+~~~
 
-V0.1 实际实现时可以先只拆成：
+实际 MVP 可以先只建：
 
-```text
-App
-Core
-Capture
-AI
-```
+~~~text
+ChatInsight.App
+ChatInsight.Core
+ChatInsight.QQ
+ChatInsight.Analysis
+~~~
 
-QQ 接入后再把 Adapter 单独拆项目。
+Overlay 代码前期可以暂时留在 App 内，等 UI 稳定后再拆。
 
 ---
 
-## 6. 核心数据模型
+## 9. 核心消息模型
 
-### 6.1 ChatMessage
+第三方 OneBot DTO 不进入业务层。
 
-```csharp
-public sealed class ChatMessage
+### 9.1 ChatMessage
+
+~~~csharp
+public sealed record ChatMessage
 {
-    public string Id { get; init; } = default!;
+    public required string Platform { get; init; }
 
-    public string ConversationId { get; init; } = default!;
+    public required string ConversationId { get; init; }
 
-    public MessageSender Sender { get; init; }
+    public required string NativeMessageId { get; init; }
 
-    public string Text { get; init; } = default!;
+    public required MessageDirection Direction { get; init; }
 
-    public DateTime ObservedAt { get; init; }
+    public required DateTimeOffset Timestamp { get; init; }
 
-    public Rect Bounds { get; init; }
+    public required string Text { get; init; }
 
-    public MessageAnalysis? Analysis { get; set; }
-}
+    public string? SenderId { get; init; }
 
-public enum MessageSender
-{
-    Me,
-    Other
-}
-```
+    public string? SenderName { get; init; }
 
-### 6.2 MessageAnalysis
-
-```csharp
-public sealed class MessageAnalysis
-{
-    public string Title { get; init; } = default!;
-
-    public IReadOnlyList<Interpretation> Interpretations { get; init; }
+    public IReadOnlyList<MessageSegment> Segments { get; init; }
         = [];
-
-    public string Summary { get; init; } = default!;
-
-    public string Confidence { get; init; } = default!;
 }
 
-public sealed class Interpretation
+public enum MessageDirection
 {
-    public string Label { get; init; } = default!;
-
-    public int Weight { get; init; }
+    Incoming,
+    Outgoing
 }
-```
+~~~
 
-典型返回：
+### 9.2 QQ ConversationId
 
-```json
+私聊：
+
+~~~text
+qq:private:{peerUserId}
+~~~
+
+后续群聊：
+
+~~~text
+qq:group:{groupId}
+~~~
+
+业务层不直接用 QQ 昵称当唯一键。
+
+### 9.3 NativeMessageId
+
+优先使用 NapCat：
+
+~~~text
+message_id
+~~~
+
+必要时组合：
+
+~~~text
+message_id + message_seq
+~~~
+
+不要使用：
+
+~~~text
+SHA256(Text)
+~~~
+
+作为消息唯一 ID。
+
+---
+
+## 10. NapCat / OneBot 数据通道
+
+### 10.1 IChatEventSource
+
+~~~csharp
+public interface IChatEventSource
 {
+    event EventHandler<RawChatEvent> EventReceived;
+
+    Task StartAsync(CancellationToken cancellationToken);
+
+    Task StopAsync();
+}
+~~~
+
+第一版：
+
+~~~text
+IChatEventSource
+└─ NapCatOneBotSource
+~~~
+
+后续：
+
+~~~text
+IChatEventSource
+├─ NapCatOneBotSource
+├─ LagrangeEventSource
+├─ WeChatEventSource
+└─ MockChatEventSource
+~~~
+
+### 10.2 连接方式
+
+NapCat 开启本地 OneBot WebSocket Server。
+
+推荐：
+
+~~~text
+Host: 127.0.0.1
+Token: 必须配置
+公网监听: 禁止
+~~~
+
+ChatInsight 使用 ClientWebSocket 连接。
+
+### 10.3 事件处理
+
+只处理 MVP 需要的：
+
+~~~text
+post_type = message
+post_type = message_sent
+message_type = private
+~~~
+
+其中：
+
+~~~text
+message
+→ Direction.Incoming
+
+message_sent
+→ Direction.Outgoing
+~~~
+
+其它事件：
+
+- notice
+- request
+- meta_event
+- group
+
+第一版忽略或只记录技术日志。
+
+### 10.4 心跳与断线
+
+NapCat 本身提供 heartbeat。
+
+ChatInsight 需要：
+
+- 连接状态。
+- 最后一次 heartbeat 时间。
+- 断线重连。
+- 指数退避。
+- Token 错误明确报错。
+- NapCat 未启动明确报错。
+
+NapCat 断线不能导致 App 崩溃。
+
+---
+
+## 11. OneBotNormalizer
+
+职责：
+
+~~~text
+OneBot Event DTO
+       ↓
+过滤 MVP 不支持类型
+       ↓
+提取 message / message_sent
+       ↓
+提取纯文本消息段
+       ↓
+生成 ChatMessage
+~~~
+
+示例：
+
+~~~json
+{
+  "post_type": "message",
+  "message_type": "private",
+  "message_id": 12345,
+  "message_seq": 789,
+  "user_id": 654321,
+  "time": 1780000000,
+  "sender": {
+    "nickname": "Jev"
+  },
+  "message": [
+    {
+      "type": "text",
+      "data": {
+        "text": "你最好是"
+      }
+    }
+  ]
+}
+~~~
+
+标准化：
+
+~~~text
+Platform = qq
+ConversationId = qq:private:654321
+NativeMessageId = 12345
+Direction = Incoming
+Text = 你最好是
+SenderId = 654321
+SenderName = Jev
+~~~
+
+图片、文件、语音：
+
+第一版只保留占位 Segment，不送入情绪文本分析：
+
+~~~text
+[图片]
+[语音]
+[文件]
+~~~
+
+避免媒体消息完全丢失导致上下文顺序错乱。
+
+---
+
+## 12. ConversationStore
+
+ConversationStore 只维护短期运行状态。
+
+结构：
+
+~~~text
+ConversationStore
+├─ qq:private:10001
+│   ├─ M101
+│   ├─ M102
+│   └─ M103
+│
+└─ qq:private:10002
+    ├─ M201
+    └─ M202
+~~~
+
+分析目标消息时：
+
+~~~text
+Context:
+最近 8～12 条
+
+Target:
+当前 Incoming Message
+~~~
+
+不发送完整历史聊天。
+
+第一版：
+
+- 内存保存。
+- 不落 SQLite。
+- 应用关闭即清理。
+- 已分析 MessageId 可以在运行期缓存。
+
+---
+
+## 13. QQ UI Automation 视觉通道
+
+### 13.1 UIA 只负责视觉信息
+
+QQ UIA 层只输出：
+
+~~~csharp
+public sealed record VisibleBubble
+{
+    public required string Text { get; init; }
+
+    public required Rect Bounds { get; init; }
+
+    public required int VisualIndex { get; init; }
+
+    public BubbleSide Side { get; init; }
+
+    public string? UiRuntimeId { get; init; }
+}
+~~~
+
+它不决定：
+
+- 消息真实 ID。
+- 发送时间。
+- ConversationId。
+- 是否为新消息。
+- 是否已经分析。
+
+这些全部来自数据通道。
+
+### 13.2 Chromium Accessibility
+
+QQ NT 基于 Electron / Chromium。
+
+必要时可：
+
+~~~text
+Win + Ctrl + Enter
+先启动 Windows 讲述人
+↓
+再启动 QQ
+~~~
+
+或测试：
+
+~~~powershell
+QQ.exe --force-renderer-accessibility
+~~~
+
+目标是让 QQ 暴露完整 Accessibility Tree。
+
+这属于开发 / 兼容性验证步骤，不应在业务层硬编码为唯一方案。
+
+### 13.3 Tree Dump
+
+需要内置开发工具：
+
+~~~text
+chatinsight probe qq
+chatinsight dump-uia
+~~~
+
+至少输出：
+
+- ControlType
+- Name
+- Value
+- AutomationId
+- ClassName
+- BoundingRectangle
+- RuntimeId（若可用）
+
+QQ 更新后先重新 Dump Tree，不要直接改业务代码。
+
+---
+
+## 14. Selector 配置化
+
+不要把：
+
+~~~text
+AutomationId = ml-root
+ControlType = Group
+~~~
+
+散落写死在代码里。
+
+定义：
+
+~~~json
+{
+  "messageList": {
+    "automationId": "ml-root"
+  },
+  "messageItem": {
+    "controlType": "Group",
+    "automationIdRegex": "^\\d+$"
+  }
+}
+~~~
+
+允许不同 QQ 版本维护多个 Profile：
+
+~~~text
+selectors/
+├─ ntqq-default.json
+├─ ntqq-9.x.json
+└─ local.override.json
+~~~
+
+Selector 查找策略：
+
+~~~text
+精确 Selector
+    ↓失败
+启发式查找
+    ↓失败
+返回视觉定位不可用
+~~~
+
+不要因为 UIA 定位失败而阻塞 NapCat 消息分析。
+
+---
+
+## 15. MessageAnchorMatcher
+
+这是 ChatInsight QQ 版需要自己实现的核心模块之一。
+
+目标：
+
+~~~text
+NapCat:
+M101 对方 你今天干嘛去了
+M102 自己 出去买东西了
+M103 对方 哦
+
+UIA:
+Bubble A 你今天干嘛去了 Rect(...)
+Bubble B 出去买东西了   Rect(...)
+Bubble C 哦             Rect(...)
+
+↓
+
+M101 ↔ Bubble A
+M102 ↔ Bubble B
+M103 ↔ Bubble C
+~~~
+
+接口：
+
+~~~csharp
+public interface IMessageAnchorMatcher
+{
+    IReadOnlyList<MessageAnchor> Match(
+        IReadOnlyList<ChatMessage> messages,
+        IReadOnlyList<VisibleBubble> bubbles);
+}
+~~~
+
+匹配依据不能只用 Text。
+
+建议考虑：
+
+~~~text
+文本完全一致            高
+Direction ↔ 左右位置     高
+消息时间顺序            高
+VisualIndex 顺序         高
+临近已匹配消息           中
+RuntimeId                辅助
+~~~
+
+典型重复文本：
+
+~~~text
+哈哈
+哈哈
+哈哈
+~~~
+
+必须依靠：
+
+- 消息序列顺序。
+- UI 顺序。
+- 方向。
+- 相邻匹配关系。
+
+解决。
+
+### 15.1 匹配失败处理
+
+禁止：
+
+~~~text
+匹配失败
+↓
+随便绑定最近的气泡
+~~~
+
+应该：
+
+~~~text
+匹配置信度不足
+↓
+不绘制该消息的精确 Overlay
+↓
+分析结果保留
+↓
+等待 UI 刷新重新匹配
+~~~
+
+必要时降级到 Insight View。
+
+---
+
+## 16. AI 分析层
+
+接口：
+
+~~~csharp
+public interface IMessageAnalyzer
+{
+    Task<MessageAnalysis> AnalyzeAsync(
+        IReadOnlyList<ChatMessage> context,
+        ChatMessage target,
+        CancellationToken cancellationToken);
+}
+~~~
+
+内部：
+
+~~~text
+IMessageAnalyzer
+       ↓
+LlmMessageAnalyzer
+       ↓
+ILlmProvider
+├─ OpenAIProvider
+├─ DeepSeekProvider
+└─ LocalProvider（后续）
+~~~
+
+AI 层不依赖：
+
+- QQ。
+- NapCat。
+- OneBot。
+- UI Automation。
+- WPF。
+
+---
+
+## 17. MessageAnalysis
+
+~~~csharp
+public sealed record MessageAnalysis
+{
+    public required string MessageId { get; init; }
+
+    public required string Title { get; init; }
+
+    public required IReadOnlyList<Interpretation> Interpretations { get; init; }
+
+    public required string Summary { get; init; }
+
+    public required AnalysisConfidence Confidence { get; init; }
+}
+
+public sealed record Interpretation
+{
+    public required string Label { get; init; }
+
+    public required int Weight { get; init; }
+}
+~~~
+
+示例：
+
+~~~json
+{
+  "messageId": "12345",
   "title": "“你最好是”更接近什么语气？",
   "interpretations": [
     {
@@ -340,346 +1035,23 @@ public sealed class Interpretation
   "summary": "她还在等待你的回答，但并没有完全相信。",
   "confidence": "medium"
 }
-```
-
-UI 只消费结构化分析结果，不理解模型 Prompt。
+~~~
 
 ---
 
-## 7. Chat Adapter
+## 18. Prompt 约束
 
-定义统一接口：
+Prompt 不问：
 
-```csharp
-public interface IChatAdapter
-{
-    bool IsAvailable();
+> 她真正怎么想？
 
-    ChatSession? GetCurrentSession();
+而问：
 
-    IReadOnlyList<ChatMessage> GetVisibleMessages();
+> 基于当前目标消息和此前上下文，有哪些合理的隐含语气 / 情绪解释？
 
-    event EventHandler<ChatMessage> MessageReceived;
-}
-```
+基础规则：
 
-实现：
-
-```text
-IChatAdapter
-├─ WeChatAdapter
-└─ QQAdapter
-```
-
-Adapter 的职责仅限：
-
-- 定位目标应用窗口。
-- 定位当前聊天会话。
-- 获取当前可见消息。
-- 区分消息发送方。
-- 返回标准化消息及其屏幕坐标。
-
-它不负责：
-
-- AI 分析。
-- Prompt。
-- Overlay 渲染。
-- 长期上下文。
-
----
-
-## 8. Capture Engine
-
-这是 V0.1 最大技术风险。
-
-读取优先级：
-
-| 优先级 | 技术 | 用途 |
-|---|---|---|
-| P1 | Windows UI Automation | 主方案 |
-| P2 | Windows Graphics Capture + OCR | UIA 读不到消息时兜底 |
-| P3 | 手动框选 / 热键 OCR | 调试及最终保险方案 |
-
-### 8.1 UI Automation 主方案
-
-第一步不是开发完整应用，而是验证当前微信 PC 是否把聊天文本暴露给 UI Automation。
-
-理想结构：
-
-```text
-微信窗口
-└─ MessageList
-   ├─ Message
-   │  ├─ Text = "你好"
-   │  └─ Bounds
-   ├─ Message
-   │  ├─ Text = "你今天是不是忘了？"
-   │  └─ Bounds
-```
-
-如果能直接拿到：
-
-- 文本
-- Bounds
-- 消息顺序
-- 控件属性
-
-则优先使用 UIA，不需要 OCR。
-
-### 8.2 OCR Fallback
-
-如果 UIA 只能得到大量自绘 Pane：
-
-```text
-Pane
-└─ Pane
-   └─ Pane
-```
-
-而拿不到消息文本，则切换：
-
-```text
-Windows Graphics Capture
-            ↓
-只截图聊天区域
-            ↓
-OCR
-            ↓
-检测文字块
-            ↓
-根据位置判断左右
-            ↓
-恢复消息顺序
-```
-
-初始规则可以根据聊天区域中线判断：
-
-```text
-文字中心偏左 → 对方
-文字中心偏右 → 自己
-```
-
-正式实现再结合：
-
-- 头像位置
-- 气泡区域
-- OCR BoundingBox
-- 消息垂直顺序
-
-提高准确率。
-
-### 8.3 禁止路线
-
-V0.1 明确不采用：
-
-- DLL Injection
-- Hook 微信内部函数
-- 读取 / 解密微信私有数据库
-- 内存 Offset 逆向
-- 内部 RPC 逆向
-
-原因：
-
-- 客户端更新后极易失效。
-- 维护成本高。
-- 风控和兼容风险明显。
-- 不符合本项目“桌面伴随式工具”的目标。
-
----
-
-## 9. 消息检测机制
-
-禁止使用高频死循环：
-
-```csharp
-while (true)
-{
-    Screenshot();
-    OCR();
-    Analyze();
-}
-```
-
-推荐流程：
-
-```text
-窗口 / UI 发生变化
-        ↓
-Debounce 300~500 ms
-        ↓
-读取当前可见消息
-        ↓
-与上一份 Snapshot 比较
-        ↓
-找出新增消息
-        ↓
-加入 ConversationBuffer
-```
-
-示例：
-
-```text
-旧状态：
-A
-B
-C
-D
-
-新状态：
-A
-B
-C
-D
-E
-
-新增：
-E
-```
-
-只处理 E，不重新分析 A～D。
-
----
-
-## 10. 消息去重
-
-不能简单使用：
-
-```text
-SHA256(Text)
-```
-
-因为：
-
-```text
-哈哈
-哈哈
-哈哈
-```
-
-可能是三条真实消息。
-
-优先级：
-
-1. UIA 如果存在稳定 RuntimeId，优先使用。
-2. 否则自行维护会话内消息序列。
-3. 综合 ConversationId、Sender、Text、位置、观察顺序进行匹配。
-
-建议内部状态：
-
-```text
-Session
-├─ Message 101
-├─ Message 102
-├─ Message 103
-└─ Message 104
-```
-
-用户执行以下操作时不得重复分析：
-
-- 上滚历史消息。
-- 下滚回当前消息。
-- 切换联系人。
-- 切走后重新切回来。
-- 窗口尺寸变化。
-
----
-
-## 11. ConversationBuffer
-
-ConversationBuffer 只维护短期上下文。
-
-例如：
-
-```text
-M01 她：周末出去吃饭？
-M02 我：可以啊
-M03 她：但是这次你安排
-M04 我：行
-M05 她：你今天是不是又忘了我说什么？
-```
-
-分析 M05：
-
-```text
-Context:
-M01
-M02
-M03
-M04
-
-Target:
-M05
-```
-
-再收到：
-
-```text
-M06 我：我知道
-M07 她：那你说
-```
-
-分析 M07 时使用最近 8～12 条：
-
-```text
-Context:
-最近 8～12 条
-
-Target:
-M07
-```
-
-第一版不上传完整历史聊天记录。
-
----
-
-## 12. AI 分析层
-
-接口：
-
-```csharp
-public interface IMessageAnalyzer
-{
-    Task<MessageAnalysis> AnalyzeAsync(
-        IReadOnlyList<ChatMessage> context,
-        ChatMessage target,
-        CancellationToken cancellationToken);
-}
-```
-
-推荐内部结构：
-
-```text
-IMessageAnalyzer
-       │
-       └── LlmMessageAnalyzer
-                 │
-                 └── ILlmProvider
-                       ├─ OpenAI
-                       ├─ DeepSeek
-                       └─ Local
-```
-
-目标：
-
-- Capture 不依赖模型品牌。
-- UI 不依赖模型品牌。
-- 可通过配置切换 LLM Provider。
-
----
-
-## 13. Prompt 约束
-
-Prompt 不应询问：
-
-> “她真正怎么想？”
-
-应该定义成：
-
-> 基于已有文本，上下文支持哪些合理解释？
-
-基础约束：
-
-```text
+~~~text
 你是即时通讯语境分析器。
 
 根据目标消息以及目标消息之前的对话上下文，
@@ -688,504 +1060,661 @@ Prompt 不应询问：
 要求：
 
 1. 只分析目标消息。
-2. 上下文只作为解释依据。
+2. 上下文仅作为解释依据。
 3. 输出 2~3 个合理解释。
 4. 权重之和必须为 100。
-5. 权重表示不同解释之间的相对可能性，
-   不代表对方真实心理概率。
-6. 信息不足时必须降低置信度。
-7. 不得虚构对方经历、人格、动机。
+5. 权重是候选解释之间的相对权重，不是真实心理概率。
+6. 信息不足时降低 confidence。
+7. 不虚构对方经历、人格、心理疾病或明确动机。
 8. 不生成回复建议。
 9. 总结保持一句话。
 10. 输出严格 JSON。
-```
+~~~
 
-示例 Schema：
+第一版的 AI 目标是：
 
-```json
-{
-  "title": "string",
-  "interpretations": [
-    {
-      "label": "string",
-      "weight": 0
-    }
-  ],
-  "summary": "string",
-  "confidence": "low | medium | high"
-}
-```
+> **短、快、像聊天旁白。**
+
+不是做长期心理分析。
 
 ---
 
-## 14. Overlay UI
+## 19. Overlay
 
-### 14.1 V0.1 采用锚定 Overlay
+### 19.1 精确锚定模式
 
-外挂程序无法直接改变微信原生消息列表的布局，因此不能真的把微信下一条消息向下推开。
+当 MessageAnchor 匹配成功：
 
-第一版采用透明 TopMost 窗口，在对应消息附近绘制 AI 卡片。
-
-示例：
-
-```text
-她：你最好是。        ┌──────────────┐
+~~~text
+对方：你最好是。      ┌──────────────┐
                       │ 半信半疑 55% │
                       │ 轻微不满 30% │
                       │ 单纯玩笑 15% │
                       └──────────────┘
-```
+~~~
 
-WPF 窗口属性：
+WPF：
 
-```text
+~~~text
 WindowStyle=None
 AllowsTransparency=True
 Topmost=True
 ShowInTaskbar=False
-```
+~~~
 
-通过 Win32 API 实现：
+Win32 行为：
 
-- 不抢焦点。
+- 不抢 QQ 焦点。
 - 可选鼠标穿透。
-- 跟随微信移动。
-- 微信最小化时隐藏。
-- 微信滚动时同步卡片位置。
+- QQ 移动时同步。
+- QQ 最小化时隐藏。
+- QQ 切换会话时更新。
+- QQ 滚动时重新 Anchor。
 
-### 14.2 MessageAnchor
+### 19.2 UIA 不可用时的降级
 
-```text
-MessageAnchor
-{
-    MessageId
-    Bounds
-    Analysis
-}
-```
+由于消息本身仍来自 NapCat，UIA 失败时不需要 OCR。
 
-OverlayManager 负责将 MessageAnchor 映射为卡片位置。
+降级：
 
-### 14.3 后续可选 Insight View
+~~~text
+QQ                    ChatInsight
+┌──────────────┐     ┌────────────────┐
+│ 对方：xxxxx  │     │ xxxxx          │
+│ 我：xxxx     │     │ AI：xxxx       │
+│ 对方：xxx    │     │                │
+│              │     │ xxx            │
+│              │     │ AI：xxxxx      │
+└──────────────┘     └────────────────┘
+~~~
 
-若希望真正实现：
+这称为：
 
-```text
-消息
-AI
-消息
-AI
-消息
-AI
-```
+> Insight View
 
-可增加独立“聊天镜像分析视图”：
+因此 QQ 第一版的兼容性策略：
 
-```text
-┌────── ChatInsight ──────┐
+~~~text
+NapCat 正常 + UIA 正常
+→ 精确气泡 Overlay
 
-她：你是不是忘了？
+NapCat 正常 + UIA 失败
+→ Insight View
 
-AI：
-想确认你是否记得   70%
-有些不满           30%
+NapCat 失败
+→ 无实时消息数据，显示连接错误
+~~~
 
-我：我记得。
+### 19.3 OCR 定位
 
-她：那你说。
+QQ MVP 不把 OCR 作为主依赖。
 
-AI：
-等待明确回答       82%
-开始不耐烦         18%
+后续如果存在某些 QQ 版本完全没有可用 UIA Tree，可再评估：
 
-└─────────────────────────┘
-```
+~~~text
+Screenshot
+↓
+只用于 Bubble Bounds 辅助定位
+~~~
 
-该模式不修改微信 UI，只镜像当前聊天内容。
-
-V0.1 不要求实现。
+但不是用于重建完整消息数据。
 
 ---
 
-## 15. 完整运行流程
+## 20. 完整运行流程
 
-```text
-微信新消息出现
+~~~text
+NapCat WebSocket
        ↓
-WindowTracker 收到变化
+收到 OneBot Event
        ↓
-等待 300~500ms
+OneBotNormalizer
        ↓
-WeChatAdapter 获取可见消息
+ChatMessage
        ↓
-MessageNormalizer 标准化
+ConversationStore
        ↓
-MessageTracker 去重
-       ↓
-发现新消息 M102
-       ↓
-Sender == Other ?
+Direction == Incoming ?
        │
-       ├─ No → 只加入上下文
+       ├─ No
+       │   ↓
+       │ 加入上下文
        │
        └─ Yes
-            ↓
-ConversationBuffer 获取前 8~12 条
-            ↓
-MessageAnalyzer
-            ↓
-LLM Provider
-            ↓
-严格 JSON
-            ↓
+           ↓
+最近 8~12 条上下文
+           ↓
+InsightAnalyzer
+           ↓
 MessageAnalysis
-            ↓
+           ↓
 AnalysisCache
-            ↓
-OverlayManager
-            ↓
-在该消息附近显示灰色分析卡片
-```
+           │
+           ├──────────────┐
+           │              │
+           ▼              │
+     QQWindowProbe        │
+           ↓              │
+       UIAutomation       │
+           ↓              │
+     VisibleBubble[]      │
+           │              │
+           └──────┬───────┘
+                  ▼
+         MessageAnchorMatcher
+                  ↓
+          匹配是否成功？
+            │           │
+           Yes          No
+            │           │
+            ▼           ▼
+        Overlay      Insight View
+~~~
 
 ---
 
-## 16. 隐私与日志
+## 21. 消息去重
 
-默认策略：
+QQ 数据通道不再依赖 UI 文本去重。
 
-```text
-聊天原文
-    ↓
-只保存在进程内存
-    ↓
-只发送最近 N 条给 AI
-    ↓
-分析完成
-    ↓
-不落本地数据库
-```
+优先：
 
-普通日志只记录：
+~~~text
+NativeMessageId
+~~~
 
-```text
-2026-09-22 15:30
-Message detected
-MessageId=M102
+其次：
+
+~~~text
+message_id + message_seq
+~~~
+
+运行期维护：
+
+~~~text
+ProcessedMessageIds
+~~~
+
+避免：
+
+- WebSocket 重连后重复事件。
+- NapCat 重发。
+- UIA 重扫。
+- QQ 上滚历史。
+
+UIA Bubble 可以重复扫描，因为它不触发 LLM。
+
+---
+
+## 22. 隐私与日志
+
+默认：
+
+~~~text
+NapCat 结构化消息
+    ↓
+ChatInsight 内存
+    ↓
+仅截取最近 N 条
+    ↓
+发送给用户配置的 LLM
+    ↓
+分析结果保存在内存
+~~~
+
+普通日志：
+
+~~~text
+MessageReceived
+MessageId=12345
+Direction=Incoming
 Analyze=Success
 Latency=1230ms
-```
+Anchor=Matched
+~~~
 
-默认禁止记录：
+默认禁止：
 
-```text
-她：xxxxxx
-```
+~~~text
+Text=你最好是
+~~~
 
-开发阶段可配置：
+配置：
 
-```text
-EnableSensitiveLogging=true
-```
+~~~text
+EnableSensitiveLogging=false
+~~~
 
-默认值必须为：
+NapCat：
 
-```text
-false
-```
+- 仅监听 127.0.0.1。
+- 必须设置 Token。
+- Token 不写入普通日志。
+- API Key 不提交 Git。
+- 聊天内容不写普通日志。
 
 ---
 
-## 17. V0.1 明确范围
+## 23. V0.1 明确做 / 不做
 
 ### 做
 
 - Windows。
-- 微信 PC。
-- 单聊。
-- 纯文字。
-- 当前打开的会话。
-- 对方消息逐条分析。
-- 自己消息作为上下文。
+- QQ NT。
+- QQ 单聊。
+- 纯文字主分析。
+- NapCat / OneBot WebSocket。
+- message + message_sent。
+- 当前运行期短上下文。
+- 每条对方消息独立分析。
 - 最近 8～12 条上下文。
-- 2～3 个隐含解释。
+- 2～3 个候选解释。
 - 相对权重。
 - 一句话总结。
-- 灰色 Overlay 注解卡片。
-- 云端 LLM。
-- UIA 主方案。
-- OCR Fallback。
+- QQ UIA Bubble 定位。
+- 灰色 Overlay。
+- UIA 失败时 Insight View。
+- 云端 LLM Provider。
 
 ### 不做
 
 - 自动回复。
 - 自动发送。
+- QQ 群聊。
+- 图片内容理解。
+- 语音转文字。
+- 表情包视觉分析。
 - 长期人格画像。
 - 长期关系趋势。
 - 联系人长期记忆。
-- 群聊。
-- 图片语义理解。
-- 语音识别。
-- 表情包理解。
-- 多语言优化。
-- 后台扫描所有会话。
+- 整库聊天上传。
+- NapCat 内部协议重写。
 - DLL 注入。
-- Hook。
-- 微信数据库逆向。
-- 客户端内部协议逆向。
+- QQ 内存 Hook。
+- QQ 数据库逆向。
+- OCR 作为 QQ 主消息读取方式。
 
 ---
 
-## 18. POC 与实施顺序
+## 24. POC 与实施顺序
 
-### P0：Capture POC
+### P0：NapCat 数据链路 POC
 
 目标：
 
-```text
-找到微信窗口
+~~~text
+QQ
 ↓
-定位当前聊天区域
+NapCat
 ↓
-枚举 UI Automation Tree
+OneBot WebSocket
 ↓
-打印当前可见消息文本和 Bounds
-```
-
-期望输出：
-
-```text
-OTHER
-"你今天是不是忘了？"
-X=320 Y=242 W=241 H=46
-
-ME
-"没有啊"
-X=721 Y=321 W=89 H=44
-```
-
-决策：
-
-- UIA 能稳定读取 → 继续使用 UIA。
-- UIA 无法稳定读取 → 立即切 OCR。
-- 不在 UIA 失败后转向 DLL Hook / 逆向。
-
-### P1：Analyzer POC
-
-暂时人工构造：
-
-```text
-List<ChatMessage>
-```
+.NET Console
+~~~
 
 验证：
 
-```text
-上下文
-→ LLM
-→ JSON
-→ MessageAnalysis
-```
+1. ChatInsight 能连接本地 NapCat。
+2. 对方发一条私聊，Console 立即收到 message。
+3. 自己在原生 QQ 窗口发送消息，Console 收到 message_sent。
+4. message_id 稳定存在。
+5. message_seq 可用。
+6. user_id / target_id 足以建立 ConversationId。
+7. 纯文本 Segment 可稳定提取。
+8. 连续 20 条消息顺序正确。
+9. 断线后可以恢复。
+
+这是第一优先级 POC。
+
+### P1：Conversation POC
+
+实现：
+
+~~~text
+OneBot Event
+↓
+OneBotNormalizer
+↓
+ChatMessage
+↓
+ConversationStore
+~~~
+
+验证：
+
+- Incoming / Outgoing 顺序正确。
+- 不同联系人上下文隔离。
+- 最近 8～12 条窗口正确。
+- 自己消息不触发分析。
+- Incoming 同一个 MessageId 不重复分析。
+
+### P2：Analyzer POC
+
+使用真实 ConversationStore 输出：
+
+~~~text
+Context + Target
+↓
+LLM
+↓
+严格 JSON
+↓
+MessageAnalysis
+~~~
+
+验证：
+
+- 2～3 个解释。
+- 权重和 100。
+- 一句话总结。
+- Low / Medium / High Confidence。
+- 模型超时处理。
+- JSON 解析失败重试。
+- 不生成回复建议。
+
+### P3：QQ UIA Probe
 
 目标：
 
-- JSON 输出稳定。
-- 权重和为 100。
-- 能控制过度脑补。
-- 单次分析延迟可接受。
+~~~text
+QQ Window
+↓
+UI Automation
+↓
+Current Chat Message List
+↓
+VisibleBubble[]
+~~~
 
-### P2：Pipeline
+输出至少：
 
-串联：
+~~~text
+Index=0
+Text=你今天是不是忘了？
+Side=Left
+Rect=(320,242,561,288)
 
-```text
-Capture
+Index=1
+Text=没有啊
+Side=Right
+Rect=(721,321,810,365)
+~~~
+
+同时实现：
+
+~~~text
+dump-uia
+~~~
+
+用于 QQ 更新后的诊断。
+
+### P4：MessageAnchorMatcher
+
+准备：
+
+~~~text
+ChatMessage[]
 +
-Message Tracker
-+
-ConversationBuffer
-+
-AI
-```
+VisibleBubble[]
+~~~
 
-先只输出 Console，不做 Overlay。
+验证：
 
-### P3：Overlay
+- 普通消息正确匹配。
+- 重复“哈哈”正确匹配。
+- 多条连续消息正确匹配。
+- 自己 / 对方方向正确。
+- 滚动后重新匹配。
+- 置信度不足不乱绑。
+
+### P5：Overlay
 
 实现：
 
 - WPF 透明窗。
-- 消息锚定。
-- 微信移动同步。
-- 微信滚动同步。
-- 最小化隐藏。
-- 卡片显示与销毁。
+- 不抢焦点。
+- MessageAnchor → Card。
+- QQ 移动同步。
+- QQ 滚动同步。
+- QQ 最小化隐藏。
+- 当前会话切换刷新。
+- 匹配失败自动降级 Insight View。
 
-### P4：QQ Adapter
+### P6：微信 Adapter
 
-微信链路稳定后再增加：
+QQ MVP 稳定后再研究微信：
 
-```text
-QQAdapter : IChatAdapter
-```
+~~~text
+IChatEventSource
+IVisibleBubbleSource
+~~~
 
-AI、Conversation、Overlay 不改。
+各新增微信实现。
 
----
+不修改：
 
-## 19. MVP 验收标准
-
-V0.1 满足以下条件即视为 MVP 完成：
-
-1. 启动程序后可识别微信 PC 主窗口。
-2. 打开一个单聊后可识别当前会话。
-3. 能读取当前可见纯文字消息。
-4. 能正确区分自己和对方。
-5. 自己发送的消息只进入上下文，不调用分析。
-6. 对方发送新消息后，1～3 秒内出现分析结果。
-7. 每一条对方消息最多调用一次模型。
-8. 每个分析卡片与对应消息绑定。
-9. 上滚 / 下滚不会重复分析历史消息。
-10. 切换联系人后 ConversationBuffer 随会话切换。
-11. 切回旧联系人不会重复分析已处理消息。
-12. 微信窗口移动后 Overlay 能重新定位。
-13. 微信窗口最小化后 Overlay 自动隐藏。
-14. 模型异常时不影响微信正常使用。
-15. 网络或 LLM API 失败时允许显示简短失败状态并可重试。
-16. 默认日志不记录聊天原文。
+- ConversationStore。
+- InsightAnalyzer。
+- MessageAnalysis。
+- OverlayHost。
 
 ---
 
-## 20. 风险与优先级
+## 25. MVP 验收标准
 
-### 风险 1：微信 UIA 可访问性不足
+QQ V0.1 满足以下条件即完成：
 
-这是最高优先级风险。
-
-必须通过 P0 在正式开发前验证。
-
-处理：
-
-```text
-UIA 可读 → 主方案
-UIA 不可读 → OCR
-```
-
-### 风险 2：OCR 消息重建不稳定
-
-可能遇到：
-
-- 气泡换行。
-- 多条连续短消息。
-- 滚动造成重复。
-- DPI 缩放。
-- 窗口缩放。
-- 浅色 / 深色主题。
-
-因此 OCR 方案必须同时保留：
-
-- BoundingBox。
-- 行合并规则。
-- 左右区域规则。
-- Snapshot 去重。
-
-### 风险 3：模型过度脑补
-
-处理：
-
-- 强制输出多个竞争解释。
-- 使用 `confidence`。
-- Prompt 明确禁止人格 / 经历推测。
-- 权重定义为解释之间相对权重。
-- 信息不足时允许低置信度。
-
-### 风险 4：Overlay 遮挡原生聊天
-
-处理：
-
-- 卡片宽度限制。
-- 默认靠消息侧边显示。
-- 支持折叠。
-- 可选鼠标穿透。
-- 后续增加 Insight View。
+1. 启动后能检测 NapCat 是否可连接。
+2. NapCat Token 错误能明确提示。
+3. 对方 QQ 私聊消息能够实时进入 ChatInsight。
+4. 自己从原生 QQ 客户端发送的消息能够进入 ChatInsight。
+5. 两类消息能正确区分 Incoming / Outgoing。
+6. 不同联系人 ConversationId 正确隔离。
+7. 最近 8～12 条上下文顺序正确。
+8. 自己消息不触发 AI。
+9. 对方新消息在 1～3 秒内得到分析结果。
+10. 同一 NativeMessageId 不重复分析。
+11. UIA 可读取当前 QQ 聊天气泡文字。
+12. UIA 可读取 Bubble BoundingRectangle。
+13. 普通文本消息能正确完成 Message ↔ Bubble 匹配。
+14. 连续重复文本不会明显错绑。
+15. 匹配失败时不显示错误位置的卡片。
+16. QQ 移动后 Overlay 能重新定位。
+17. QQ 滚动后 Overlay 能重新定位。
+18. QQ 最小化时 Overlay 隐藏。
+19. UIA 失败时 AI 分析仍能正常工作，并降级 Insight View。
+20. NapCat 断线时 App 不崩溃。
+21. LLM 超时 / API 失败时 App 不崩溃。
+22. 默认日志不记录聊天原文。
+23. 不具备任何自动发送能力。
 
 ---
 
-## 21. 最终技术决策
+## 26. 风险与处理
 
-V0.1 固定如下：
+### 风险 1：NapCat 兼容 / 登录风险
 
-```text
+处理：
+
+- 将 NapCat 视为独立外部组件。
+- ChatInsight 不绑定其内部实现。
+- 通过 IChatEventSource 隔离。
+- 第一版仅本地连接。
+- 后续可以替换 LagrangeEventSource。
+
+### 风险 2：QQ UIA Tree 变化
+
+处理：
+
+- Selector 配置化。
+- Tree Dump 工具。
+- 精确查找 + 启发式查找。
+- UIA 失败不影响消息分析。
+- 降级 Insight View。
+
+### 风险 3：Message ↔ Bubble 错配
+
+处理：
+
+- 不使用单一 Text 匹配。
+- 同时使用 Direction / 顺序 / 邻接关系。
+- 设置匹配置信度。
+- 低置信度不绘制。
+- 自动重新尝试匹配。
+
+### 风险 4：模型过度脑补
+
+处理：
+
+- 强制多个竞争解释。
+- 权重只表示候选解释之间的相对权重。
+- Confidence。
+- 信息不足允许低置信度。
+- 禁止人格 / 病理 / 明确动机断言。
+
+### 风险 5：Overlay 遮挡 QQ
+
+处理：
+
+- 卡片最大宽高限制。
+- 优先显示在气泡空白侧。
+- 可折叠。
+- 鼠标穿透。
+- 可切换 Insight View。
+
+---
+
+## 27. 最终技术决策
+
+~~~text
 项目：
 ChatInsight
 
 平台：
 Windows
 
-技术：
+首发：
+QQ NT
+单聊
+文字消息
+
+主技术：
 .NET 8
 WPF
+NapCatQQ
+OneBot WebSocket
 Windows UI Automation
-Windows Graphics Capture
-OCR fallback
 LLM API
 
-核心架构：
-IChatAdapter
-      ↓
-Capture
-      ↓
-Message Tracker
-      ↓
-Conversation Buffer
-      ↓
-LLM Analyzer
-      ↓
-Analysis Cache
-      ↓
-Overlay
+数据通道：
+QQ
+↓
+NapCat
+↓
+OneBot WebSocket
+↓
+NapCatOneBotSource
+↓
+OneBotNormalizer
+↓
+ChatMessage
 
-首发：
-微信 PC
-单聊
-纯文字
-当前会话
+视觉通道：
+QQ Window
+↓
+UI Automation
+↓
+VisibleBubble
 
-分析：
-每条对方消息独立分析
-最近 8~12 条作为上下文
-2~3 个候选隐含解释
-相对权重
-一句话总结
+业务：
+ChatMessage
+↓
+ConversationStore
+↓
+InsightAnalyzer
+↓
+MessageAnalysis
+
+视觉合并：
+ChatMessage + VisibleBubble
+↓
+MessageAnchorMatcher
+↓
+OverlayHost
+
+降级：
+UIA 不可用
+↓
+Insight View
 
 明确不做：
 自动回复
 自动发送
 长期画像
 长期记忆
-群聊
-图片 / 语音
+QQ 协议重写
 DLL 注入
 Hook
 数据库逆向
-```
+OCR 主消息采集
+~~~
 
 ---
 
-## 22. 下一步
+## 28. 下一步
 
-开发工作的第一任务不是创建完整应用，而是：
+当前第一任务改为：
 
-> **P0：微信 UI Automation Capture POC**
+> **P0：NapCat → OneBot WebSocket → .NET Console 数据链路验证**
 
-先验证：
+验证顺序：
 
-1. 当前微信 PC 版本是否暴露消息文本。
-2. 是否能稳定获取消息 Bounds。
-3. 是否能区分左右消息。
-4. 是否能识别当前会话。
-5. UI 变化事件是否足以触发增量读取。
+~~~text
+1. 配置 NapCat 本地 WebSocket
+2. 设置 Token
+3. .NET ClientWebSocket 建立连接
+4. 接收对方 message
+5. 接收自己 message_sent
+6. 打印 message_id / seq / user_id / time / text
+7. 连续聊天验证顺序和去重
+~~~
 
-P0 的结果将直接决定 V0.1 使用：
+P0 成功后再做：
 
-- UI Automation 主路线；或
-- Windows Graphics Capture + OCR 主路线。
+> **P3：QQ UIA Bubble Probe**
+
+开发顺序已经从：
+
+~~~text
+先研究 QQ UIA 能不能读消息
+~~~
+
+改成：
+
+~~~text
+先用 NapCat 把消息流稳定拿到
+↓
+再用 UIA 解决“气泡坐标”
+~~~
+
+这会显著降低项目的首期技术风险。
+
+---
+
+## 29. 当前架构结论
+
+ChatInsight QQ 版不是一个 QQ 自动化框架，也不是一个 Bot。
+
+它应当保持为：
+
+> **结构化消息事件 + 短上下文 AI 解读 + 原生聊天窗口视觉注解层。**
+
+QQ 协议、登录、消息事件由成熟底层项目负责；ChatInsight 自己只实现真正属于产品核心的部分：
+
+~~~text
+标准化
+上下文
+逐条隐含语义分析
+消息与气泡匹配
+Overlay 可视化
+~~~
