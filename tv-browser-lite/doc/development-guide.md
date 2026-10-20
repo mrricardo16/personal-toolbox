@@ -1,12 +1,12 @@
 # TV Browser Lite｜开发实施文档
 
 - 版本：Dev Guide v0.1
-- 状态：待开发；**本文不是编译记录**
+- 状态：**基本浏览器源码已实现，已在 GitHub Actions 编译通过；实机仍待验收**
 - 约束：仅 GeckoView，引擎随 APK 打包；不引入 System WebView、Chrome Custom Tabs、外部 Firefox 启动或 RSS 专属页面代码。
 
 ## 1. 开发环境与先决条件
 
-1. Windows 上安装 Android Studio、与所用 AGP 匹配的 Android SDK/Build Tools、JDK 17、ADB；Gradle 使用 wrapper。
+1. Windows 上安装 Android Studio、与所用 AGP 匹配的 Android SDK/Build Tools、JDK 17、ADB；可安装 Gradle 9.3.1 直接构建；wrapper.properties 已存在，但仓库尚未提交 wrapper JAR。
 2. 先查明目标电视 Android 版本、CPU ABI、存储与可用内存：
    ```powershell
    adb devices
@@ -19,7 +19,7 @@
 4. Android 8.0 / API 26+ 作为新版引擎的初始门槛，若电视低于门槛应暂停开发/明确转为旧版兼容专项，而不是偷偷回退到系统 WebView。
 5. 此仓库原本多为独立 HTML 工具；项目只能在 `tv-browser-lite/` 下创建 Gradle 工程，不修改仓库其他项目或其 CI。
 
-## 2. 目标工程结构（开发阶段创建）
+## 2. 目标工程结构（当前基本结构已建立）
 
 ```text
 tv-browser-lite/
@@ -155,3 +155,12 @@ tv-browser-lite/
 5. 如无电视/ADB 连接，明确“未进行实机测试”，不能宣称安装或网站访问成功。
 6. 文档、代码和 APK 版本应一致；新增功能同时补充测试用例与变更记录。
 7. 禁止改写 `personal-toolbox` 其他工具代码、README 历史内容和仓库级工作流，除非后续明确授权。
+
+## 11. 已锁定并经过 CI 验证的版本
+
+- Gradle 9.3.1；AGP 9.1.1；JDK 17。
+- Kotlin Gradle plugin 2.4.21：仅保留于根项目 `apply false`，由 AGP 9 的 built-in Kotlin 集成，不在 app module 重复 apply。
+- Android `compileSdk=37`（SDK 安装标识 `platforms;android-37.0`），`targetSdk=35`，`minSdk=26`。
+- GeckoView `geckoview-omni:157.0.20261005135250`。
+- CI 首次 SUCCESS：https://github.com/mrricardo16/personal-toolbox/actions/runs/39396492474；SHA-256 见 progress.md。
+- 这一结果只验证编译/单元测试，不意味着电视已安装或 RSS 业务页面通过。

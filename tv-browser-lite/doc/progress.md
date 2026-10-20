@@ -4,11 +4,11 @@
 
 | 阶段 | 已提交范围 | 状态 |
 | --- | --- | --- |
-| M0 | Gradle/AGP/Kotlin 配置、固定 GeckoView 版本、最小 Android SDK 26 | 已提交；依赖未在本地解析 |
-| M1 | Manifest、电视入口、原生 UI、GeckoView 初始化与会话 | 已提交；未编译 |
-| M2 | 地址栏、HTTP/HTTPS 正规化、前进/后退/刷新/主页、基础 URL 单测 | 已提交；UrlNormalizer 的独立 JVM 10 项检查 PASS，Android 单测待 CI |
-| M3 | 网络错误类别与代码、内容进程异常提示、JS alert/confirm/prompt、受控导航与诊断 | 已提交；未编译 |
-| M4 | GitHub Actions 独立 Gradle 构建及 APK 工件 | 已提交工作流；是否通过请查看 Actions |
+| M0 | 构建工具链、GeckoView 157、Android minSdk 26 | **PASS（CI 已解析并构建）** |
+| M1 | Manifest、电视入口、原生 UI、GeckoView 初始化与会话 | **编译 PASS / 运行待实测** |
+| M2 | 地址栏、HTTP/HTTPS 规范化、前进/后退/刷新、URL 单测 | **CI 单测 PASS / 运行待实测** |
+| M3 | 网络错误、渲染异常、JS 对话框、诊断与受控导航 | **编译 PASS / 功能待实测** |
+| M4 | GitHub Actions Gradle 构建、单测、Debug APK 及下载工件 | **PASS（Run 39396492474）** |
 | M5 | 小米电视实机安装、页面/表单/长期运行 | **BLOCKED：尚无设备信息与 ADB 连接** |
 
 ## 当前环境真实限制
@@ -47,3 +47,16 @@
 - `:app:checkDebugAarMetadata` 报 11 项错误；GeckoView 157 与 AndroidX core 1.19 要求 `compileSdk >= 37`，AndroidX core 要求 AGP >= 9.1.0。
 - 修复采用：AGP **9.1.1**、Gradle **9.3.1**、编译 SDK **37**、Build Tools **36.0.0**，使用 AGP 9 内建 Kotlin 编译支持（删除重复 Kotlin Android 插件与 `kotlinOptions`）。
 - `minSdk 26` 和 `targetSdk 35` 不变；电视仍要求至少 Android 8.0。是否编译成功以 CI 后续结果为准。
+
+## CI 首次完整成功（2026-10-20）
+
+- Workflow：<https://github.com/mrricardo16/personal-toolbox/actions/runs/39396492474>
+- 构建源提交：`c6a327dc81c62c08410317429fdb96933cdb16ca`
+- `gradle :app:testDebugUnitTest :app:assembleDebug --no-daemon --stacktrace`：**BUILD SUCCESSFUL（1m 35s）**。
+- 单元测试 Gradle 任务：`:app:testDebugUnitTest` **PASS**。
+- APK：`app/build/outputs/apk/debug/app-debug.apk`；工件名 `tv-browser-lite-debug-apk`。
+- GitHub Actions 工件 ID：`12252066560`，上传成功，ZIP 约 **254,038,034 字节**。
+- APK SHA-256：`21b9580dcf48d2c21e62f80c0fbfee38727604d7601f434b0dd9a7c5be1ad47b`。
+- 工具链：Gradle 9.3.1、AGP 9.1.1、内建 Kotlin 编译器 2.4.21、compileSdk 37、Android SDK 平台包 `android-37.0`、JDK 17。
+- 该构建完成的是 **Debug APK**，可侧载试用；**小米电视安装、正常输入、RSS 4.1 渲染及两小时稳定性仍未验收**。
+- 本次以前 CI 多次失败：已解决过时 SDK tools package、sdkmanager PATH、平台包命名、AAR 元数据和 Kotlin 标准库编译器版本问题；对应 Git 历史与 Actions 运行保留了失败证据。

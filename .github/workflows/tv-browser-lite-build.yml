@@ -4,7 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - "tv-browser-lite/**"
+      - "tv-browser-lite/app/**"
+      - "tv-browser-lite/*.gradle.kts"
+      - "tv-browser-lite/gradle.properties"
+      - "tv-browser-lite/gradle/**"
       - ".github/workflows/tv-browser-lite-build.yml"
   workflow_dispatch:
 
@@ -50,4 +53,4 @@ jobs:
           name: tv-browser-lite-debug-apk
           path: tv-browser-lite/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 90
