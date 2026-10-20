@@ -13,12 +13,12 @@
 
 ## 下载已通过 CI 的 APK
 
-- 构建：[Run #6（成功）](https://github.com/mrricardo16/personal-toolbox/actions/runs/39396492474)
+- 构建：[最新 CI（成功，90 天工件）](https://github.com/mrricardo16/personal-toolbox/actions/runs/39397238551)
 - Artifact：`tv-browser-lite-debug-apk`（ZIP，内含单文件 `app-debug.apk`）
-- SHA-256：`21b9580dcf48d2c21e62f80c0fbfee38727604d7601f434b0dd9a7c5be1ad47b`
+- SHA-256：`83c012b546b2233c354735bb29a9bc3f5b6257d8bdec5c2f2a432a5fe4a73aad`
 - APK 下载记录需要 GitHub 登录且有权限访问此仓库；ZIP 解压后安装 APK，不要把 ZIP 直接安装到电视。
 
-1. 打开 [首次编译通过的 GitHub Actions Run](https://github.com/mrricardo16/personal-toolbox/actions/runs/39396492474)。
+1. 打开 [最新通过的 GitHub Actions Run](https://github.com/mrricardo16/personal-toolbox/actions/runs/39397238551)。
 2. 进入绿色 PASS 的运行记录 → Artifacts → `tv-browser-lite-debug-apk` 下载 ZIP，解压得到 APK。
 3. 拷贝到 U 盘，安装于 Android 8+ 电视，启动 **TV Browser Lite**。
 4. 在地址栏输入 `192.168.12.195:8221` 或完整 `http://192.168.12.195:8221`，按输入法“前往”或屏幕按钮。

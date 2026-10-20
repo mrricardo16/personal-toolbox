@@ -60,3 +60,13 @@
 - 工具链：Gradle 9.3.1、AGP 9.1.1、内建 Kotlin 编译器 2.4.21、compileSdk 37、Android SDK 平台包 `android-37.0`、JDK 17。
 - 该构建完成的是 **Debug APK**，可侧载试用；**小米电视安装、正常输入、RSS 4.1 渲染及两小时稳定性仍未验收**。
 - 本次以前 CI 多次失败：已解决过时 SDK tools package、sdkmanager PATH、平台包命名、AAR 元数据和 Kotlin 标准库编译器版本问题；对应 Git 历史与 Actions 运行保留了失败证据。
+
+## 最新通过构建（2026-10-20）
+
+- CI Run：<https://github.com/mrricardo16/personal-toolbox/actions/runs/39397238551>，**SUCCESS**。
+- Git 源提交：`76e3037d7baaa32981f32e0ba252086f68c27ff3`；此提交只改动文档与 CI 路径/保留配置，浏览器业务代码与上次成功版本相同。
+- Android 测试：`:app:testDebugUnitTest` **PASS**；Debug APK：`:app:assembleDebug` **PASS**；本轮 Gradle **BUILD SUCCESSFUL in 42s**。
+- SHA-256（**本轮 APK**）：`83c012b546b2233c354735bb29a9bc3f5b6257d8bdec5c2f2a432a5fe4a73aad`。
+- Artifact：`tv-browser-lite-debug-apk`，ID `12251824673`；下载记录中 ZIP 大小约 254,038,033 字节，**预计到期 2027-01-18 08:58 UTC**。
+- 注意：Gradle Debug APK 可因构建时间/环境产生不同哈希；安装后回归请记录自己下载的那一份校验值。
+- 完整 CI 成功与电视实机验收是两种不同证据：**电视机型、Android 版本、ARM ABI、实际启动与 RSS 4.1 兼容性仍待确认**。
