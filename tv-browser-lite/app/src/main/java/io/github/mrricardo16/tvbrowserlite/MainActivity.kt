@@ -1,6 +1,7 @@
 package io.github.mrricardo16.tvbrowserlite
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -10,6 +11,8 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import org.mozilla.geckoview.GeckoResult
+import org.mozilla.geckoview.WebRequestError
 import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoView
@@ -32,6 +35,18 @@ class MainActivity : Activity() {
     private var canGoBack = false
     private var canGoForward = false
     private var isLoading = false
+    private var lastLoadError: String? = null
+    private val events = ArrayDeque<String>()
+    private fun note(message: String) {
+        if (events.size >= 30) events.removeFirst()
+        events.addLast("${System.currentTimeMillis()}: $message")
+    }
+    private fun showDiagnostics() {
+        val summary = "Android API: ${android.os.Build.VERSION.SDK_INT}\nABI: ${android.os.Build.SUPPORTED_ABIS.joinToString()}\nGeckoView: 157.0\n\n" +
+            events.joinToString("\n")
+        AlertDialog.Builder(this).setTitle("浏览器诊断（不含认证信息）")
+            .setMessage(summary).setPositiveButton("关闭", null).show()
+    }
 
     private fun dp(n: Int) = (resources.displayMetrics.density * n + 0.5f).toInt()
     private fun button(title: String, action: () -> Unit) = Button(this).apply {
@@ -78,6 +93,7 @@ class MainActivity : Activity() {
         toolbar.addView(address, LinearLayout.LayoutParams(0, dp(50), 1f))
         toolbar.addView(button("前往") { navigate() }, LinearLayout.LayoutParams(dp(74), dp(48)))
         toolbar.addView(button("主页") { showHome() }, LinearLayout.LayoutParams(dp(74), dp(48)))
+        toolbar.addView(button("诊断") { showDiagnostics() }, LinearLayout.LayoutParams(dp(74), dp(48)))
         root.addView(toolbar)
 
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -110,7 +126,16 @@ class MainActivity : Activity() {
                 runtime ?: GeckoRuntime.create(applicationContext).also { runtime = it }
             }
             session = GeckoSession()
+            session.setPromptDelegate(BrowserPromptDelegate(this))
             session.setContentDelegate(object : GeckoSession.ContentDelegate {
+                override fun onCrash(session: GeckoSession) {
+                    note("内容进程崩溃")
+                    status.text = "网页渲染进程崩溃，请重新启动浏览器"
+                }
+                override fun onKill(session: GeckoSession) {
+                    note("内容进程被系统结束")
+                    status.text = "网页渲染进程已结束，请重新启动浏览器"
+                }
                 override fun onTitleChange(session: GeckoSession, title: String?) {
                     status.text = title ?: "网页"
                 }
@@ -127,6 +152,21 @@ class MainActivity : Activity() {
                         prefs.remember(url)
                     }
                 }
+                override fun onLoadError(session: GeckoSession, uri: String?, error: WebRequestError): GeckoResult<String>? {
+                    lastLoadError = "网络/加载错误：类别 ${error.category}，代码 ${error.code}"
+                    note(lastLoadError!!)
+                    status.text = lastLoadError
+                    return null  // no certificate bypass or automatic redirection
+                }
+                override fun onLoadRequest(
+                    session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest
+                ): GeckoResult<org.mozilla.geckoview.AllowOrDeny>? {
+                    val uri = request.uri.lowercase(java.util.Locale.ROOT)
+                    if (uri.startsWith("http://") || uri.startsWith("https://") || uri == "about:blank") return null
+                    note("拒绝不支持的顶层协议")
+                    status.text = "只允许 HTTP/HTTPS 网页导航"
+                    return GeckoResult.deny()
+                }
                 override fun onCanGoBack(session: GeckoSession, value: Boolean) {
                     canGoBack = value
                     updateNavigation()
@@ -139,6 +179,8 @@ class MainActivity : Activity() {
             session.setProgressDelegate(object : GeckoSession.ProgressDelegate {
                 override fun onPageStart(session: GeckoSession, url: String) {
                     isLoading = true
+                    lastLoadError = null
+                    note("开始加载")
                     refreshButton.text = "×"
                     progress.progress = 0
                     progress.visibility = View.VISIBLE
@@ -151,13 +193,15 @@ class MainActivity : Activity() {
                     isLoading = false
                     refreshButton.text = "⟳"
                     progress.visibility = View.GONE
-                    if (!success) status.text = "加载未完成，请检查网络或网址"
+                    if (!success) status.text = lastLoadError ?: "网页加载未完成，请检查网络或网址"
+                    if (success) note("主文档加载结束（不代表 Vue mount 成功）")
                 }
             })
             session.open(current)
             geckoView.setSession(session)
             showHome()
         } catch (e: Exception) {
+            note("内核初始化异常：${e.javaClass.simpleName}")
             status.text = "浏览器内核初始化失败：${e.javaClass.simpleName}"
         }
     }
@@ -189,10 +233,8 @@ class MainActivity : Activity() {
             status.text = e.message ?: "网址无效"
             return
         }
-        android.view.inputmethod.InputMethodManager::class.java.let {
-            (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
-                .hideSoftInputFromWindow(address.windowToken, 0)
-        }
+        (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+            .hideSoftInputFromWindow(address.windowToken, 0)
         address.clearFocus()
         address.setText(url)
         session.loadUri(url)
