@@ -6,7 +6,7 @@
 | --- | --- | --- |
 | M0 | Gradle/AGP/Kotlin 配置、固定 GeckoView 版本、最小 Android SDK 26 | 已提交；依赖未在本地解析 |
 | M1 | Manifest、电视入口、原生 UI、GeckoView 初始化与会话 | 已提交；未编译 |
-| M2 | 地址栏、HTTP/HTTPS 正规化、前进/后退/刷新/主页、基础 URL 单测 | 已提交；未编译 |
+| M2 | 地址栏、HTTP/HTTPS 正规化、前进/后退/刷新/主页、基础 URL 单测 | 已提交；UrlNormalizer 的独立 JVM 10 项检查 PASS，Android 单测待 CI |
 | M3 | 网络错误类别与代码、内容进程异常提示、JS alert/confirm/prompt、受控导航与诊断 | 已提交；未编译 |
 | M4 | GitHub Actions 独立 Gradle 构建及 APK 工件 | 已提交工作流；是否通过请查看 Actions |
 | M5 | 小米电视实机安装、页面/表单/长期运行 | **BLOCKED：尚无设备信息与 ADB 连接** |

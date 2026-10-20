@@ -38,6 +38,18 @@ class UrlNormalizerTest {
         }
     }
 
+    @Test fun encodedQueryIsNotDoubleEscaped() =
+        assertEquals(
+            "https://www.example.com/?q=%20&hello=1#hash",
+            UrlNormalizer.normalize("https://www.example.com?q=%20&hello=1#hash")
+        )
+
+    @Test fun invalidPortRejected() {
+        assertThrows(IllegalArgumentException::class.java) {
+            UrlNormalizer.normalize("https://example.com:99999")
+        }
+    }
+
     @Test fun emptyInputRejected() {
         assertThrows(IllegalArgumentException::class.java) { UrlNormalizer.normalize("   ") }
     }
