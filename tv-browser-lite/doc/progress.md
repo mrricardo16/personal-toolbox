@@ -34,3 +34,9 @@
 - [开发](development-guide.md)
 - [测试](test-and-acceptance.md)
 - [安全与诊断](security-and-diagnostics.md)
+
+## CI 调试记录（新增）
+
+- Run #2（39394787082）：**FAIL**，`android-actions/setup-android@v3` 的 `sdkmanager tools` 不再存在，失败发生在任何 Kotlin/GeckoView 编译之前。
+- 修复：使用 GitHub 托管 Ubuntu 的预装 Android SDK，通过 `sdkmanager` 仅安装所需 API 35 / Build Tools 35，并保留 setup-gradle。
+- 修复后的 CI 是否通过：**待下一次运行实际验证**。
