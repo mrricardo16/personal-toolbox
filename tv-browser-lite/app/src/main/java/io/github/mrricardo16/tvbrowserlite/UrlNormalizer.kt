@@ -32,7 +32,9 @@ object UrlNormalizer {
         val url = parsed.toASCIIString()
         return if (parsed.rawPath.isNullOrEmpty()) {
             // Preserve query/hash while ensuring a consistent path.
-            URI(parsed.scheme, parsed.rawAuthority, "/", parsed.rawQuery, parsed.rawFragment).toASCIIString()
+            parsed.scheme + "://" + parsed.rawAuthority + "/" +
+                (parsed.rawQuery?.let { "?$it" } ?: "") +
+                (parsed.rawFragment?.let { "#$it" } ?: "")
         } else url
     }
 }

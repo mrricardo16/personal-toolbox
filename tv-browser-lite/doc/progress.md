@@ -1,28 +1,36 @@
-# 开发进度与证据
+# TV Browser Lite 阶段进度
 
-## 状态准则
+更新：2026-10-20。**此文件记录代码提交事实，不替代编译及电视实测证据。**
 
-- DONE：对应文件已实际提交，并已验证远端存在。
-- CODE：已实现源码但未编译通过。
-- BLOCKED：前置条件不足。
-- PASS：仅指有实际构建日志或设备测试结果支撑。
-- 不把 GitHub 提交成功等同于编译/实机通过。
+| 阶段 | 已提交范围 | 状态 |
+| --- | --- | --- |
+| M0 | Gradle/AGP/Kotlin 配置、固定 GeckoView 版本、最小 Android SDK 26 | 已提交；依赖未在本地解析 |
+| M1 | Manifest、电视入口、原生 UI、GeckoView 初始化与会话 | 已提交；未编译 |
+| M2 | 地址栏、HTTP/HTTPS 正规化、前进/后退/刷新/主页、基础 URL 单测 | 已提交；未编译 |
+| M3 | 网络错误类别与代码、内容进程异常提示、JS alert/confirm/prompt、受控导航与诊断 | 已提交；未编译 |
+| M4 | GitHub Actions 独立 Gradle 构建及 APK 工件 | 已提交工作流；是否通过请查看 Actions |
+| M5 | 小米电视实机安装、页面/表单/长期运行 | **BLOCKED：尚无设备信息与 ADB 连接** |
 
-## 2026-10-20
+## 当前环境真实限制
 
-| 阶段 | 工作内容 | 当前状态 | 核验 |
-|---|---|---|---|
-| M0 | 仓库目录、版本固定、Gradle 构建配置 | DONE（配置已提交） | 源码可查，依赖尚未解析 |
-| M1 | GeckoView 容器、原生界面 | 待提交 | 尚未编译 |
-| M2 | URL 输入、导航与输入法 | 待提交 | 尚未测试 |
-| M3 | 错误提示、提示框、安全与诊断 | 待提交 | 尚未测试 |
-| M4 | CI 构建与 APK 产物、实机验收 | 待执行 | 本地无 Android SDK/ADB；CI 构建待触发 |
+- 当前执行环境有 JDK 21，但没有 Android SDK / Gradle / ADB，且容器无法解析外部 Maven/Google 依赖域名。
+- 不把源码提交当作 Gradle 成功，也不把 CI 构建当作电视安装成功。
+- Debug APK 的构建和下载由仓库 GitHub Actions 执行；只有对应 workflow 显示 PASS 后才有可用工件。
+- APK 中 GeckoView 使用 `org.mozilla.geckoview:geckoview-omni:157.0.20261005135250`，新内核最低 Android 8.0。
+- 目前通用 omni 会增大 APK；待获取设备 ABI 后可改为对应 ABI 工件。
+- 第一版不支持所有文件上传/下载、选择列表、权限交互、音视频特性；需要真实浏览器体验时继续分阶段完善。
 
-## 技术决策
+## M5 实机验收待办
 
-- 仅 GeckoView，不使用系统 WebView。
-- GeckoView stable 固定版本：`157.0.20261005135250`（Mozilla Maven 的 `geckoview-omni`）。
-- Android minSdk 26；Android 7 无法运行此版本。
-- AGP 8.13.2、Gradle 8.13、Kotlin 2.2.20、JDK 17、compileSdk 35。
-- 未确定电视机型/ABI，因此先用 omni 通用构建，后续按设备信息优化大小。
-- 远程 CI 验证前，**不能声称配置兼容或已生成 APK**。
+1. 取得小米电视 Android 版本与 ABI。
+2. 从 GitHub Actions 下载并安装 Debug APK。
+3. 百度 HTTPS、公网站点导航、局域网 HTTP 的 RSS 8221 和其他 Vue 8888。
+4. 记录每个网站是否加载/操作、出错诊断与复现步骤。
+5. 判定 TV Bro 的持续 Loading 是否消失；若 RSS 自身 JS 竞态存在，单纯更新 Gecko 引擎不保证解决。
+
+## 对应文档
+
+- [方案](solution-design.md)
+- [开发](development-guide.md)
+- [测试](test-and-acceptance.md)
+- [安全与诊断](security-and-diagnostics.md)
