@@ -40,3 +40,10 @@
 - Run #2（39394787082）：**FAIL**，`android-actions/setup-android@v3` 的 `sdkmanager tools` 不再存在，失败发生在任何 Kotlin/GeckoView 编译之前。
 - 修复：使用 GitHub 托管 Ubuntu 的预装 Android SDK，通过 `sdkmanager` 仅安装所需 API 35 / Build Tools 35，并保留 setup-gradle。
 - 修复后的 CI 是否通过：**待下一次运行实际验证**。
+
+## CI Run #3 故障（39395444187）
+
+- Android SDK 和 Gradle 初始化已经通过。
+- `:app:checkDebugAarMetadata` 报 11 项错误；GeckoView 157 与 AndroidX core 1.19 要求 `compileSdk >= 37`，AndroidX core 要求 AGP >= 9.1.0。
+- 修复采用：AGP **9.1.1**、Gradle **9.3.1**、编译 SDK **37**、Build Tools **36.0.0**，使用 AGP 9 内建 Kotlin 编译支持（删除重复 Kotlin Android 插件与 `kotlinOptions`）。
+- `minSdk 26` 和 `targetSdk 35` 不变；电视仍要求至少 Android 8.0。是否编译成功以 CI 后续结果为准。
