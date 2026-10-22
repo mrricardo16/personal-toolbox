@@ -17,13 +17,13 @@
 
 ## 下载已通过 CI 的 APK
 
-- 构建：[遥控器焦点修复 CI（成功）](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732249852)
-- Artifact：[tv-browser-lite-debug-apk（ZIP，内含 `app-debug.apk`）](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732249852/artifacts/12406095633)
-- APK SHA-256：`bc1e4d0bbbda2ea306a34afbadeb03859bbb021fe0b99cc07e36846dd268208d`
-- Artifact ZIP SHA-256：`e96e637f3c57b703cf044eb58ed3897bd17077e4affbda2cea2aeeb1edbcb7b9`
+- 构建：[最新遥控器焦点修复 CI（成功）](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732519091)
+- Artifact：[tv-browser-lite-debug-apk（ZIP，内含 `app-debug.apk`）](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732519091/artifacts/12404819677)
+- APK SHA-256：`540b25269b23f7d82f825759cdbc59efcccb22958f37a7d06c382d1fe83bd1d0`
+- Artifact ZIP SHA-256：`d3f6600a7bbff69e3b4b33600b6fdbdadb7feaaeca6ee5ed3867d3895747c94e`
 - APK 下载记录需要 GitHub 登录且有权限访问此仓库；ZIP 解压后安装 APK，不要把 ZIP 直接安装到电视。
 
-1. 打开 [遥控器焦点修复的 GitHub Actions Run](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732249852)。
+1. 打开 [最新遥控器焦点修复的 GitHub Actions Run](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732519091)。
 2. 进入绿色 PASS 的运行记录 → Artifacts → `tv-browser-lite-debug-apk` 下载 ZIP，解压得到 APK。
 3. 拷贝到 U 盘，安装于 Android 8+ 电视，启动 **TV Browser Lite**。
 4. 首次启动时网址栏获得焦点；按确认键打开电视输入法，输入 `192.168.12.195:8221` 或完整 `http://192.168.12.195:8221` 后确认前往。网页模式下方向键移动虚拟光标，返回键切回工具栏。
