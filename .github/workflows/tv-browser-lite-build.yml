@@ -9,6 +9,11 @@ on:
       - "tv-browser-lite/gradle.properties"
       - "tv-browser-lite/gradle/**"
       - ".github/workflows/tv-browser-lite-build.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "tv-browser-lite/**"
+      - ".github/workflows/tv-browser-lite-build.yml"
   workflow_dispatch:
 
 permissions:
