@@ -9,8 +9,10 @@
 - 已分阶段提交 M0 工程配置、M1 GeckoView、M2 导航/输入、M3 原生错误与基本 JS 对话框。
 - 已添加 [GitHub Actions 构建工作流](https://github.com/mrricardo16/personal-toolbox/actions/workflows/tv-browser-lite-build.yml)，自动执行单测与 Debug APK 构建，并在成功时上传 APK artifact。
 - **此前版本**已在 GitHub Actions 完成 Android Gradle 编译、JVM 单测、Debug APK 打包与上传；尚未在小米电视实机测试。
-- 本轮新增最近 50 条网址历史与强制刷新（绕过 GeckoView 常规缓存）。发现输入焦点回归后，已恢复原版地址栏/网页焦点处理和主页按钮；“强刷”“历史”放在第二行，避免压缩地址栏。
-- 地址栏焦点回退修复已提交，正在重新执行 GitHub Actions；电视上的地址栏遥控器操作和网页表单仍须实机验证。
+- 新增最近 50 条网址历史与强制刷新（绕过 GeckoView 常规缓存）。
+- 本轮修复普通方向键遥控器交互：网页模式虚拟光标、确认键合成点击、边缘手势滚动；工具栏模式使用原生焦点导航，返回键可从网页回到网址栏。
+- 移除主页按钮；启动时仍恢复上次访问网址。网页表单沿用 GeckoView 默认输入法集成，并记录脱敏的焦点/输入法诊断事件。
+- **本轮构建与电视实机验证待完成**；不得仅凭源码提交认定网页账号/密码输入已修复。
 - 最低 Android 8.0（API 26）；待核实设备 ABI、内存和兼容性。
 
 ## 下载已通过 CI 的 APK
@@ -23,7 +25,7 @@
 1. 打开 [最新通过的 GitHub Actions Run](https://github.com/mrricardo16/personal-toolbox/actions/runs/39397238551)。
 2. 进入绿色 PASS 的运行记录 → Artifacts → `tv-browser-lite-debug-apk` 下载 ZIP，解压得到 APK。
 3. 拷贝到 U 盘，安装于 Android 8+ 电视，启动 **TV Browser Lite**。
-4. 在地址栏输入 `192.168.12.195:8221` 或完整 `http://192.168.12.195:8221`，按输入法“前往”或屏幕按钮。
+4. 首次启动时网址栏获得焦点；按确认键打开电视输入法，输入 `192.168.12.195:8221` 或完整 `http://192.168.12.195:8221` 后确认前往。网页模式下方向键移动虚拟光标，返回键切回工具栏。
 5. 点击“诊断”查看内核加载事件与错误码。浏览器无法证明 Vue 已 mount，需要对照网页自身调试证据。
 
 ## 开发命令
