@@ -87,7 +87,7 @@
 - 保留 GeckoView 默认 TextInputDelegate，避免自定义输入法桥接与引擎默认行为相互竞争；增加焦点/IME 可见状态的脱敏诊断记录。
 - 移除主页按钮，保留上次访问地址恢复、历史列表和强制刷新。
 - 新增 RemoteCursorMathTest 覆盖光标边界、边缘滚动请求和零尺寸视口。
-- **验证状态：** 最新 GitHub Actions Run `39732519091` 成功；`:app:testDebugUnitTest` 与 `:app:assembleDebug` 均 PASS。APK Artifact：[tv-browser-lite-debug-apk](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732519091/artifacts/12404819677)。APK SHA-256：`540b25269b23f7d82f825759cdbc59efcccb22958f37a7d06c382d1fe83bd1d0`。Artifact ZIP SHA-256：`d3f6600a7bbff69e3b4b33600b6fdbdadb7feaaeca6ee5ed3867d3895747c94e`。电视实机验证仍待完成，不能将 CI 通过视为输入法和遥控器交互已在目标设备修复。
+- **验证状态：** 修正确认键释放顺序后的 GitHub Actions Run `39733583987` 成功；`:app:testDebugUnitTest` 与 `:app:assembleDebug` 均 PASS。APK Artifact：[tv-browser-lite-debug-apk](https://github.com/mrricardo16/personal-toolbox/actions/runs/39733583987/artifacts/12406685466)。APK SHA-256：`a9abb588498fc5a55abc29c828d0f0d4cbb93afa51a1d12bd7c2a8b65c2cacd3`。Artifact ZIP SHA-256：`bd00a604bc58f0e7540c67f00d26218e502c9c37218d91b251f1e743cd84d769`。电视实机验证仍待完成，不能将 CI 通过视为输入法和遥控器交互已在目标设备修复。
 
 
 ### 后续事件分发修正（2026-10-22）
@@ -95,4 +95,4 @@
 - 复查发现：网页点击可能在确认键 `ACTION_UP` 到达前弹出 IME；旧顺序会先把 key-up 交给 IME，造成合成触摸序列未完整结束。
 - 已调整为：若虚拟光标点击仍处于按下状态，先发送对应的 `MotionEvent.ACTION_UP` 并清理按压状态，再将其余按键交给 IME。
 - 新增 TVB-028，要求验证输入法弹出后不会残留按压状态，后续点击仍然可用。
-- **新修复提交后的 CI 仍在执行；必须以新 commit 的 CI 结果更新最终 APK。**
+- **新修复提交后的 CI 已通过。** 确认键释放竞态已纳入上述 APK；电视实机仍需按 TVB-021～028 验收。
