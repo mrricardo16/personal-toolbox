@@ -70,3 +70,11 @@
 - Artifact：`tv-browser-lite-debug-apk`，ID `12251824673`；下载记录中 ZIP 大小约 254,038,033 字节，**预计到期 2027-01-18 08:58 UTC**。
 - 注意：Gradle Debug APK 可因构建时间/环境产生不同哈希；安装后回归请记录自己下载的那一份校验值。
 - 完整 CI 成功与电视实机验收是两种不同证据：**电视机型、Android 版本、ARM ABI、实际启动与 RSS 4.1 兼容性仍待确认**。
+
+
+## 功能迭代：历史网址、网页表单输入与强制刷新（2026-10-22）
+
+- 分支：\`feat/tv-browser-history-form-input-force-refresh\`。
+- 已提交源码：最近 50 条 HTTP(S) URL 持久化、历史列表、移除主页按钮、独立强制刷新（\`LOAD_FLAGS_BYPASS_CACHE\`）、GeckoView 焦点/系统输入法联动。
+- 新增 JVM 单测覆盖历史去重、排序、容量上限、协议过滤和 Query/Hash 保留。
+- **验证状态：CI 尚未运行本轮提交；电视实机测试尚未完成。** 不把源码提交视为编译通过，也不把 BYPASS_CACHE 等同于清除 Service Worker Cache API 或登录状态。
