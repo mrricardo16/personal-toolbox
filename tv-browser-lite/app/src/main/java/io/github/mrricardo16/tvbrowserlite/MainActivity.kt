@@ -198,12 +198,19 @@ class MainActivity : Activity() {
         row.forEachIndexed { index, view ->
             if (index > 0) view.nextFocusLeftId = row[index - 1].id
             if (index < row.lastIndex) view.nextFocusRightId = row[index + 1].id
+            view.nextFocusUpId = view.id
             view.nextFocusDownId = if (index < 4) forceRefreshButton.id else historyButton.id
         }
+        row.first().nextFocusLeftId = row.first().id
+        row.last().nextFocusRightId = row.last().id
         forceRefreshButton.nextFocusUpId = address.id
         historyButton.nextFocusUpId = goButton.id
+        forceRefreshButton.nextFocusDownId = forceRefreshButton.id
+        historyButton.nextFocusDownId = historyButton.id
+        forceRefreshButton.nextFocusLeftId = forceRefreshButton.id
         forceRefreshButton.nextFocusRightId = historyButton.id
         historyButton.nextFocusLeftId = forceRefreshButton.id
+        historyButton.nextFocusRightId = historyButton.id
 
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
