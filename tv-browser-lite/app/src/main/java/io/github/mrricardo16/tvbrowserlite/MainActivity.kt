@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -17,7 +18,7 @@ import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.GeckoView
 
-/** M2: GeckoView single-tab browser with navigable, editable HTTP(S) URL bar. */
+/** GeckoView single-tab browser with persistent URL history and TV-friendly navigation controls. */
 class MainActivity : Activity() {
     companion object {
         @Volatile private var runtime: GeckoRuntime? = null
@@ -37,10 +38,12 @@ class MainActivity : Activity() {
     private var isLoading = false
     private var lastLoadError: String? = null
     private val events = ArrayDeque<String>()
+
     private fun note(message: String) {
         if (events.size >= 30) events.removeFirst()
         events.addLast("${System.currentTimeMillis()}: $message")
     }
+
     private fun showDiagnostics() {
         val summary = "Android API: ${android.os.Build.VERSION.SDK_INT}\nABI: ${android.os.Build.SUPPORTED_ABIS.joinToString()}\nGeckoView: 157.0\n\n" +
             events.joinToString("\n")
@@ -49,6 +52,7 @@ class MainActivity : Activity() {
     }
 
     private fun dp(n: Int) = (resources.displayMetrics.density * n + 0.5f).toInt()
+
     private fun button(title: String, action: () -> Unit) = Button(this).apply {
         text = title
         isAllCaps = false
@@ -81,6 +85,14 @@ class MainActivity : Activity() {
         toolbar.addView(backButton, LinearLayout.LayoutParams(dp(50), dp(48)))
         toolbar.addView(forwardButton, LinearLayout.LayoutParams(dp(50), dp(48)))
         toolbar.addView(refreshButton, LinearLayout.LayoutParams(dp(50), dp(48)))
+        toolbar.addView(
+            button("强刷") { forceRefresh() },
+            LinearLayout.LayoutParams(dp(66), dp(48))
+        )
+        toolbar.addView(
+            button("历史") { showHistory() },
+            LinearLayout.LayoutParams(dp(66), dp(48))
+        )
 
         address = EditText(this).apply {
             setSingleLine(true)
@@ -91,9 +103,8 @@ class MainActivity : Activity() {
             setSelectAllOnFocus(true)
         }
         toolbar.addView(address, LinearLayout.LayoutParams(0, dp(50), 1f))
-        toolbar.addView(button("前往") { navigate() }, LinearLayout.LayoutParams(dp(74), dp(48)))
-        toolbar.addView(button("主页") { showHome() }, LinearLayout.LayoutParams(dp(74), dp(48)))
-        toolbar.addView(button("诊断") { showDiagnostics() }, LinearLayout.LayoutParams(dp(74), dp(48)))
+        toolbar.addView(button("前往") { navigate() }, LinearLayout.LayoutParams(dp(64), dp(48)))
+        toolbar.addView(button("诊断") { showDiagnostics() }, LinearLayout.LayoutParams(dp(64), dp(48)))
         root.addView(toolbar)
 
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -101,8 +112,16 @@ class MainActivity : Activity() {
             visibility = View.GONE
         }
         root.addView(progress, LinearLayout.LayoutParams(-1, dp(3)))
-        geckoView = GeckoView(this)
+
+        geckoView = GeckoView(this).apply {
+            isFocusable = true
+            isFocusableInTouchMode = true
+        }
+        geckoView.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+            if (::session.isInitialized) session.setFocused(hasFocus)
+        }
         root.addView(geckoView, LinearLayout.LayoutParams(-1, 0, 1f))
+
         status = TextView(this).apply {
             setPadding(dp(12), dp(5), dp(12), dp(5))
             text = "输入网址后点击前往"
@@ -115,7 +134,8 @@ class MainActivity : Activity() {
         address.setOnEditorActionListener { _, actionId, event ->
             if (actionId == EditorInfo.IME_ACTION_GO ||
                 (event?.keyCode == android.view.KeyEvent.KEYCODE_ENTER &&
-                 event.action == android.view.KeyEvent.ACTION_DOWN)) {
+                    event.action == android.view.KeyEvent.ACTION_DOWN)
+            ) {
                 navigate()
                 true
             } else false
@@ -127,15 +147,42 @@ class MainActivity : Activity() {
             }
             session = GeckoSession()
             session.setPromptDelegate(BrowserPromptDelegate(this))
+
+            // Keep the TV's system IME connected to GeckoView when a website form field gains focus.
+            // Request focus before showing the keyboard so Android can create the InputConnection.
+            session.getTextInput().setDelegate(object : GeckoSession.TextInputDelegate {
+                override fun showSoftInput(session: GeckoSession) {
+                    geckoView.requestFocus()
+                    session.setFocused(true)
+                    geckoView.post {
+                        val inputManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                        inputManager.showSoftInput(geckoView, InputMethodManager.SHOW_IMPLICIT)
+                    }
+                }
+
+                override fun hideSoftInput(session: GeckoSession) {
+                    val inputManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                    geckoView.windowToken?.let { inputManager.hideSoftInputFromWindow(it, 0) }
+                }
+
+                override fun restartInput(session: GeckoSession, reason: Int) {
+                    val inputManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                    geckoView.requestFocus()
+                    inputManager.restartInput(geckoView)
+                }
+            })
+
             session.setContentDelegate(object : GeckoSession.ContentDelegate {
                 override fun onCrash(session: GeckoSession) {
                     note("内容进程崩溃")
                     status.text = "网页渲染进程崩溃，请重新启动浏览器"
                 }
+
                 override fun onKill(session: GeckoSession) {
                     note("内容进程被系统结束")
                     status.text = "网页渲染进程已结束，请重新启动浏览器"
                 }
+
                 override fun onTitleChange(session: GeckoSession, title: String?) {
                     status.text = title ?: "网页"
                 }
@@ -147,30 +194,43 @@ class MainActivity : Activity() {
                     perms: List<GeckoSession.PermissionDelegate.ContentPermission>,
                     hasUserGesture: Boolean
                 ) {
-                    if (!url.isNullOrBlank() && (url.startsWith("https://") || url.startsWith("http://"))) {
+                    if (!url.isNullOrBlank() &&
+                        (url.startsWith("https://") || url.startsWith("http://"))
+                    ) {
                         if (!address.hasFocus()) address.setText(url)
                         prefs.remember(url)
                     }
                 }
-                override fun onLoadError(session: GeckoSession, uri: String?, error: WebRequestError): GeckoResult<String>? {
+
+                override fun onLoadError(
+                    session: GeckoSession,
+                    uri: String?,
+                    error: WebRequestError
+                ): GeckoResult<String>? {
                     lastLoadError = "网络/加载错误：类别 ${error.category}，代码 ${error.code}"
                     note(lastLoadError!!)
                     status.text = lastLoadError
-                    return null  // no certificate bypass or automatic redirection
+                    return null // no certificate bypass or automatic redirection
                 }
+
                 override fun onLoadRequest(
-                    session: GeckoSession, request: GeckoSession.NavigationDelegate.LoadRequest
+                    session: GeckoSession,
+                    request: GeckoSession.NavigationDelegate.LoadRequest
                 ): GeckoResult<org.mozilla.geckoview.AllowOrDeny>? {
                     val uri = request.uri.lowercase(java.util.Locale.ROOT)
-                    if (uri.startsWith("http://") || uri.startsWith("https://") || uri == "about:blank") return null
+                    if (uri.startsWith("http://") || uri.startsWith("https://") || uri == "about:blank") {
+                        return null
+                    }
                     note("拒绝不支持的顶层协议")
                     status.text = "只允许 HTTP/HTTPS 网页导航"
                     return GeckoResult.deny()
                 }
+
                 override fun onCanGoBack(session: GeckoSession, value: Boolean) {
                     canGoBack = value
                     updateNavigation()
                 }
+
                 override fun onCanGoForward(session: GeckoSession, value: Boolean) {
                     canGoForward = value
                     updateNavigation()
@@ -186,9 +246,11 @@ class MainActivity : Activity() {
                     progress.visibility = View.VISIBLE
                     status.text = "正在加载网页…"
                 }
+
                 override fun onProgressChange(session: GeckoSession, value: Int) {
                     progress.progress = value
                 }
+
                 override fun onPageStop(session: GeckoSession, success: Boolean) {
                     isLoading = false
                     refreshButton.text = "⟳"
@@ -199,7 +261,7 @@ class MainActivity : Activity() {
             })
             session.open(current)
             geckoView.setSession(session)
-            showHome()
+            restoreLastPage()
         } catch (e: Exception) {
             note("内核初始化异常：${e.javaClass.simpleName}")
             status.text = "浏览器内核初始化失败：${e.javaClass.simpleName}"
@@ -211,18 +273,48 @@ class MainActivity : Activity() {
         forwardButton.isEnabled = canGoForward
     }
 
-    private fun showHome() {
+    private fun restoreLastPage() {
         if (!::session.isInitialized) return
         val last = prefs.lastUrl
         if (last != null) {
             address.setText(last)
+            geckoView.requestFocus()
+            session.setFocused(true)
             session.loadUri(last)
         } else {
             address.setText("")
             address.requestFocus()
+            session.setFocused(false)
             session.loadUri("about:blank")
             status.text = "请输入 HTTP 或 HTTPS 网址"
         }
+    }
+
+    private fun showHistory() {
+        val entries = prefs.history
+        if (entries.isEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("历史网址")
+                .setMessage("暂无历史网址")
+                .setPositiveButton("关闭", null)
+                .show()
+            return
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("历史网址（最近 ${UrlHistory.MAX_ENTRIES} 条）")
+            .setItems(entries.toTypedArray()) { _, index ->
+                address.setText(entries[index])
+                navigate()
+            }
+            .setNegativeButton("关闭", null)
+            .show()
+    }
+
+    private fun forceRefresh() {
+        if (!::session.isInitialized) return
+        note("用户触发强制刷新（绕过缓存）")
+        session.reload(GeckoSession.LOAD_FLAGS_BYPASS_CACHE)
     }
 
     private fun navigate() {
@@ -233,10 +325,12 @@ class MainActivity : Activity() {
             status.text = e.message ?: "网址无效"
             return
         }
-        (getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
+        (getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager)
             .hideSoftInputFromWindow(address.windowToken, 0)
         address.clearFocus()
         address.setText(url)
+        geckoView.requestFocus()
+        session.setFocused(true)
         session.loadUri(url)
     }
 
@@ -246,6 +340,7 @@ class MainActivity : Activity() {
             address.hasFocus() -> {
                 address.clearFocus()
                 geckoView.requestFocus()
+                if (::session.isInitialized) session.setFocused(true)
             }
             ::session.isInitialized && canGoBack -> session.goBack()
             else -> super.onBackPressed()
