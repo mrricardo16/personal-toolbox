@@ -77,4 +77,4 @@
 - 分支：`feat/tv-browser-history-form-input-force-refresh`。
 - 已提交源码：最近 50 条 HTTP(S) URL 持久化、历史列表、移除主页按钮、独立强制刷新（`LOAD_FLAGS_BYPASS_CACHE`）、GeckoView 焦点/系统输入法联动。
 - 新增 JVM 单测覆盖历史去重、排序、容量上限、协议过滤和 Query/Hash 保留。
-- **验证状态：CI 尚未运行本轮提交；电视实机测试尚未完成。** 不把源码提交视为编译通过，也不把 BYPASS_CACHE 等同于清除 Service Worker Cache API 或登录状态。
+- **验证状态：** GitHub Actions `39720121848` 于 2026-10-22 成功完成 `:app:testDebugUnitTest` 与 `:app:assembleDebug`；Debug APK 已上传。APK SHA-256：`75022293bf974767bfeae178ba21d9bc4ff46bb49944ffd89665661af16141ed`。构建产物：[tv-browser-lite-debug-apk](https://github.com/mrricardo16/personal-toolbox/actions/runs/39720121848/artifacts/12400134912)。电视实机测试尚未完成。`LOAD_FLAGS_BYPASS_CACHE` 不等同于清除 Service Worker Cache API 或登录状态。
