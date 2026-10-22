@@ -71,7 +71,7 @@ internal class TvRemoteCursorView(context: Context) : View(context) {
         invalidate()
     }
 
-    fun setPressed(value: Boolean) {
+    fun setCursorPressed(value: Boolean) {
         pressed = value
         invalidate()
     }
