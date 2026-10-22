@@ -218,7 +218,7 @@ class MainActivity : Activity() {
             isFocusableInTouchMode = true
             setOnFocusChangeListener { _, hasFocus ->
                 note("网页视图焦点=$hasFocus")
-                if (::session.isInitialized) session.setFocused(hasFocus && focusMode == FocusMode.WEB)
+                if (this@MainActivity::session.isInitialized) this@MainActivity.session.setFocused(hasFocus && focusMode == FocusMode.WEB)
             }
         }
         cursorView = TvRemoteCursorView(this)
