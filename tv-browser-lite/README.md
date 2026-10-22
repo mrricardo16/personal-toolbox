@@ -12,17 +12,18 @@
 - 新增最近 50 条网址历史与强制刷新（绕过 GeckoView 常规缓存）。
 - 本轮修复普通方向键遥控器交互：网页模式虚拟光标、确认键合成点击、边缘手势滚动；工具栏模式使用原生焦点导航，返回键可从网页回到网址栏。
 - 移除主页按钮；启动时仍恢复上次访问网址。网页表单沿用 GeckoView 默认输入法集成，并记录脱敏的焦点/输入法诊断事件。
-- **本轮构建与电视实机验证待完成**；不得仅凭源码提交认定网页账号/密码输入已修复。
+- **GitHub Actions 构建与 JVM 单元测试已通过**，Debug APK 已上传；普通遥控器下的合成点击、网页账号/密码输入法和焦点返回仍须在目标电视实测。
 - 最低 Android 8.0（API 26）；待核实设备 ABI、内存和兼容性。
 
 ## 下载已通过 CI 的 APK
 
-- 构建：[最新 CI（成功，90 天工件）](https://github.com/mrricardo16/personal-toolbox/actions/runs/39397238551)
-- Artifact：`tv-browser-lite-debug-apk`（ZIP，内含单文件 `app-debug.apk`）
-- SHA-256：`83c012b546b2233c354735bb29a9bc3f5b6257d8bdec5c2f2a432a5fe4a73aad`
+- 构建：[遥控器焦点修复 CI（成功）](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732249852)
+- Artifact：[tv-browser-lite-debug-apk（ZIP，内含 `app-debug.apk`）](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732249852/artifacts/12406095633)
+- APK SHA-256：`bc1e4d0bbbda2ea306a34afbadeb03859bbb021fe0b99cc07e36846dd268208d`
+- Artifact ZIP SHA-256：`e96e637f3c57b703cf044eb58ed3897bd17077e4affbda2cea2aeeb1edbcb7b9`
 - APK 下载记录需要 GitHub 登录且有权限访问此仓库；ZIP 解压后安装 APK，不要把 ZIP 直接安装到电视。
 
-1. 打开 [最新通过的 GitHub Actions Run](https://github.com/mrricardo16/personal-toolbox/actions/runs/39397238551)。
+1. 打开 [遥控器焦点修复的 GitHub Actions Run](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732249852)。
 2. 进入绿色 PASS 的运行记录 → Artifacts → `tv-browser-lite-debug-apk` 下载 ZIP，解压得到 APK。
 3. 拷贝到 U 盘，安装于 Android 8+ 电视，启动 **TV Browser Lite**。
 4. 首次启动时网址栏获得焦点；按确认键打开电视输入法，输入 `192.168.12.195:8221` 或完整 `http://192.168.12.195:8221` 后确认前往。网页模式下方向键移动虚拟光标，返回键切回工具栏。
