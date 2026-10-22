@@ -330,6 +330,7 @@ class MainActivity : Activity() {
             .hideSoftInputFromWindow(address.windowToken, 0)
         address.clearFocus()
         address.setText(url)
+        prefs.remember(url)
         geckoView.requestFocus()
         session.setFocused(true)
         session.loadUri(url)
