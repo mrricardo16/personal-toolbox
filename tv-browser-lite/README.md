@@ -4,11 +4,13 @@
 
 自带网址栏，使用电视系统输入法；可访问普通 HTTPS 网址和局域网 HTTP + IP:端口页面。GeckoView 引擎随 APK 一起打包，无须先安装 Firefox，也不使用 Android System WebView。
 
-## 项目当前状态（2026-10-20）
+## 项目当前状态（2026-10-22）
 
 - 已分阶段提交 M0 工程配置、M1 GeckoView、M2 导航/输入、M3 原生错误与基本 JS 对话框。
 - 已添加 [GitHub Actions 构建工作流](https://github.com/mrricardo16/personal-toolbox/actions/workflows/tv-browser-lite-build.yml)，自动执行单测与 Debug APK 构建，并在成功时上传 APK artifact。
-- **已在 GitHub Actions 完成 Android Gradle 编译、JVM 单测、Debug APK 打包与上传；尚未在小米电视实机测试。**
+- **此前版本**已在 GitHub Actions 完成 Android Gradle 编译、JVM 单测、Debug APK 打包与上传；尚未在小米电视实机测试。
+- 本轮新增最近 50 条网址历史、移除主页按钮、强制刷新（绕过 GeckoView 缓存）及网页表单输入法/焦点处理。
+- 本轮功能分支：`feat/tv-browser-history-form-input-force-refresh`；新增单元测试尚待 CI 执行，电视上的账号/密码输入仍须实机验证。
 - 最低 Android 8.0（API 26）；待核实设备 ABI、内存和兼容性。
 
 ## 下载已通过 CI 的 APK
