@@ -508,12 +508,12 @@ class MainActivity : Activity() {
             ) {
                 if (event.action == KeyEvent.ACTION_DOWN && !clickInProgress && event.repeatCount == 0) {
                     clickInProgress = true
-                    cursorView.setPressed(true)
+                    cursorView.setCursorPressed(true)
                     dispatchCursorTouch(MotionEvent.ACTION_DOWN, cursorView.cursorX, cursorView.cursorY)
                 } else if (event.action == KeyEvent.ACTION_UP && clickInProgress) {
                     dispatchCursorTouch(MotionEvent.ACTION_UP, cursorView.cursorX, cursorView.cursorY)
                     clickInProgress = false
-                    cursorView.setPressed(false)
+                    cursorView.setCursorPressed(false)
                 }
                 return true
             }
@@ -546,7 +546,7 @@ class MainActivity : Activity() {
         if (!clickInProgress || !::cursorView.isInitialized || !::geckoView.isInitialized) return
         dispatchCursorTouch(MotionEvent.ACTION_CANCEL, cursorView.cursorX, cursorView.cursorY)
         clickInProgress = false
-        cursorView.setPressed(false)
+        cursorView.setCursorPressed(false)
     }
 
     private fun performEdgeScroll(horizontal: Int, vertical: Int) {
