@@ -78,3 +78,13 @@
 - 已提交源码：最近 50 条 HTTP(S) URL 持久化、历史列表、移除主页按钮、独立强制刷新（`LOAD_FLAGS_BYPASS_CACHE`）、GeckoView 焦点/系统输入法联动。
 - 新增 JVM 单测覆盖历史去重、排序、容量上限、协议过滤和 Query/Hash 保留。
 - **验证状态：** GitHub Actions `39720121848` 于 2026-10-22 成功完成 `:app:testDebugUnitTest` 与 `:app:assembleDebug`；Debug APK 已上传。APK SHA-256：`75022293bf974767bfeae178ba21d9bc4ff46bb49944ffd89665661af16141ed`。构建产物：[tv-browser-lite-debug-apk](https://github.com/mrricardo16/personal-toolbox/actions/runs/39720121848/artifacts/12400134912)。电视实机测试尚未完成。`LOAD_FLAGS_BYPASS_CACHE` 不等同于清除 Service Worker Cache API 或登录状态。
+
+
+## 阻断缺陷修复：普通遥控器、网页输入法与地址栏焦点（2026-10-22）
+
+- 实现方向：网页模式/工具栏模式分离；普通遥控器方向键驱动虚拟光标，确认键生成触摸点击，光标边缘通过合成滑动手势滚动页面。
+- 返回键行为：输入法可见时优先交给系统关闭输入法；网页模式且输入法隐藏时切换到工具栏并聚焦地址栏；工具栏模式下按返回键按网页历史/退出规则处理。
+- 保留 GeckoView 默认 TextInputDelegate，避免自定义输入法桥接与引擎默认行为相互竞争；增加焦点/IME 可见状态的脱敏诊断记录。
+- 移除主页按钮，保留上次访问地址恢复、历史列表和强制刷新。
+- 新增 RemoteCursorMathTest 覆盖光标边界、边缘滚动请求和零尺寸视口。
+- **验证状态：源码与测试已提交到功能分支；GitHub Actions 构建与电视实机验证待完成。** 虚拟光标的合成触摸、电视 IME 行为及焦点返回必须在目标设备验证，不宣称已实机修复。
