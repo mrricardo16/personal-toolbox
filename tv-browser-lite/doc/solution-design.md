@@ -1,7 +1,7 @@
 # TV Browser Lite｜产品方案与技术架构
 
 - 版本：Design v0.1
-- 状态：设计，未实现
+- 状态：设计基线；实现进度与验证结果见 `doc/progress.md`
 - 目标：**一款可替代 TV Bro 的通用 Android TV 浏览器**
 - 引擎：**仅使用 Mozilla GeckoView**；不开发 Android System WebView 试验版或备用引擎
 
@@ -89,7 +89,7 @@ MainActivity (Kotlin 原生 UI)
 - **进程级运行时**：GeckoRuntime 初始化一次；Activity 重建时妥善恢复/关闭 GeckoSession。
 - **委托事件**：NavigationDelegate 更新 URL 与前进/后退状态；ProgressDelegate 更新开始/结束/进度；ContentDelegate 管理标题及崩溃等内容事件；PromptDelegate 负责网页 prompt/选择交互；PermissionDelegate 采取默认拒绝或逐项确认策略。
 - **导航可信源**：地址栏输入是用户主动导航，页面自动跳转/新开窗口应按 GeckoView 回调与安全策略处理，禁止任意跳转导致的 APP 危险 intent 执行。
-- **会话数据**：Cookie/Storage 遵循引擎正常行为；项目设置不保存用户密码。清除浏览数据需明确区分引擎站点数据与宿主保存的主页。
+- **会话数据**：Cookie/Storage 遵循引擎正常行为；项目设置不保存用户密码。清除浏览数据需明确区分引擎站点数据与宿主保存的上次地址/最近网址历史。
 - **错误可见性**：加载开始与结束不等于 Vue 已经成功 `mount`；只展示可实际观测到的状态，不能将网页 JS 初始化失败冒充网络错误。
 
 ## 6. 兼容性与包体
