@@ -6,7 +6,6 @@ import android.animation.ValueAnimator
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.res.ColorStateList
-import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
@@ -16,7 +15,6 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
-import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
@@ -220,6 +218,7 @@ class MainActivity : Activity() {
             isFocusableInTouchMode = true
             setOnFocusChangeListener { _, hasFocus ->
                 note("网页视图焦点=$hasFocus")
+                if (::session.isInitialized) session.setFocused(hasFocus && focusMode == FocusMode.WEB)
             }
         }
         cursorView = TvRemoteCursorView(this)
@@ -412,6 +411,7 @@ class MainActivity : Activity() {
         modeIndicator.text = "工具栏模式：方向键选择；确认网址栏可输入"
         toolbar.setBackgroundColor(0xFFD7E5F5.toInt())
         if (::geckoView.isInitialized) geckoView.clearFocus()
+        if (::session.isInitialized) session.setFocused(false)
         address.requestFocus()
         if (selectAddress && address.text.isNotEmpty()) {
             address.setSelection(0, address.text.length)
@@ -424,6 +424,7 @@ class MainActivity : Activity() {
         inputMethodManager().hideSoftInputFromWindow(address.windowToken, 0)
         address.clearFocus()
         geckoView.requestFocus()
+        if (::session.isInitialized) session.setFocused(true)
         if (resetCursor) cursorView.resetAndShow() else cursorView.setCursorVisible(true)
         modeIndicator.text = "网页模式：方向键移动光标；返回键回到网址栏"
         toolbar.setBackgroundColor(0xFFEDF1F6.toInt())
