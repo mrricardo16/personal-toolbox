@@ -106,12 +106,12 @@ tv-browser-lite/
 - 页面正在加载时普通刷新按钮切换为“停止”，加载完成后恢复为普通“刷新”；“强刷”使用 `GeckoSession.LOAD_FLAGS_BYPASS_CACHE` 重新加载。
 - 浏览器地址栏必须随内部点击、Hash 路由、重定向更新。
 - 首屏加载失败时显示原生错误，不得只转圈；超时状态可提示用户检查连接，需允许重试。
-- 本地保存上次网址，并记录最近 50 条 HTTP(S) 地址；从“历史”列表选择后直接导航。工具栏不提供主页按钮。保留 Cookie/Storage 的默认站点隔离策略。
+- 本地保存上次网址，并记录最近 50 条 HTTP(S) 地址；从“历史”列表选择后直接导航。保留原有主页按钮；“强刷”和“历史”位于第二行，不挤压原有地址栏。保留 Cookie/Storage 的默认站点隔离策略。
 
 ### 输入法与电视
 
 - 仅使用系统输入法，不做自定义软键盘。
-- 允许 Android TV 焦点通过方向键触达地址栏、前往、导航按钮；网页表单输入通过 `GeckoSession.TextInputDelegate` 与系统输入法联动，用户名/密码框仍须在目标电视实测。
+- 保留原有 Android View 与 GeckoView 焦点切换流程；不覆盖 `GeckoSession.TextInputDelegate` 的 `showSoftInput`、`hideSoftInput` 或 `restartInput`，网页表单沿用 GeckoView 默认输入法集成。地址栏遥控器焦点和网页表单输入均须在目标电视实测。
 - 不承诺未针对键盘设计的 Vue 页面可被遥控器完整操控，必要时用鼠标作为辅助。
 
 ## 7. 浏览器与网页错误分层
