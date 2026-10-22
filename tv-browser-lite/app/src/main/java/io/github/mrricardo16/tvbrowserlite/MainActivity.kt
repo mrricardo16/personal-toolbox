@@ -476,6 +476,12 @@ class MainActivity : Activity() {
         return false
     }
 
+    private fun isConfirmKey(keyCode: Int): Boolean =
+        keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+            keyCode == KeyEvent.KEYCODE_ENTER ||
+            keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
+            keyCode == KeyEvent.KEYCODE_BUTTON_A
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.keyCode == KeyEvent.KEYCODE_BACK) {
             if (backKeyHandled) {
@@ -489,7 +495,15 @@ class MainActivity : Activity() {
             }
         }
 
-        // When the IME is visible, leave all key events to Android/IME instead of stealing them for the cursor.
+        // Always release a synthetic web click before the newly opened IME can take over key-up.
+        if (clickInProgress && event.action == KeyEvent.ACTION_UP && isConfirmKey(event.keyCode)) {
+            dispatchCursorTouch(MotionEvent.ACTION_UP, cursorView.cursorX, cursorView.cursorY)
+            clickInProgress = false
+            cursorView.setCursorPressed(false)
+            return true
+        }
+
+        // When the IME is visible, leave all other key events to Android/IME instead of stealing them for the cursor.
         if (isImeVisible()) return super.dispatchKeyEvent(event)
 
         if (focusMode == FocusMode.WEB) {
@@ -509,11 +523,7 @@ class MainActivity : Activity() {
                 return true
             }
 
-            if (event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
-                event.keyCode == KeyEvent.KEYCODE_ENTER ||
-                event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER ||
-                event.keyCode == KeyEvent.KEYCODE_BUTTON_A
-            ) {
+            if (isConfirmKey(event.keyCode)) {
                 if (event.action == KeyEvent.ACTION_DOWN && !clickInProgress && event.repeatCount == 0) {
                     clickInProgress = true
                     cursorView.setCursorPressed(true)
