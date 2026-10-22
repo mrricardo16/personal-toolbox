@@ -167,7 +167,6 @@ class MainActivity : Activity() {
 
                 override fun restartInput(session: GeckoSession, reason: Int) {
                     val inputManager = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-                    geckoView.requestFocus()
                     inputManager.restartInput(geckoView)
                 }
             })
