@@ -102,6 +102,9 @@ class MainActivity : Activity() {
                 android.text.InputType.TYPE_TEXT_VARIATION_URI
             setSelectAllOnFocus(true)
         }
+        address.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && ::session.isInitialized) session.setFocused(false)
+        }
         toolbar.addView(address, LinearLayout.LayoutParams(0, dp(50), 1f))
         toolbar.addView(button("前往") { navigate() }, LinearLayout.LayoutParams(dp(64), dp(48)))
         toolbar.addView(button("诊断") { showDiagnostics() }, LinearLayout.LayoutParams(dp(64), dp(48)))
@@ -116,9 +119,6 @@ class MainActivity : Activity() {
         geckoView = GeckoView(this).apply {
             isFocusable = true
             isFocusableInTouchMode = true
-        }
-        geckoView.onFocusChangeListener = View.OnFocusChangeListener { _, hasFocus ->
-            if (::session.isInitialized) session.setFocused(hasFocus)
         }
         root.addView(geckoView, LinearLayout.LayoutParams(-1, 0, 1f))
 
