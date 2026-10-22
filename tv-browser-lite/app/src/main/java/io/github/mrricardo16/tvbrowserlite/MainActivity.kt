@@ -303,9 +303,10 @@ class MainActivity : Activity() {
 
         AlertDialog.Builder(this)
             .setTitle("历史网址（最近 ${UrlHistory.MAX_ENTRIES} 条）")
-            .setItems(entries.toTypedArray()) { _, index ->
+            .setItems(entries.toTypedArray()) { dialog, index ->
+                dialog.dismiss()
                 address.setText(entries[index])
-                navigate()
+                address.post { navigate() }
             }
             .setNegativeButton("关闭", null)
             .show()
