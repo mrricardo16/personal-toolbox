@@ -101,7 +101,8 @@ APK SHA-256：
 ## 7. 当前状态
 
 - 文档：已定义测试方案。
-- APK：GitHub Actions Run `39732249852` 已生成并上传 Debug APK（Artifact ID `12406095633`）。
-- Gradle 构建与 JVM 单测：PASS；见 [Actions Run](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732249852)。
+- APK：最新 GitHub Actions Run `39732519091` 已生成并上传 Debug APK（Artifact ID `12404819677`）。
+- Gradle 构建与 JVM 单测：PASS；见 [Actions Run](https://github.com/mrricardo16/personal-toolbox/actions/runs/39732519091)。
+- APK SHA-256：`540b25269b23f7d82f825759cdbc59efcccb22958f37a7d06c382d1fe83bd1d0`。
 - 小米电视实机：尚未测试；TVB-021～027 必须由普通方向键遥控器实际验收。
 - RSS 4.1 在 GeckoView 下是否兼容：**未知，不能承诺**。
