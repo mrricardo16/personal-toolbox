@@ -28,7 +28,7 @@
 
 ## 开发命令
 
-安装 Android SDK 35 + JDK 17 + Gradle 8.13 后，在 `tv-browser-lite/` 目录运行：
+安装 Android SDK Platform 37、Build Tools 36.0.0、JDK 17 和 Gradle 9.3.1 后，在 `tv-browser-lite/` 目录运行：
 
 ```bash
 gradle :app:testDebugUnitTest :app:assembleDebug
