@@ -10,7 +10,7 @@
 - 已添加 [GitHub Actions 构建工作流](https://github.com/mrricardo16/personal-toolbox/actions/workflows/tv-browser-lite-build.yml)，自动执行单测与 Debug APK 构建，并在成功时上传 APK artifact。
 - **此前版本**已在 GitHub Actions 完成 Android Gradle 编译、JVM 单测、Debug APK 打包与上传；尚未在小米电视实机测试。
 - 本轮新增最近 50 条网址历史、移除主页按钮、强制刷新（绕过 GeckoView 缓存）及网页表单输入法/焦点处理。
-- 本轮新增单元测试尚待 CI 执行，电视上的账号/密码输入仍须实机验证。
+- 本轮 GitHub Actions 已通过 JVM 单元测试与 Debug APK 构建，APK 已上传为构建产物；电视上的账号/密码输入仍须实机验证。
 - 最低 Android 8.0（API 26）；待核实设备 ABI、内存和兼容性。
 
 ## 下载已通过 CI 的 APK
