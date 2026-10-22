@@ -1,6 +1,6 @@
 # TV Browser Lite 阶段进度
 
-更新：2026-10-20。**此文件记录代码提交事实，不替代编译及电视实测证据。**
+更新：2026-10-22。**此文件记录代码提交事实，不替代编译及电视实测证据。**
 
 | 阶段 | 已提交范围 | 状态 |
 | --- | --- | --- |
@@ -70,3 +70,29 @@
 - Artifact：`tv-browser-lite-debug-apk`，ID `12251824673`；下载记录中 ZIP 大小约 254,038,033 字节，**预计到期 2027-01-18 08:58 UTC**。
 - 注意：Gradle Debug APK 可因构建时间/环境产生不同哈希；安装后回归请记录自己下载的那一份校验值。
 - 完整 CI 成功与电视实机验收是两种不同证据：**电视机型、Android 版本、ARM ABI、实际启动与 RSS 4.1 兼容性仍待确认**。
+
+
+## 功能迭代：历史网址、网页表单输入与强制刷新（2026-10-22）
+
+- 分支：`feat/tv-browser-history-form-input-force-refresh`。
+- 已提交源码：最近 50 条 HTTP(S) URL 持久化、历史列表、移除主页按钮、独立强制刷新（`LOAD_FLAGS_BYPASS_CACHE`）、GeckoView 焦点/系统输入法联动。
+- 新增 JVM 单测覆盖历史去重、排序、容量上限、协议过滤和 Query/Hash 保留。
+- **验证状态：** GitHub Actions `39720121848` 于 2026-10-22 成功完成 `:app:testDebugUnitTest` 与 `:app:assembleDebug`；Debug APK 已上传。APK SHA-256：`75022293bf974767bfeae178ba21d9bc4ff46bb49944ffd89665661af16141ed`。构建产物：[tv-browser-lite-debug-apk](https://github.com/mrricardo16/personal-toolbox/actions/runs/39720121848/artifacts/12400134912)。电视实机测试尚未完成。`LOAD_FLAGS_BYPASS_CACHE` 不等同于清除 Service Worker Cache API 或登录状态。
+
+
+## 阻断缺陷修复：普通遥控器、网页输入法与地址栏焦点（2026-10-22）
+
+- 实现方向：网页模式/工具栏模式分离；普通遥控器方向键驱动虚拟光标，确认键生成触摸点击，光标边缘通过合成滑动手势滚动页面。
+- 返回键行为：输入法可见时优先交给系统关闭输入法；网页模式且输入法隐藏时切换到工具栏并聚焦地址栏；工具栏模式下按返回键按网页历史/退出规则处理。
+- 保留 GeckoView 默认 TextInputDelegate，避免自定义输入法桥接与引擎默认行为相互竞争；增加焦点/IME 可见状态的脱敏诊断记录。
+- 移除主页按钮，保留上次访问地址恢复、历史列表和强制刷新。
+- 新增 RemoteCursorMathTest 覆盖光标边界、边缘滚动请求和零尺寸视口。
+- **验证状态：** 修正确认键释放顺序后的 GitHub Actions Run `39733583987` 成功；`:app:testDebugUnitTest` 与 `:app:assembleDebug` 均 PASS。APK Artifact：[tv-browser-lite-debug-apk](https://github.com/mrricardo16/personal-toolbox/actions/runs/39733583987/artifacts/12406685466)。APK SHA-256：`a9abb588498fc5a55abc29c828d0f0d4cbb93afa51a1d12bd7c2a8b65c2cacd3`。Artifact ZIP SHA-256：`bd00a604bc58f0e7540c67f00d26218e502c9c37218d91b251f1e743cd84d769`。电视实机验证仍待完成，不能将 CI 通过视为输入法和遥控器交互已在目标设备修复。
+
+
+### 后续事件分发修正（2026-10-22）
+
+- 复查发现：网页点击可能在确认键 `ACTION_UP` 到达前弹出 IME；旧顺序会先把 key-up 交给 IME，造成合成触摸序列未完整结束。
+- 已调整为：若虚拟光标点击仍处于按下状态，先发送对应的 `MotionEvent.ACTION_UP` 并清理按压状态，再将其余按键交给 IME。
+- 新增 TVB-028，要求验证输入法弹出后不会残留按压状态，后续点击仍然可用。
+- **新修复提交后的 CI 已通过。** 确认键释放竞态已纳入上述 APK；电视实机仍需按 TVB-021～028 验收。
