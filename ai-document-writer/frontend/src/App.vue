@@ -299,7 +299,7 @@ function onAnnualGenerated(payload) {
   <main class="shell">
     <header class="header">
       <div>
-        <h1>AI 文档助手 <small>V2 · P0/P1 基础版</small></h1>
+        <h1>AI 文档助手 <small>V2.1 · 多文档与年度总结</small></h1>
         <p>保留原有写作技能与两阶段审校，新增后端配置与 DOCX 参考材料。</p>
       </div>
       <a href="/legacy.html" target="_blank" rel="noopener">打开原版页面</a>
