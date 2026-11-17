@@ -2,7 +2,7 @@
 
 个人 Web 小工具集合。
 
-本仓库采用“一个工具一个目录”的轻量结构。最终产品可以直接用浏览器打开，不依赖 npm、框架或运行时构建工具；需要维护的项目由结构化源码通过仓库内构建脚本生成单文件成品。
+本仓库采用“一个工具一个目录”的结构。部分轻量工具可直接打开单文件 HTML；AI 文档助手 V2 则采用 Vue3 + ASP.NET Core，可通过自包含 ZIP 分发为免安装运行时的本地 Web 应用，或部署为服务器网页。不同工具的运行方式请以各自 README 为准。
 
 ## 当前工具
 
@@ -63,19 +63,18 @@
 
 本仓库始终只保留一个 TRPG 产品入口：[trpg-dm-assistant/outputs/trpg-dm-assistant.html](trpg-dm-assistant/outputs/trpg-dm-assistant.html)。它由模块化源码稳定构建，始终指向最新版。
 
-### AI 文档助手
+### AI 文档助手（新版 V2，发行包 0.2.0）
 
-路径：[`ai-document-writer/index.html`](ai-document-writer/index.html)
+路径：[新版项目目录](ai-document-writer/) · [原版单文件](ai-document-writer/index.html)
 
-基于 DeepSeek API 的单文件文档生成工具，支持：
+新版是 Vue3 + ASP.NET Core (.NET 10) 工程，提供常规写作、DOCX 多文件参考、年度/多月工作总结、跨月归并和冲突核验、Word 模板 DOCX 导出，以及 JSON/页面 API Key 配置。
 
-- 文档技能切换
-- 正式材料生成
-- 专有名词保护
-- 自动审校
-- Markdown 和 TXT 下载
+- Windows x64：自包含 ZIP，解压后双击 EXE 自动打开本机网页，无需另装 .NET 或 Node.js。
+- Linux x64：自包含服务器 ZIP，可在部署 HTTPS 和认证后通过网页使用。
+- 已通过模拟 6 篇 DOCX 的 HTTP 端到端测试和双平台 CI 构建；真实模型内容质量与 Word/WPS 模板视觉验收尚未完成。
+- 原版 `index.html` 保持不变，仍然可以直接用浏览器打开。
 
-使用说明见 [ai-document-writer/README.md](ai-document-writer/README.md)。
+说明：[项目 README](ai-document-writer/README.md) · [交付状态](ai-document-writer/docs/STATUS.md) · [部署指南](ai-document-writer/docs/DEPLOYMENT.md) · [验收清单](ai-document-writer/docs/ACCEPTANCE.md)。
 
 ### 工业场景相机可照范围计算器
 
