@@ -25,9 +25,9 @@
 
 ## 二、已经确认的自动化验收
 
-- `main` 提交：`b9acb51372c3cd8c0263d704295f40b6208ad4d6`。
-- GitHub Actions：[#44027389276](https://github.com/mrricardo16/personal-toolbox/actions/runs/44027389276)，状态 **success**。
-- 自动构建 Artifacts：`ai-document-writer-win-x64`（约 48.1 MB）、`ai-document-writer-linux-x64`（约 47.6 MB）；构建产物有保留期限。
+- `main` V0.3.0 合并提交：`aa1b97aba53aaf469aa26a939b9368ce03db1abe`。
+- GitHub Actions：V0.3.0 [PR 构建 #44041270217](https://github.com/mrricardo16/personal-toolbox/actions/runs/44041270217) **success**；合并后 [main 构建 #44041581658](https://github.com/mrricardo16/personal-toolbox/actions/runs/44041581658)，状态请以 Actions 实时结果为准。
+- 自动构建 Artifacts：`ai-document-writer-win-x64` 与 `ai-document-writer-linux-x64`；V0.3.0 发行 ZIP 文件名为 `AI-Document-Writer-v0.3.0-<平台>.zip`，构建产物有保留期限。
 - 6 篇合成月报经 HTTP 接口读取，模拟模型提取 9 条事实、归并 3 个 WMS 阶段和 6 次巡检工作量，并成功导出 DOCX。
 - 单元/集成测试覆盖分片提取、证据校验、冲突处理、风格参考隔离、Key 持久化权限以及旧模板正文不复制。
 - Windows/Linux 发布包经过进程启动或健康检查；**没有在真实 DeepSeek 服务上做带 Key 的端到端测试**。
@@ -66,7 +66,7 @@
 ## 六、追溯链接
 
 - [项目入口](../README.md)
-- [最新已核对构建](https://github.com/mrricardo16/personal-toolbox/actions/runs/44027389276)
+- [V0.3.0 构建结果](https://github.com/mrricardo16/personal-toolbox/actions/runs/44041581658)
 - [开发与部署](DEPLOYMENT.md)
 - [验收流程](ACCEPTANCE.md)
 - [实施路线](ROADMAP.md)

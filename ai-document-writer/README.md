@@ -81,7 +81,7 @@ Linux 发行 ZIP 不是可直接静态托管的网页，需要运行内含的 AS
 
 ## 7. 交付与验收状态
 
-本次 V0.3.0 增强版已在独立开发分支通过 Windows/Linux CI 构建、启动与测试；实际发布应以 [Actions 最新成功运行](https://github.com/mrricardo16/personal-toolbox/actions/workflows/ai-document-writer-ci.yml) 为准，仍需真实模型业务质量验收。
+V0.3.0 已合并到 `main`，PR 阶段 Windows/Linux CI 构建、启动与自动测试均通过；实际发布应以 [Actions 最新成功运行](https://github.com/mrricardo16/personal-toolbox/actions/workflows/ai-document-writer-ci.yml) 为准，仍需真实模型业务质量验收。
 
 已在无真实 Key 的模拟环境中验证 **6 篇 DOCX → 9 条事实 → 跨月归并 → 总结 → Word 导出** 的数据流；测试结果是固定模拟模型响应，**不能证明真实 DeepSeek 对任意月报的事实提取或去重正确**。
 
