@@ -1,0 +1,37 @@
+name: AI Document Writer build
+on:
+  pull_request:
+    paths:
+      - 'ai-document-writer/**'
+      - '.github/workflows/ai-document-writer-ci.yml'
+  workflow_dispatch:
+jobs:
+  portable:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ai-document-writer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Frontend review-rule tests
+        shell: pwsh
+        run: node --test .\frontend\tests\annualGuard.test.mjs
+      - name: Backend unit tests
+        shell: pwsh
+        run: dotnet test .\backend\AiDocumentWriter.Tests\AiDocumentWriter.Tests.csproj -c Release
+      - name: Build portable ZIP
+        shell: pwsh
+        run: .\scripts\build.ps1 -Target win-x64
+      - name: Verify ZIP and startup
+        shell: pwsh
+        run: .\scripts\verify-package.ps1 -Target win-x64 -SmokeTest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ai-document-writer-win-x64
+          path: ai-document-writer/dist/AI-Document-Writer-v0.1.0-win-x64.zip
