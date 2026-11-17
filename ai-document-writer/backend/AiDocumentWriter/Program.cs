@@ -63,7 +63,7 @@ app.MapGet("/api/settings/status", (HttpContext ctx, IConfiguration cfg, LocalKe
         serverKeyConfigured = !string.IsNullOrWhiteSpace(cfg["AiProvider:ApiKey"]),
         savedKeyConfigured = keys.HasSavedKey,
         canManageKey = CanSaveKey(ctx),
-        defaultModel = cfg["AiProvider:DefaultModel"] ?? "deepseek-chat"
+        defaultModel = cfg["AiProvider:DefaultModel"] ?? "deepseek-flash"
     }));
 
 app.MapPost("/api/settings/key", (HttpContext ctx, SaveKeyRequest request, LocalKeyStore keys) =>

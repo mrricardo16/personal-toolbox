@@ -26,7 +26,7 @@ public sealed class DeepSeekClient(HttpClient http, IConfiguration configuration
             throw new ArgumentException("材料过长；当前版本单次请求限制为 100000 字符。多文档分段分析将在 P2 支持");
 
         var model = string.IsNullOrWhiteSpace(request.Model)
-            ? configuration["AiProvider:DefaultModel"] ?? "deepseek-chat"
+            ? configuration["AiProvider:DefaultModel"] ?? "deepseek-flash"
             : request.Model.Trim();
         var baseUrl = (configuration["AiProvider:BaseUrl"] ?? "https://api.deepseek.com").TrimEnd('/');
         if (!Uri.TryCreate(baseUrl, UriKind.Absolute, out var endpoint) || endpoint.Scheme != Uri.UriSchemeHttps)
@@ -41,12 +41,13 @@ public sealed class DeepSeekClient(HttpClient http, IConfiguration configuration
                 new { role = "user", content = request.UserPrompt }
             },
             ["temperature"] = 0.2,
-            ["max_tokens"] = 8192,
+            ["max_tokens"] = request.JsonMode ? 16384 : 8192,
             ["stream"] = false,
             ["thinking"] = new { type = request.ThinkingType == "enabled" ? "enabled" : "disabled" },
             ["reasoning_effort"] = request.ReasoningEffort is "low" or "high" or "max"
                 ? request.ReasoningEffort : "high"
         };
+        if (request.JsonMode) payload["response_format"] = new { type = "json_object" };
         using var message = new HttpRequestMessage(HttpMethod.Post, baseUrl + "/chat/completions");
         message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key.Trim());
         message.Content = new StringContent(JsonSerializer.Serialize(payload, JsonOptions), Encoding.UTF8, "application/json");

@@ -7,7 +7,8 @@ public sealed record ChatRequest(
     string? KeySource,
     string? TemporaryApiKey,
     string? ThinkingType,
-    string? ReasoningEffort
+    string? ReasoningEffort,
+    bool JsonMode = false
 );
 
 public sealed record ChatResult(string Content, string FinishReason, System.Text.Json.JsonElement? Usage);

@@ -13,7 +13,7 @@ const skillLabels = {
 const mode = ref('general')
 const skill = ref('general')
 const prompt = ref('')
-const model = ref('deepseek-v4-flash')
+const model = ref('deepseek-flash')
 const thinkingType = ref('disabled')
 const reasoningEffort = ref('high')
 const lengthLevel = ref('标准')
@@ -314,7 +314,7 @@ function onAnnualGenerated(payload) {
       <h2>一、模型与 API Key</h2>
       <div class="grid">
         <label>模型
-          <select v-model="model"><option value="deepseek-v4-flash">deepseek-v4-flash</option><option value="deepseek-v4-pro">deepseek-v4-pro</option></select>
+          <select v-model="model"><option value="deepseek-flash">deepseek-flash（推荐）</option><option value="deepseek-v4-pro">deepseek-v4-pro</option><option value="deepseek-v4-flash">deepseek-v4-flash（旧兼容名称）</option></select>
         </label>
         <label>思考模式
           <select v-model="thinkingType"><option value="disabled">关闭</option><option value="enabled">开启</option></select>

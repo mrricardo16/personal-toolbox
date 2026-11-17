@@ -31,7 +31,7 @@ public sealed class AnnualWorkflow(DeepSeekClient llm)
             """;
         var user = "文件：" + doc.FileName + "\n指定月份：" + (doc.Month ?? "未指定")
             + "\n【正文开始】\n" + doc.Content + "\n【正文结束】";
-        var response = await llm.ChatAsync(request.Chat with { SystemPrompt = system, UserPrompt = user }, ct);
+        var response = await llm.ChatAsync(request.Chat with { SystemPrompt = system, UserPrompt = user, JsonMode = true }, ct);
         var parsed = ParseJson<ExtractEnvelope>(response.Content);
         var result = new List<AnnualFact>();
         foreach (var item in parsed.Items ?? [])
@@ -87,7 +87,7 @@ public sealed class AnnualWorkflow(DeepSeekClient llm)
         });
         var prompt = "请分析归并以下事实。仅使用 JSON 中列出的事实。\n"
             + JsonSerializer.Serialize(compact, Json) + "\n【写作范围】\n" + (request.Requirement ?? "");
-        var response = await llm.ChatAsync(request.Chat with { SystemPrompt = system, UserPrompt = prompt }, ct);
+        var response = await llm.ChatAsync(request.Chat with { SystemPrompt = system, UserPrompt = prompt, JsonMode = true }, ct);
         var proposed = ParseJson<MergeEnvelope>(response.Content).Groups ?? [];
         var allowed = request.Facts.ToDictionary(f => f.Id, StringComparer.Ordinal);
         var already = new HashSet<string>(StringComparer.Ordinal);
