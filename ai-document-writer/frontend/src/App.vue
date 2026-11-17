@@ -545,6 +545,7 @@ function onAnnualGenerated(payload) {
         <button @click="download('md')">下载 Markdown</button>
         <button @click="download('txt')">下载 TXT</button>
         <button @click="download('docx')">下载 Word DOCX</button>
+        <a class="revision-link" href="#revision-workspace">继续提出修改意见</a>
         <button @click="clearCurrent">清空当前正文</button>
       </div>
       <p class="status" role="status">{{ status }} <span v-if="tokenUsage">（本次已报告 {{ tokenUsage }} Token）</span></p>
@@ -552,6 +553,7 @@ function onAnnualGenerated(payload) {
       <textarea class="result" v-model="result" rows="18" placeholder="生成结果会出现在这里，也可以选中部分内容要求 AI 修改" @select="captureSelection" @mouseup="captureSelection" @keyup="captureSelection"/>
     </section>
     <RevisionWorkspace
+      id="revision-workspace"
       :content="result"
       :versions="versions"
       :selection="editorSelection"

@@ -72,3 +72,6 @@ footer{color:#7b8793;font-size:12px;margin:20px 0;line-height:1.7}
 .revision-version small{display:block;color:#758596;font-size:11px}
 .revision-workspace summary{cursor:pointer;color:#345b86;margin:12px 0}
 @media(max-width:700px){.compare-columns{grid-template-columns:1fr}}
+
+.revision-link{display:inline-flex;align-items:center;border:1px solid #1769d2;color:#1769d2;border-radius:6px;padding:9px 12px;text-decoration:none;font-weight:600}
+.revision-link:hover{background:#eef6ff}

@@ -49,7 +49,7 @@ async function revise() {
   if (!props.content.trim()) { error.value = '请先生成或填写当前稿件'; return }
   if (!instruction.value.trim()) { error.value = '请输入具体修改要求'; return }
   if (scope.value === 'selection' && !selectionValid.value) {
-    error.value = '请先在下方正文编辑框中选中要修改的文字'
+    error.value = '请先在上方正文编辑框中选中要修改的文字'
     return
   }
   controller = new AbortController()
@@ -124,7 +124,7 @@ onUnmounted(() => controller?.abort())
       <label><input type="checkbox" v-model="improveStyle" /> 加载语言优化 Skill</label>
     </div>
     <p v-if="scope === 'selection'" class="hint">
-      {{ selectionValid ? '已选中 ' + selection.text.length + ' 个字符；模型只返回此段替换文本' : '请先在下面正文中用鼠标或键盘选中目标段落' }}
+      {{ selectionValid ? '已选中 ' + selection.text.length + ' 个字符；模型只返回此段替换文本' : '请先在上方正文中用鼠标或键盘选中目标段落' }}
     </p>
     <div class="toolbar">
       <button class="primary" :disabled="busy || !content.trim()" @click="revise">生成修改候选稿</button>
