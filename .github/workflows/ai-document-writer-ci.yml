@@ -1,5 +1,10 @@
 name: AI Document Writer build
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'ai-document-writer/**'
+      - '.github/workflows/ai-document-writer-ci.yml'
   pull_request:
     paths:
       - 'ai-document-writer/**'
@@ -34,4 +39,40 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ai-document-writer-win-x64
-          path: ai-document-writer/dist/AI-Document-Writer-v0.1.0-win-x64.zip
+          path: ai-document-writer/dist/AI-Document-Writer-v0.2.0-win-x64.zip
+  linux-server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-document-writer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build Linux self-contained server package
+        shell: pwsh
+        run: ./scripts/build.ps1 -Target linux-x64 -Mode Server
+      - name: Smoke-test Linux server
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/linux-smoke
+          unzip -q dist/AI-Document-Writer-v0.2.0-linux-x64.zip -d dist/linux-smoke
+          chmod +x dist/linux-smoke/AiDocumentWriter
+          (cd dist/linux-smoke && ASPNETCORE_URLS=http://127.0.0.1:5080 ./AiDocumentWriter > /tmp/ai-document-writer-server.log 2>&1) &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5080/api/health >/dev/null; then break; fi
+            sleep 1
+          done
+          curl -fsS http://127.0.0.1:5080/api/health | jq -e '.status == "ok"'
+          curl -fsS http://127.0.0.1:5080/api/settings/status | jq -e '.canManageKey == false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ai-document-writer-linux-x64
+          path: ai-document-writer/dist/AI-Document-Writer-v0.2.0-linux-x64.zip
