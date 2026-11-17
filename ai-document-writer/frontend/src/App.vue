@@ -31,6 +31,7 @@ const result = ref('')
 const status = ref('')
 const busy = ref(false)
 const audit = ref('')
+const tokenUsage = ref(0)
 const files = ref([])
 const uploadBusy = ref(false)
 const templateChoice = ref('auto')
@@ -188,12 +189,14 @@ function auditTerms(text) {
   return missing.length ? '名词核验未通过：' + missing.join('、') : '指定保护项原样检查通过'
 }
 async function chat(systemPrompt, userPrompt) {
-  return api('/api/llm/chat', 'POST', {
+  const response = await api('/api/llm/chat', 'POST', {
     model: model.value, systemPrompt, userPrompt,
     keySource: keySource.value,
     temporaryApiKey: keySource.value === 'temporary' ? keyInput.value.trim() : null,
     thinkingType: thinkingType.value, reasoningEffort: reasoningEffort.value
   }, activeController.signal)
+  if (Number.isFinite(response.usage?.total_tokens)) tokenUsage.value += response.usage.total_tokens
+  return response
 }
 async function generate() {
   if (busy.value) return
@@ -213,6 +216,7 @@ async function generate() {
   }
   result.value = ''
   audit.value = ''
+  tokenUsage.value = 0
   busy.value = true
   activeController = new AbortController()
   try {
@@ -434,7 +438,7 @@ function onAnnualGenerated(payload) {
         <button @click="download('docx')">下载 Word DOCX</button>
         <button @click="result = ''; status = ''; audit = ''">清空</button>
       </div>
-      <p class="status" role="status">{{ status }}</p>
+      <p class="status" role="status">{{ status }} <span v-if="tokenUsage">（本次已报告 {{ tokenUsage }} Token）</span></p>
       <p v-if="audit" class="audit">{{ audit }}</p>
       <textarea class="result" v-model="result" rows="18" placeholder="生成结果会出现在这里，也可以直接编辑后导出"/>
     </section>

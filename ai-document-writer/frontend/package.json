@@ -8,7 +8,8 @@
     "dev": "vite",
     "prebuild": "node scripts/extract-legacy-prompts.mjs",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "vue": "3.5.18"

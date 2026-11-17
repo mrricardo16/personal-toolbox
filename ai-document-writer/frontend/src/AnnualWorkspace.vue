@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { criticalConflicts, approvedGroups } from './annualGuard.js'
 
 const props = defineProps({
   files: { type: Array, required: true },
@@ -25,6 +26,8 @@ const facts = ref([])
 const groups = ref([])
 const autoGenerate = ref(true)
 const showDetails = ref(false)
+const totalTokens = ref(0)
+function addUsage(usage) { if (Number.isFinite(usage?.total_tokens)) totalTokens.value += usage.total_tokens }
 const busy = ref(false)
 const stepIndex = ref(0)
 const stepTotal = ref(0)
@@ -37,8 +40,7 @@ const sourceDocs = computed(() => {
     docs.push({ id: 'manual', fileName: '手动输入的事实材料', month: '', content: props.sourceMaterial.trim() })
   return docs
 })
-const blocking = computed(() => groups.value.flatMap(g => g.included ? g.conflicts || [] : [])
-  .filter(c => c.severity === 'critical' && (c.resolution !== 'confirmed' || !(c.note || '').trim())))
+const blocking = computed(() => criticalConflicts(groups.value))
 const normalPending = computed(() => groups.value.flatMap(g => g.included ? g.conflicts || [] : [])
   .filter(c => c.severity !== 'critical' && c.resolution !== 'confirmed'))
 const confirmedCount = computed(() => groups.value.filter(g => g.included).length)
@@ -65,6 +67,7 @@ function reset() {
   groups.value = []
   error.value = ''
   progress.value = ''
+  totalTokens.value = 0
 }
 watch(() => props.files.length, reset)
 async function startAnalysis() {
@@ -86,6 +89,7 @@ async function startAnalysis() {
       progress.value = '正在提取：' + doc.fileName + '（' + (stepIndex.value + 1) + '/' + stepTotal.value + '）'
       const res = await call('/api/annual/extract', { document: doc, chat: chatSettings() })
       facts.value.push(...res.items)
+      addUsage(res.usage)
       stepIndex.value++
     }
     if (!facts.value.length) throw new Error('没有提取到可核实的工作事项，请检查上传内容')
@@ -94,6 +98,7 @@ async function startAnalysis() {
     const merged = await call('/api/annual/merge', {
       facts: facts.value, requirement: props.taskRequirement, chat: chatSettings()
     })
+    addUsage(merged.usage)
     groups.value = merged.groups.map(g => ({
       ...g,
       conflicts: (g.conflicts || []).map(c => ({ ...c, note: '' }))
@@ -110,23 +115,7 @@ async function startAnalysis() {
   }
 }
 function approvedMaterials() {
-  const lookup = Object.fromEntries(facts.value.map(f => [f.id, f]))
-  return groups.value.filter(g => g.included).map(g => {
-    const evidences = g.memberIds.map(id => lookup[id]).filter(Boolean)
-      .map(f => ({
-        file: f.sourceFile, period: f.period, project: f.project, title: f.title,
-        progress: f.progress, content: f.description, originalQuote: f.evidence,
-        quoteMatched: f.evidenceMatched, numericEvidence: f.numericEvidence
-      }))
-    return {
-      group: g.title, category: g.kind, summary: g.summary,
-      metrics: g.metrics, evidences,
-      confirmedNotes: (g.conflicts || []).filter(c => c.resolution === 'confirmed')
-        .map(c => ({ issue: c.description, userDecision: c.note })),
-      unresolvedNonCritical: (g.conflicts || []).filter(c => c.severity !== 'critical'
-        && c.resolution !== 'confirmed').map(c => c.description)
-    }
-  })
+  return approvedGroups(groups.value, facts.value)
 }
 async function generateInternal() {
   if (blocking.value.length) {
@@ -164,6 +153,7 @@ async function generateInternal() {
     const first = await call('/api/llm/chat', {
       ...chatSettings(), systemPrompt: system, userPrompt: user
     })
+    addUsage(first.usage)
     emit('generated', { content: first.content, message: '初稿已生成，可复制或下载' })
     if (props.autoReview) {
       try {
@@ -173,6 +163,7 @@ async function generateInternal() {
           systemPrompt: '你是事实审校员。修正语言及逻辑表达，不得创造新事实，未确认事项标记【需核实】。',
           userPrompt: '【核验依据】\n' + data + '\n【初稿】\n' + first.content
         })
+        addUsage(reviewed.usage)
         if (reviewed.content?.trim()) emit('generated', { content: reviewed.content, message: '年度总结审校完成' })
       } catch (e) {
         if (e.name === 'AbortError') throw e
@@ -213,6 +204,7 @@ async function generateApproved() {
       <span>已提取 {{ facts.length }} 项工作事实</span>
       <span>归并 {{ groups.length }} 组</span>
       <span>关键待确认 {{ blocking.length }} 项</span>
+      <span>本轮 Token：{{ totalTokens || "未返回" }}</span>
       <span>一般疑问 {{ normalPending.length }} 项</span>
       <button @click="showDetails = !showDetails">{{ showDetails ? '收起' : '查看' }}原始事项</button>
     </div>
