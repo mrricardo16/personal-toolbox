@@ -37,6 +37,27 @@ if ($Target.StartsWith('win')) {
       if (-not $address) { throw '启动后未发现监听地址' }
       $health = Invoke-RestMethod -Uri "$address/api/health" -TimeoutSec 5
       if ($health.status -ne 'ok') { throw '健康检查失败' }
+      # Browser-origin isolation on the desktop loopback listener.
+      $http = [System.Net.Http.HttpClient]::new()
+      try {
+        $hostRequest = [System.Net.Http.HttpRequestMessage]::new(
+          [System.Net.Http.HttpMethod]::Get, "$address/api/health")
+        $hostRequest.Headers.Host = 'untrusted.example'
+        $hostResponse = $http.SendAsync($hostRequest).GetAwaiter().GetResult()
+        try {
+          if ([int]$hostResponse.StatusCode -ne 403) { throw '恶意 Host 未被拦截' }
+        }
+        finally { $hostResponse.Dispose(); $hostRequest.Dispose() }
+        $originRequest = [System.Net.Http.HttpRequestMessage]::new(
+          [System.Net.Http.HttpMethod]::Get, "$address/api/health")
+        $originRequest.Headers.TryAddWithoutValidation('Origin', 'http://untrusted.example') | Out-Null
+        $originResponse = $http.SendAsync($originRequest).GetAwaiter().GetResult()
+        try {
+          if ([int]$originResponse.StatusCode -ne 403) { throw '跨站 Origin 未被拦截' }
+        }
+        finally { $originResponse.Dispose(); $originRequest.Dispose() }
+      }
+      finally { $http.Dispose() }
 
       $settings = Invoke-RestMethod -Uri "$address/api/settings/status" -TimeoutSec 5
       if ($null -eq $settings.serverKeyConfigured) { throw '配置状态 API 响应无效' }

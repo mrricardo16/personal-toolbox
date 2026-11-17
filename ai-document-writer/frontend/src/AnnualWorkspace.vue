@@ -99,7 +99,7 @@ async function startAnalysis() {
   stepTotal.value = sourceDocs.value.length
   try {
     for (const doc of sourceDocs.value) {
-      if (doc.content.length > 70000) throw new Error(doc.fileName + ' 超过 70000 字符，请拆分')
+      if (doc.content.length > 150000) throw new Error(doc.fileName + ' 超过 150000 字符，请拆分')
       progress.value = '正在提取：' + doc.fileName + '（' + (stepIndex.value + 1) + '/' + stepTotal.value + '）'
       const res = await call('/api/annual/extract', { document: doc, chat: chatSettings() })
       facts.value.push(...res.items)

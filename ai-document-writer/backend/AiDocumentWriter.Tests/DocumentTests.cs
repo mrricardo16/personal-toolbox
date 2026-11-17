@@ -134,6 +134,66 @@ public class DocumentTests
         Assert.DoesNotContain("原来的工作资料", result.MainDocumentPart.Document.Body.InnerText);
     }
 
+
+    [Fact]
+    public void DocumentChunkingKeepsAllCharactersAndBoundedSegments()
+    {
+        var text = "一月项目完成设计\n" + new string('测', 24000) + "\n二月完成验收";
+        var chunks = AnnualWorkflow.SplitForExtraction(text);
+        Assert.True(chunks.Count >= 2);
+        Assert.Equal(text, string.Concat(chunks));
+        Assert.All(chunks, chunk => Assert.InRange(chunk.Length, 1, 18000));
+    }
+
+    [Fact]
+    public async Task MultiChunkExtractionUsesActualEvidenceAndAggregatesTokenUsage()
+    {
+        var service = WorkflowForResponse("""
+            {"items":[{"title":"迁移设计","project":"数据库迁移","period":"一月","progress":"已完成",
+            "description":"完成方案设计","numericEvidence":"","evidence":"完成迁移方案设计"}]}
+            """);
+        // The mock repeats the same fact for both segments. The first segment
+        // has no matching quote; the second one does. The valid quote wins.
+        var longDocument = "项目启动\n" + new string('甲', 19000) + "\n完成迁移方案设计";
+        var result = await service.ExtractAsync(new AnnualExtractRequest(
+            new AnnualInputDocument("doc1", "月报.docx", "2026-01", longDocument),
+            FakeChat()), CancellationToken.None);
+        Assert.Single(result.Items);
+        Assert.True(result.Items[0].EvidenceMatched);
+        Assert.Equal(0, result.UnmatchedEvidenceCount);
+        Assert.Equal(84L, result.Usage!.Value.GetProperty("total_tokens").GetInt64());
+    }
+
+    [Fact]
+    public void OversizedDocumentMustBeSplitBeforeSendingToModel()
+    {
+        Assert.Throws<ArgumentException>(() =>
+            AnnualWorkflow.SplitForExtraction(new string('甲', 150001)));
+    }
+
+    [Fact]
+    public async Task AnnualMergePreservesCrossMonthProjectProgressAndSourceIds()
+    {
+        var service = WorkflowForResponse("""
+            {"groups":[{"title":"WMS 迁移","kind":"progress",
+              "memberIds":["jan-1","feb-1","mar-1"],
+              "summary":"完成方案、测试与验收","metrics":"",
+              "conflicts":[]}]}
+            """);
+        var facts = new List<AnnualFact>
+        {
+            new() { Id="jan-1", Title="方案设计", Project="WMS", EvidenceMatched=true },
+            new() { Id="feb-1", Title="接口测试", Project="WMS", EvidenceMatched=true },
+            new() { Id="mar-1", Title="验收", Project="WMS", EvidenceMatched=true }
+        };
+        var result = await service.MergeAsync(
+            new AnnualMergeRequest(facts, "1-3月总结", FakeChat()), CancellationToken.None);
+        Assert.Single(result.Groups);
+        Assert.Equal("progress", result.Groups[0].Kind);
+        Assert.Equal(3, result.Groups[0].MemberIds.Count);
+        Assert.Empty(result.Groups[0].Conflicts);
+    }
+
     private static ChatRequest FakeChat() =>
         new("fake-model", "system", "user", "server", null, "disabled", "high");
 
