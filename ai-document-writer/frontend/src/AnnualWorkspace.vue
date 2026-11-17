@@ -10,6 +10,10 @@ const props = defineProps({
   keySource: { type: String, required: true },
   keyInput: { type: String, default: '' },
   taskRequirement: { type: String, default: '' },
+  audience: { type: String, default: '' },
+  lengthLevel: { type: String, default: '标准' },
+  extraInstruction: { type: String, default: '' },
+  appendReview: { type: Boolean, default: true },
   sourceMaterial: { type: String, default: '' },
   docTitle: { type: String, default: '' },
   protectedTerms: { type: String, default: '' },
@@ -44,6 +48,7 @@ const blocking = computed(() => criticalConflicts(groups.value))
 const normalPending = computed(() => groups.value.flatMap(g => g.included ? g.conflicts || [] : [])
   .filter(c => c.severity !== 'critical' && c.resolution !== 'confirmed'))
 const confirmedCount = computed(() => groups.value.filter(g => g.included).length)
+const kindLabels = { progress:'跨月进展', recurring:'周期性工作', duplicate:'重复记录', independent:'独立事项' }
 const chatSettings = () => ({
   model: props.model, keySource: props.keySource,
   temporaryApiKey: props.keySource === 'temporary' ? props.keyInput.trim() : null,
@@ -145,10 +150,15 @@ async function generateInternal() {
     '用户对冲突的处理意见应当作为人工指定口径；原始来源仍应忠实表达。',
     '若存在未解决的一般性疑点，文末标记【需核实】而不是得出确定性结论。',
     '不得虚构数据、项目、政策、责任主体、成果或原因。',
-    '直接输出完整文稿，遵守用户要求的结构、月份与篇幅。'
+    '直接输出完整文稿，遵守用户要求的结构、月份与篇幅。',
+    props.stylePrompt.slice(0, 14000)
   ].join('\n')
   const user = [
     '【标题】', props.docTitle || '工作总结',
+    '【报送对象】', props.audience || '未指定',
+    '【篇幅要求】', props.lengthLevel,
+    '【附加要求】', props.extraInstruction || '无',
+    '【核验事项】', props.appendReview ? '在文末附待补充与核验事项' : '不单独附录；正文仍须标记无法核实之处',
     '【写作要求】', props.taskRequirement,
     '【必须保留】', props.protectedTerms || '原始证据中的名称、数字、日期、单位',
     '【严格事实模式】', props.strictFacts ? '启用' : '关闭（仍不得虚构事实）',
@@ -229,7 +239,7 @@ async function generateApproved() {
       <div v-for="group in groups" :key="group.id" class="group-card">
         <div class="group-header">
           <label><input type="checkbox" v-model="group.included" />纳入总结</label>
-          <span>{{ group.kind }} · {{ group.memberIds.length }} 项来源</span>
+          <span>{{ kindLabels[group.kind] || group.kind }} · {{ group.memberIds.length }} 项来源</span>
         </div>
         <label>事项标题<input v-model="group.title"/></label>
         <label>归并说明<textarea v-model="group.summary" rows="2"/></label>
