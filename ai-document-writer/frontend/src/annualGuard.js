@@ -33,3 +33,12 @@ export function attachPendingQuestions(content, groups) {
   return (content || '').trimEnd() + '\n\n【待核实事项（系统提示）】\n'
     + unique.map((question, index) => (index + 1) + '. ' + question).join('\n')
 }
+
+export function buildAnnualSourceDocuments(files, manualMaterial = '') {
+  const docs = (files || []).filter(file => file.role !== 'style')
+    .map(file => ({ id: 'F' + file.id, fileName: file.name,
+      month: file.month || '', content: file.content }))
+  if (manualMaterial.trim()) docs.push({ id: 'manual', fileName: '手动输入的事实材料',
+    month: '', content: manualMaterial.trim() })
+  return docs
+}
