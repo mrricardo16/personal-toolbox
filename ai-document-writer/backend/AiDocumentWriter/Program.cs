@@ -36,6 +36,40 @@ builder.Services.AddTransient<AnnualWorkflow>();
 builder.Services.AddHttpClient<DeepSeekClient>(c => c.Timeout = TimeSpan.FromMinutes(6));
 
 var app = builder.Build();
+
+// Desktop mode is intentionally loopback-only. Validate Host as well as
+// the socket peer to prevent a browser DNS-rebinding page from reaching
+// the local Key and model APIs under an attacker-controlled hostname.
+app.Use(async (context, next) =>
+{
+    if (mode.Equals("Desktop", StringComparison.OrdinalIgnoreCase))
+    {
+        var remote = context.Connection.RemoteIpAddress;
+        var host = context.Request.Host;
+        if (remote is null || !IPAddress.IsLoopback(remote)
+            || (host.Host != "127.0.0.1" && host.Host != "localhost"))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return;
+        }
+        var origin = context.Request.Headers.Origin.ToString();
+        if (!string.IsNullOrWhiteSpace(origin))
+        {
+            if (!Uri.TryCreate(origin, UriKind.Absolute, out var parsedOrigin)
+                || !string.Equals(parsedOrigin.Scheme, context.Request.Scheme, StringComparison.OrdinalIgnoreCase)
+                || !string.Equals(parsedOrigin.Host, host.Host, StringComparison.OrdinalIgnoreCase)
+                || parsedOrigin.Port != host.Port)
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+        }
+    }
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    if (context.Request.Path.StartsWithSegments("/api"))
+        context.Response.Headers["Cache-Control"] = "no-store";
+    await next();
+});
 app.UseDefaultFiles();
 app.UseStaticFiles();
 

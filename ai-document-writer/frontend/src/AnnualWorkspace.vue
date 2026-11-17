@@ -44,6 +44,9 @@ const sourceDocs = computed(() => {
     docs.push({ id: 'manual', fileName: '手动输入的事实材料', month: '', content: props.sourceMaterial.trim() })
   return docs
 })
+const estimatedExtractionCalls = computed(() => sourceDocs.value.reduce(
+  (sum, file) => sum + Math.ceil(file.content.length / 18000), 0
+))
 const blocking = computed(() => criticalConflicts(groups.value))
 const normalPending = computed(() => groups.value.flatMap(g => g.included ? g.conflicts || [] : [])
   .filter(c => c.severity !== 'critical' && c.resolution !== 'confirmed'))
@@ -99,9 +102,11 @@ async function startAnalysis() {
   stepTotal.value = sourceDocs.value.length
   try {
     for (const doc of sourceDocs.value) {
-      if (doc.content.length > 70000) throw new Error(doc.fileName + ' 超过 70000 字符，请拆分')
+      if (doc.content.length > 150000) throw new Error(doc.fileName + ' 超过 150000 字符，请拆分')
       progress.value = '正在提取：' + doc.fileName + '（' + (stepIndex.value + 1) + '/' + stepTotal.value + '）'
       const res = await call('/api/annual/extract', { document: doc, chat: chatSettings() })
+      if (facts.value.length + res.items.length > 250)
+        throw new Error('工作事项已超过 250 项；为避免多余 API 消耗，请缩小总结范围或分批整理')
       facts.value.push(...res.items)
       addUsage(res.usage)
       stepIndex.value++
@@ -211,6 +216,7 @@ async function generateApproved() {
   <section class="panel annual-workspace">
     <h2>五、多月总结分析工作台</h2>
     <p class="hint">逐篇提取可追溯事实 → 归并事项及去重 → 检查冲突 → 生成总结。仅上传文件并不会自动视为内容准确。</p>
+    <p class="hint">当前预计至少 {{ estimatedExtractionCalls }} 次分片提取请求，另有归并、生成和审校请求。API 调用可能产生费用。</p>
     <div class="toolbar">
       <label class="auto-toggle"><input type="checkbox" v-model="autoGenerate" />无关键冲突时自动生成</label>
       <button class="primary" :disabled="busy" @click="startAnalysis">重新分析全部事实材料</button>

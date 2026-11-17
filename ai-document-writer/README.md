@@ -15,7 +15,7 @@
 
 文档提取、语义归并和生成内容仍依赖 LLM，可能漏提、误归并或产生不准确指标。严格的证据来源检查和人工冲突确认可以降低风险，**不能代替事实核验**。
 
-目前不支持 PDF/OCR、Excel、复杂图文排版像素级还原、多人账户或在线历史库。多文档输入限制：15 份 DOCX（单份 8MB、总计 60MB）；当前每篇提取限 70000 字符，年度台账最多 250 项。对于超长任务，请拆分材料或分阶段处理。
+目前不支持 PDF/OCR、Excel、复杂图文排版像素级还原、多人账户或在线历史库。多文档输入限制：15 份 DOCX（单份 8MB、总计 60MB）；当前每篇解析文本至多 150000 字符，按段自动分片提取，年度台账最多 250 项。对于超长任务，请拆分材料或分阶段处理。
 
 ## Windows 免安装 ZIP
 
@@ -23,7 +23,7 @@
 
     .\scripts\build.bat
 
-将得到 dist/AI-Document-Writer-v0.1.0-win-x64.zip。用户解压后双击 AiDocumentWriter.exe，应用会监听 127.0.0.1 随机端口并打开默认浏览器。用户机器无需安装 .NET、Node.js、Microsoft Word；调用 DeepSeek 仍需网络。
+将得到 dist/AI-Document-Writer-v0.2.0-win-x64.zip。用户解压后双击 AiDocumentWriter.exe，应用会监听 127.0.0.1 随机端口并打开默认浏览器。用户机器无需安装 .NET、Node.js、Microsoft Word；调用 DeepSeek 仍需网络。
 
 还可以通过 GitHub Actions 中的 AI Document Writer build 工作流下载已构建的 Windows ZIP。
 
@@ -40,3 +40,8 @@
 ## 原版说明
 
 原版入口是根目录 index.html；无需后端即可在浏览器直接打开。V2 的便携包中会把它复制为 /legacy.html。原版页面仍由浏览器直接调用 DeepSeek API。
+
+
+## 长文档与部署包说明（0.2.0）
+
+年度总结支持单篇最多 150000 字符，按段落分片提取事实。较长材料会产生多次模型调用，Token 费用和耗时相应增加。对于超过 250 个事项的台账，仍建议先分批整理。桌面服务仅允许回环访问，并校验 Host/Origin。Linux 自包含服务器包可运行 `scripts/build.ps1 -Target linux-x64 -Mode Server` 构建。

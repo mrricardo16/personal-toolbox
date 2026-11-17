@@ -16,7 +16,7 @@
 
     .\scripts\build.ps1 -Target win-x64
 
-脚本自动安装前端依赖、从原版提取 Prompt、构建 Vue、复制原版为 legacy.html、执行自包含 .NET 发布，并生成 dist/AI-Document-Writer-v0.1.0-win-x64.zip。
+脚本自动安装前端依赖、从原版提取 Prompt、构建 Vue、复制原版为 legacy.html、执行自包含 .NET 发布，并生成 dist/AI-Document-Writer-v0.2.0-win-x64.zip。
 
 分发这个 ZIP 即可。目标 Windows x64 电脑解压后双击 AiDocumentWriter.exe，无需安装 .NET、Node、Python 或 Word；需现代浏览器和能连接 DeepSeek API 的网络。
 
@@ -64,8 +64,26 @@ Vue 构建产物由 ASP.NET Core 提供静态文件。将 Hosting.Mode 设置为
 
 ## E. 当前边界
 
-- 上传至多 15 个 DOCX、每个 8MB、合计 60MB；每篇用于年度分析的文字上限 70000 字符
+- 上传至多 15 个 DOCX、每个 8MB、合计 60MB；每篇用于年度分析的文字上限 150000 字符（自动分片）
 - 年度事实台账上限 250 项，单次模型写作限制输入 100000 字符，过长时需要拆分处理
 - Word 排版复用以常见段落、表格、页面设置为目标；复杂浮动图文混排不保证
 - 图片/OCR、PDF、Excel 与多人协作未实现
 - 自动测试不等于真实 DeepSeek 输出与 Word/WPS 人工视觉验收
+
+
+## Linux 服务器自包含 ZIP（0.2.0）
+
+在具备 .NET 10 SDK、Node.js 22 与 PowerShell 的构建机执行：
+
+```powershell
+./scripts/build.ps1 -Target linux-x64 -Mode Server
+```
+
+生成 `dist/AI-Document-Writer-v0.2.0-linux-x64.zip`。服务器解压后：
+
+```bash
+chmod +x ./AiDocumentWriter
+ASPNETCORE_URLS=http://127.0.0.1:5080 ./AiDocumentWriter
+```
+
+由 systemd 托管服务，Nginx 提供 HTTPS、身份认证和限流。不能把付费模型接口直接匿名暴露公网。桌面模式还会验证回环地址、请求 Host 与浏览器 Origin；服务器模式的访问控制由部署环境承担。

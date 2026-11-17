@@ -11,12 +11,38 @@ public sealed class AnnualWorkflow(DeepSeekClient llm)
     };
     private const int MaxFacts = 250;
 
+    private const int ChunkSize = 18_000;
+    private const int MaxDocumentCharacters = 150_000;
+    private const int MaxExtractedFactsPerDocument = 120;
+
+    // Split without overlap so repeated metrics are not created at chunk edges.
+    public static IReadOnlyList<string> SplitForExtraction(string content)
+    {
+        if (content.Length > MaxDocumentCharacters)
+            throw new ArgumentException("单篇文档超过 150000 字符，请拆分文档");
+        var chunks = new List<string>();
+        var offset = 0;
+        while (offset < content.Length)
+        {
+            var length = Math.Min(ChunkSize, content.Length - offset);
+            if (offset + length < content.Length)
+            {
+                var boundary = content.LastIndexOf('\n', offset + length - 1, length);
+                if (boundary > offset + ChunkSize / 2) length = boundary - offset + 1;
+            }
+            var segment = content.Substring(offset, length);
+            if (!string.IsNullOrWhiteSpace(segment)) chunks.Add(segment);
+            offset += length;
+        }
+        return chunks;
+    }
+
     public async Task<AnnualExtractResult> ExtractAsync(AnnualExtractRequest request, CancellationToken ct)
     {
-        var doc = request.Document;
+        var doc = request.Document ?? throw new ArgumentException("请提供完整文件信息");
         if (string.IsNullOrWhiteSpace(doc.Id) || string.IsNullOrWhiteSpace(doc.FileName)
             || string.IsNullOrWhiteSpace(doc.Content)) throw new ArgumentException("请提供完整文件信息");
-        if (doc.Content.Length > 70000) throw new ArgumentException("单篇文档超过 70000 字符，需拆分处理");
+
         var system = """
             你是企业办公资料的事实提取程序。只能从明确提供的文档中提取事实，禁止补造内容。
             输出严格 JSON 对象，不允许 Markdown 围栏或额外解释。
@@ -29,33 +55,72 @@ public sealed class AnnualWorkflow(DeepSeekClient llm)
             不得把展望、目标、建议描述为已完成成果。
             若文件只有格式模板没有可确认的工作事项，返回 {"items":[]}。
             """;
-        var user = "文件：" + doc.FileName + "\n指定月份：" + (doc.Month ?? "未指定")
-            + "\n【正文开始】\n" + doc.Content + "\n【正文结束】";
-        var response = await llm.ChatAsync(request.Chat with { SystemPrompt = system, UserPrompt = user, JsonMode = true }, ct);
-        var parsed = ParseJson<ExtractEnvelope>(response.Content);
+
+        var chunks = SplitForExtraction(doc.Content);
         var result = new List<AnnualFact>();
-        foreach (var item in parsed.Items ?? [])
+        var seen = new Dictionary<string, AnnualFact>(StringComparer.Ordinal);
+        long promptTokens = 0, completionTokens = 0, totalTokens = 0;
+        for (var index = 0; index < chunks.Count; index++)
         {
-            if (result.Count >= 60) throw new ArgumentException("单篇提取超过 60 项，请拆分文档");
-            if (string.IsNullOrWhiteSpace(item.Title) || string.IsNullOrWhiteSpace(item.Evidence)) continue;
-            var evidence = item.Evidence.Trim();
-            result.Add(new AnnualFact
+            ct.ThrowIfCancellationRequested();
+            var chunk = chunks[index];
+            var user = "文件：" + doc.FileName + "\n指定月份：" + (doc.Month ?? "未指定")
+                + "\n文档片段：" + (index + 1) + "/" + chunks.Count
+                + "\n只提取当前片段中的事实。\n【正文开始】\n" + chunk + "\n【正文结束】";
+            var response = await llm.ChatAsync(request.Chat with
             {
-                Id = doc.Id + "-" + (result.Count + 1),
-                Title = Limit(item.Title, 200),
-                Project = Limit(item.Project, 200),
-                Period = string.IsNullOrWhiteSpace(item.Period) ? doc.Month ?? "" : Limit(item.Period, 80),
-                Progress = Limit(item.Progress, 40),
-                Description = Limit(item.Description, 1500),
-                NumericEvidence = Limit(item.NumericEvidence, 700),
-                SourceFile = doc.FileName,
-                SourceId = doc.Id,
-                Evidence = Limit(evidence, 500),
-                EvidenceMatched = doc.Content.Contains(evidence, StringComparison.Ordinal)
-            });
+                SystemPrompt = system, UserPrompt = user, JsonMode = true
+            }, ct);
+            var parsed = ParseJson<ExtractEnvelope>(response.Content);
+            if (response.Usage is { } usage && usage.ValueKind == JsonValueKind.Object)
+            {
+                promptTokens += TokenCount(usage, "prompt_tokens");
+                completionTokens += TokenCount(usage, "completion_tokens");
+                totalTokens += TokenCount(usage, "total_tokens");
+            }
+            foreach (var item in parsed.Items ?? [])
+            {
+                if (string.IsNullOrWhiteSpace(item.Title) || string.IsNullOrWhiteSpace(item.Evidence)) continue;
+                var evidence = item.Evidence.Trim();
+                var dedupKey = item.Title.Trim() + "\u001f" + evidence;
+                var matched = chunk.Contains(evidence, StringComparison.Ordinal);
+                if (seen.TryGetValue(dedupKey, out var existing))
+                {
+                    // A later valid quote must not be lost because an earlier
+                    // chunk hallucinated the same quote.
+                    if (matched) existing.EvidenceMatched = true;
+                    continue;
+                }
+                if (result.Count >= MaxExtractedFactsPerDocument)
+                    throw new ArgumentException("单篇文档提取超过 120 个工作事项，请拆分文档");
+                var fact = new AnnualFact
+                {
+                    Id = doc.Id + "-" + (result.Count + 1),
+                    Title = Limit(item.Title, 200),
+                    Project = Limit(item.Project, 200),
+                    Period = string.IsNullOrWhiteSpace(item.Period) ? doc.Month ?? "" : Limit(item.Period, 80),
+                    Progress = Limit(item.Progress, 40),
+                    Description = Limit(item.Description, 1500),
+                    NumericEvidence = Limit(item.NumericEvidence, 700),
+                    SourceFile = doc.FileName,
+                    SourceId = doc.Id,
+                    Evidence = Limit(evidence, 500),
+                    EvidenceMatched = matched
+                };
+                result.Add(fact);
+                seen.Add(dedupKey, fact);
+            }
         }
-        return new AnnualExtractResult(result, result.Count(x => !x.EvidenceMatched), response.Usage);
+        var usageTotals = JsonSerializer.SerializeToElement(new
+        {
+            prompt_tokens = promptTokens, completion_tokens = completionTokens, total_tokens = totalTokens
+        });
+        return new AnnualExtractResult(result, result.Count(x => !x.EvidenceMatched), usageTotals);
     }
+
+    private static long TokenCount(JsonElement usage, string key) =>
+        usage.TryGetProperty(key, out var field) && field.ValueKind == JsonValueKind.Number &&
+        field.TryGetInt64(out var count) ? count : 0;
 
     public async Task<AnnualMergeResult> MergeAsync(AnnualMergeRequest request, CancellationToken ct)
     {

@@ -1,7 +1,9 @@
 param(
     [ValidateSet('win-x64', 'win-arm64', 'linux-x64')]
     [string]$Target = 'win-x64',
-    [string]$Version = '0.1.0'
+    [string]$Version = '0.2.0',
+    [ValidateSet('Auto', 'Desktop', 'Server')]
+    [string]$Mode = 'Auto'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -54,7 +56,15 @@ $publishArgs = @('publish', (Join-Path $backend 'AiDocumentWriter.csproj'), '-c'
 & dotnet @publishArgs
 if ($LASTEXITCODE -ne 0) { throw '.NET 发布失败' }
 New-Item -ItemType Directory -Force -Path (Join-Path $publish 'config') | Out-Null
-Copy-Item (Join-Path $root 'config/appsettings.local.example.json') (Join-Path $publish 'config/appsettings.local.json') -Force
+$effectiveMode = if ($Mode -eq 'Auto') {
+    if ($Target -eq 'linux-x64') { 'Server' } else { 'Desktop' }
+} else { $Mode }
+$config = Get-Content (Join-Path $root 'config/appsettings.local.example.json') -Raw | ConvertFrom-Json
+$config.Hosting.Mode = $effectiveMode
+$config.Hosting.OpenBrowser = ($effectiveMode -eq 'Desktop')
+$configurationPath = Join-Path $publish 'config/appsettings.local.json'
+[System.IO.File]::WriteAllText($configurationPath, ($config | ConvertTo-Json -Depth 10),
+    [System.Text.UTF8Encoding]::new($false))
 Copy-Item (Join-Path $root 'README.md') (Join-Path $publish 'README.md') -Force
 Copy-Item (Join-Path $root 'docs/DEPLOYMENT.md') (Join-Path $publish 'DEPLOYMENT.md') -Force
 if (-not (Test-Path (Join-Path $publish 'wwwroot/index.html'))) { throw '缺少前端资源，拒绝打包' }
