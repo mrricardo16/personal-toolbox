@@ -6,6 +6,9 @@ test('document type maps to one draft skill', () => {
   assert.equal(writingSkillForDocument('meeting'), 'draft-meeting')
   assert.equal(writingSkillForDocument('research'), 'draft-report')
   assert.equal(writingSkillForDocument('notice'), 'draft-formal')
+  assert.equal(writingSkillForDocument('polish'), null)
+  assert.equal(writingSkillForDocument('outline'), null)
+  assert.equal(writingSkillForDocument('proofread'), 'review-facts')
 })
 test('history snapshots preserve originals and cap memory', () => {
   let versions = []

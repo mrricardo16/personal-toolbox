@@ -258,6 +258,11 @@ async function compareDrafts() {
     status.value = '材料过长，无法执行 A/B 对照'
     return
   }
+  const chosenSkill = writingSkillForDocument(skill.value)
+  if (!chosenSkill) {
+    status.value = '该文种仍使用经典 Prompt，尚未配置独立 Skill；无需发起无意义的双请求'
+    return
+  }
   saveWorkingText()
   busy.value = true
   activeController = new AbortController()
@@ -266,7 +271,7 @@ async function compareDrafts() {
     const classic = await chat(prompt.value, userPrompt)
     recordVersion('A · 经典 Prompt', classic.content)
     status.value = 'A/B：正在用同样材料生成 Skill 版本 B……'
-    const enhanced = await chat(prompt.value, userPrompt, writingSkillForDocument(skill.value),
+    const enhanced = await chat(prompt.value, userPrompt, chosenSkill,
       enhanceWriting.value ? 'improve-style' : null)
     recordVersion('B · Skill 增强', enhanced.content)
     status.value = 'A/B 两版已保存。可在下方版本记录中切换对比（实际使用了两次模型请求）'
@@ -302,7 +307,7 @@ async function generate() {
     status.value = '正在生成初稿……'
     const draft = await chat(prompt.value, userPrompt,
       writingStrategy.value === 'skills' ? writingSkillForDocument(skill.value) : null,
-      writingStrategy.value === 'skills' && enhanceWriting.value ? 'improve-style' : null)
+      writingStrategy.value === 'skills' && writingSkillForDocument(skill.value) && enhanceWriting.value ? 'improve-style' : null)
     recordVersion(writingStrategy.value === 'skills' ? 'Skill 初稿' : '经典 Prompt 初稿', draft.content)
     status.value = '初稿已生成并保留为独立版本，可继续修改'
     if (autoReview.value) {
