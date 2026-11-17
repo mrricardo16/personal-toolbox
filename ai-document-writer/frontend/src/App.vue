@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { baseRules, skillRules } from './legacyRules.generated.js'
+import AnnualWorkspace from './AnnualWorkspace.vue'
 
 const skillLabels = {
   general: '通用正式材料', notice: '通知', report: '工作报告',
@@ -33,6 +34,15 @@ const audit = ref('')
 const files = ref([])
 const uploadBusy = ref(false)
 const templateChoice = ref('auto')
+const preserveHeaderFooter = ref(false)
+const templateCandidate = computed(() => {
+  if (templateChoice.value === 'default') return null
+  if (templateChoice.value !== 'auto') return files.value.find(f => String(f.id) === templateChoice.value) || null
+  return files.value.find(f => f.role === 'style' && /年度|总结|模板|范文/.test(f.name))
+    || files.value.find(f => f.role === 'style')
+    || files.value.find(f => f.role === 'both')
+    || files.value[0] || null
+})
 const serverKeyConfigured = ref(false)
 const savedKeyConfigured = ref(false)
 const canManageKey = ref(false)
@@ -107,10 +117,11 @@ async function uploadDocuments(event) {
   status.value = '正在读取 DOCX 正文与表格……'
   try {
     const data = await api('/api/documents/parse', 'POST', form)
-    for (const doc of data.documents) {
+    for (const [index, doc] of data.documents.entries()) {
       files.value.push({
         id: nextId++, name: doc.fileName, content: doc.content,
-        role: 'facts', month: '', tableCount: doc.tableCount
+        role: 'facts', month: '', tableCount: doc.tableCount,
+        originalFile: selected[index]
       })
     }
     status.value = '已解析 ' + data.documents.length + ' 个文件。请检查每份文件的参考用途'
@@ -233,7 +244,8 @@ async function copyResult() {
   try { await navigator.clipboard.writeText(result.value); status.value = '已复制结果' }
   catch { status.value = '复制失败，请手动选择文本复制' }
 }
-function download(extension) {
+async function download(extension) {
+  if (extension === 'docx') { await exportDocx(); return }
   if (!result.value) return
   const name = (docTitle.value.trim() || '生成文档').replace(/[\\/:*?"<>|]/g, '_').slice(0, 80)
   const mime = extension === 'md' ? 'text/markdown;charset=utf-8' : 'text/plain;charset=utf-8'
@@ -243,6 +255,40 @@ function download(extension) {
   link.href = url; link.download = name + '.' + extension; link.click()
   URL.revokeObjectURL(url)
 }
+
+async function exportDocx() {
+  if (!result.value.trim()) { status.value = '请先生成文稿或填写编辑结果'; return }
+  const form = new FormData()
+  form.append('content', result.value)
+  form.append('title', docTitle.value.trim() || '生成文档')
+  form.append('preserveHeaderFooter', String(preserveHeaderFooter.value))
+  if (templateCandidate.value?.originalFile) form.append('template', templateCandidate.value.originalFile)
+  try {
+    status.value = '正在生成可编辑的 Word 文档……'
+    const response = await fetch('/api/documents/export', {
+      method: 'POST', headers: { 'X-Writer-Client': 'ai-document-writer' }, body: form
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      throw new Error(data.error || data.title || 'HTTP ' + response.status)
+    }
+    const blob = await response.blob()
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const safe = (docTitle.value.trim() || '生成文档').replace(/[\\/:*?"<>|]/g, '_').slice(0, 70)
+    link.href = url
+    link.download = safe + '.docx'
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 5000)
+    status.value = 'Word 文档已生成（可在 Word/WPS 中继续编辑）'
+  } catch (e) { status.value = 'Word 导出失败：' + e.message }
+}
+function onAnnualGenerated(payload) {
+  result.value = payload.content
+  audit.value = auditTerms(result.value)
+  status.value = payload.message
+}
+
 </script>
 
 <template>
@@ -256,9 +302,9 @@ function download(extension) {
     </header>
     <nav class="tabs" aria-label="写作模式">
       <button :class="{ active: mode === 'general' }" @click="mode = 'general'">常规文档写作</button>
-      <button :class="{ active: mode === 'annual' }" @click="mode = 'annual'">年度 / 多月总结（P2 开发中）</button>
+      <button :class="{ active: mode === 'annual' }" @click="mode = 'annual'">年度 / 多月总结</button>
     </nav>
-    <div v-if="mode === 'annual'" class="notice">当前阶段尚未实现跨月事项台账、冲突确认与去重。请勿直接把多份月报拼接当作核验完成的年度总结。</div>
+    <div v-if="mode === 'annual'" class="notice">年度总结先分析各篇事实，再进行归并和冲突检查。建议在生成前检查来源及统计口径。</div>
 
     <section class="panel">
       <h2>一、模型与 API Key</h2>
@@ -325,7 +371,7 @@ function download(extension) {
         <input v-model="file.month" type="month" :aria-label="file.name + ' 所属月份'" />
         <button type="button" @click="files = files.filter(f => f.id !== file.id)">移除</button>
       </div>
-      <p class="hint">Word 排版模板选择与 DOCX 导出属于 P3，暂不启用。{{ templateChoice === 'auto' ? '' : '' }}</p>
+
     </section>
 
     <section class="panel">
@@ -345,19 +391,52 @@ function download(extension) {
         <label><input v-model="allowGeneralSuggestions" type="checkbox"/>允许标注为建议的一般性补充</label>
       </div>
     </section>
+
+    <AnnualWorkspace
+      v-if="mode === 'annual'"
+      :files="files"
+      :model="model"
+      :thinking-type="thinkingType"
+      :reasoning-effort="reasoningEffort"
+      :key-source="keySource"
+      :key-input="keyInput"
+      :task-requirement="taskRequirement"
+      :source-material="sourceMaterial"
+      :doc-title="docTitle"
+      :protected-terms="protectedTerms"
+      :strict-facts="strictFacts"
+      :auto-review="autoReview"
+      :allow-general-suggestions="allowGeneralSuggestions"
+      :style-prompt="prompt"
+      @generated="onAnnualGenerated"
+    />
     <section class="panel">
-      <h2>五、生成结果</h2>
+      <h2>{{ mode === 'annual' ? '六' : '五' }}、Word 模板设置</h2>
+      <label>导出排版来源
+        <select v-model="templateChoice">
+          <option value="auto">自动推荐：优先风格参考文件</option>
+          <option value="default">使用默认 Word 排版</option>
+          <option v-for="file in files" :key="file.id" :value="String(file.id)">指定：{{ file.name }}</option>
+        </select>
+      </label>
+      <p class="hint">当前选择：{{ templateCandidate ? templateCandidate.name : '默认 Word 排版' }}。保留模板样式和页面设置，原正文不会复制到新文档。</p>
+      <label><input v-model="preserveHeaderFooter" type="checkbox"/>保留模板的原页眉页脚文字（可能包含往年日期、单位名称；默认关闭）</label>
+      <p class="hint">保留原页眉页脚文字前，请自行核对其中是否包含过期资料。</p>
+    </section>
+    <section class="panel">
+      <h2>{{ mode === 'annual' ? '七' : '六' }}、生成结果（可直接编辑）</h2>
       <div class="toolbar">
         <button class="primary" :disabled="busy || uploadBusy || mode !== 'general'" @click="generate">生成文档</button>
         <button :disabled="!busy" @click="cancel">停止</button>
         <button @click="copyResult">复制</button>
         <button @click="download('md')">下载 Markdown</button>
         <button @click="download('txt')">下载 TXT</button>
+        <button @click="download('docx')">下载 Word DOCX</button>
         <button @click="result = ''; status = ''; audit = ''">清空</button>
       </div>
       <p class="status" role="status">{{ status }}</p>
       <p v-if="audit" class="audit">{{ audit }}</p>
-      <pre class="result">{{ result }}</pre>
+      <textarea class="result" v-model="result" rows="18" placeholder="生成结果会出现在这里，也可以直接编辑后导出"/>
     </section>
     <footer>本工具会将参与写作的材料发送至配置的模型 API。请勿上传涉密或未经授权对外传输的资料。</footer>
   </main>

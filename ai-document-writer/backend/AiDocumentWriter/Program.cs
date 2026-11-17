@@ -31,6 +31,8 @@ builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(LocalKeyStore.DataDirectory, "keyring")));
 builder.Services.AddSingleton<LocalKeyStore>();
 builder.Services.AddSingleton<DocxParser>();
+builder.Services.AddSingleton<DocxExporter>();
+builder.Services.AddTransient<AnnualWorkflow>();
 builder.Services.AddHttpClient<DeepSeekClient>(c => c.Timeout = TimeSpan.FromMinutes(6));
 
 var app = builder.Build();
@@ -133,6 +135,52 @@ app.MapPost("/api/documents/parse", async (HttpRequest request, DocxParser parse
         return Results.BadRequest(new { error = "DOCX 读取失败：" + e.Message });
     }
 });
+
+app.MapPost("/api/annual/extract", async (AnnualExtractRequest request, AnnualWorkflow workflow, HttpContext context) =>
+{
+    try { return Results.Ok(await workflow.ExtractAsync(request, context.RequestAborted)); }
+    catch (ArgumentException e) { return Results.BadRequest(new { error = e.Message }); }
+    catch (OperationCanceledException) { return Results.StatusCode(499); }
+    catch (HttpRequestException e) { return Results.Problem(e.Message, statusCode: 502); }
+    catch { return Results.Problem("提取失败，请重试当前文档", statusCode: 500); }
+});
+
+app.MapPost("/api/annual/merge", async (AnnualMergeRequest request, AnnualWorkflow workflow, HttpContext context) =>
+{
+    try { return Results.Ok(await workflow.MergeAsync(request, context.RequestAborted)); }
+    catch (ArgumentException e) { return Results.BadRequest(new { error = e.Message }); }
+    catch (OperationCanceledException) { return Results.StatusCode(499); }
+    catch (HttpRequestException e) { return Results.Problem(e.Message, statusCode: 502); }
+    catch { return Results.Problem("事项归并失败，请重试", statusCode: 500); }
+});
+
+app.MapPost("/api/documents/export", async (HttpRequest request, DocxExporter exporter) =>
+{
+    if (!request.HasFormContentType) return Results.BadRequest(new { error = "请使用表单提交 Word 导出请求" });
+    var form = await request.ReadFormAsync(request.HttpContext.RequestAborted);
+    var content = form["content"].ToString();
+    var title = form["title"].ToString();
+    var preserve = string.Equals(form["preserveHeaderFooter"], "true", StringComparison.OrdinalIgnoreCase);
+    var template = form.Files.GetFile("template");
+    if (template is not null && (template.Length == 0 || template.Length > 8L * 1024 * 1024
+        || !Path.GetExtension(template.FileName).Equals(".docx", StringComparison.OrdinalIgnoreCase)))
+        return Results.BadRequest(new { error = "模板必须为不超过 8MB 的 DOCX" });
+    try
+    {
+        using var templateStream = template is null ? null : new MemoryStream();
+        if (template is not null) await template.CopyToAsync(templateStream!, request.HttpContext.RequestAborted);
+        if (templateStream is not null) templateStream.Position = 0;
+        var bytes = exporter.Export(content, title, templateStream, preserve);
+        var safeName = string.Concat((string.IsNullOrWhiteSpace(title) ? "生成文档" : title).Take(70)
+            .Select(ch => Path.GetInvalidFileNameChars().Contains(ch) || ch is '/' or '\\' ? '_' : ch));
+        return Results.File(bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            safeName + ".docx");
+    }
+    catch (Exception e) when (e is ArgumentException or InvalidDataException or IOException
+        or System.IO.FileFormatException or DocumentFormat.OpenXml.Packaging.OpenXmlPackageException)
+    { return Results.BadRequest(new { error = "DOCX 导出失败：" + e.Message }); }
+});
+
 app.MapFallbackToFile("index.html");
 
 await app.StartAsync();
