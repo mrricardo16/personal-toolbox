@@ -234,3 +234,6 @@ if (mode.Equals("Desktop", StringComparison.OrdinalIgnoreCase)
 await app.WaitForShutdownAsync();
 
 public sealed record SaveKeyRequest(string ApiKey);
+
+// Makes the Minimal API entry point discoverable by WebApplicationFactory integration tests.
+public partial class Program { }
