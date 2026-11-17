@@ -1,0 +1,10 @@
+dist/
+frontend/dist/
+frontend/node_modules/
+frontend/src/legacyRules.generated.js
+backend/**/bin/
+backend/**/obj/
+backend/AiDocumentWriter/wwwroot/
+config/appsettings.local.json
+backend/AiDocumentWriter/config/appsettings.local.json
+*.user

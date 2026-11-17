@@ -19,6 +19,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Backend unit tests
+        shell: pwsh
+        run: dotnet test .\backend\AiDocumentWriter.Tests\AiDocumentWriter.Tests.csproj -c Release
       - name: Build portable ZIP
         shell: pwsh
         run: .\scripts\build.ps1 -Target win-x64

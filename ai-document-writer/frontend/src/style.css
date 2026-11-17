@@ -41,3 +41,19 @@ button.primary:hover:not(:disabled){background:#1256ae}
 .notice{padding:14px 18px;border-radius:8px;background:#fff8e4;border:1px solid #e5d4a1;line-height:1.7}
 footer{color:#7b8793;font-size:12px;margin:20px 0;line-height:1.7}
 @media(max-width:700px){.shell{padding:15px 10px}.panel{padding:18px 12px}.header{display:block}.grid,.checks{grid-template-columns:1fr}.file-row,.key-line{flex-wrap:wrap}.tabs{flex-wrap:wrap}}
+
+.result{display:block;width:100%;min-height:340px;resize:vertical}
+.annual-workspace h3{font-size:15px;margin:16px 0}
+.annual-workspace .auto-toggle{font-weight:400;display:flex;align-items:center;gap:5px;margin-right:auto}
+.analysis-summary{padding:10px 12px;border:1px solid #c9d9e7;border-radius:6px;background:#f5f9fc;display:flex;align-items:center;flex-wrap:wrap;gap:14px}
+.analysis-summary span{font-size:12px;color:#46637e}
+.group-card{padding:16px;border:1px solid #cddae6;border-radius:8px;margin:12px 0;background:#fbfdff}
+.group-card label:not(.group-header label){margin:9px 0;display:block}
+.group-card input:not([type=checkbox]),.group-card textarea,.group-card select{width:100%}
+.group-header{display:flex;justify-content:space-between;align-items:center;gap:10px;color:#63758a;font-size:12px}
+.group-header label{font-size:13px;color:#243c55}
+.group-card summary,.items summary{cursor:pointer;color:#345b86;margin:8px 0}
+.group-card .evidence,.items details{padding:10px;border-top:1px solid #e0e8f0;font-size:12px;line-height:1.7}
+.evidence small{display:block;margin-top:5px;color:#64798d}
+.conflict{margin:10px 0;padding:12px;border:1px solid #e7c9a7;background:#fffaf3;border-radius:6px;line-height:1.6}
+.items blockquote{margin:7px 0 0;padding-left:10px;border-left:2px solid #abc3db;color:#566b7d}

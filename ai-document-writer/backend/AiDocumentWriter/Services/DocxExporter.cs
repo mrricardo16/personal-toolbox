@@ -6,9 +6,9 @@ using System.Text.RegularExpressions;
 namespace AiDocumentWriter.Services;
 
 /// <summary>
-/// Builds a new editable Word body. When a template is supplied, paragraph styles,
-/// table styles and section/page layout remain available, but original document body
-/// is removed. Static header/footer text is blanked unless explicitly approved.
+/// Creates a fresh DOCX package. Only reusable formatting parts are copied from
+/// templates; old body, comments, tracked changes, attachments and document
+/// properties are never copied into the generated document.
 /// </summary>
 public sealed class DocxExporter
 {
@@ -16,56 +16,63 @@ public sealed class DocxExporter
     {
         if (string.IsNullOrWhiteSpace(content)) throw new ArgumentException("文稿内容不能为空");
         if (content.Length > 150_000) throw new ArgumentException("导出内容过长");
+
         var target = new MemoryStream();
-        if (template is not null)
+        using (var resultDoc = WordprocessingDocument.Create(target, WordprocessingDocumentType.Document, true))
         {
-            template.CopyTo(target);
-            target.Position = 0;
-            using var doc = WordprocessingDocument.Open(target, true);
-            var main = doc.MainDocumentPart ?? throw new ArgumentException("模板缺少主文档");
-            var body = main.Document.Body ?? throw new ArgumentException("模板缺少正文");
-            var section = body.Elements<SectionProperties>().FirstOrDefault()?.CloneNode(true) as SectionProperties;
-            body.RemoveAllChildren();
-            AddContent(body, content, title, main);
-            if (section is not null) body.Append(section);
-            if (!preserveHeaderFooter)
+            var main = resultDoc.AddMainDocumentPart();
+            main.Document = new Document(new Body());
+            SectionProperties? section = null;
+            string? tableStyle = null;
+            if (template is not null)
             {
-                foreach (var part in main.HeaderParts)
+                template.Position = 0;
+                using var reference = WordprocessingDocument.Open(template, false);
+                var originalMain = reference.MainDocumentPart
+                    ?? throw new ArgumentException("参考模板缺少 Word 主文档");
+                section = originalMain.Document.Body?.Elements<SectionProperties>().FirstOrDefault()
+                    ?.CloneNode(true) as SectionProperties;
+                tableStyle = originalMain.Document.Body?.Elements<Table>()
+                    .Select(t => t.TableProperties?.TableStyle?.Val?.Value)
+                    .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
+
+                if (originalMain.StyleDefinitionsPart is { } styles) main.AddPart(styles);
+                else CreateStyles(main);
+                if (originalMain.NumberingDefinitionsPart is { } numbering) main.AddPart(numbering);
+                if (originalMain.ThemePart is { } theme) main.AddPart(theme);
+                if (originalMain.FontTablePart is { } fontTable) main.AddPart(fontTable);
+
+                if (section is not null)
                 {
-                    foreach (var txt in part.Header.Descendants<Text>()) txt.Text = "";
-                    part.Header.Save();
-                }
-                foreach (var part in main.FooterParts)
-                {
-                    foreach (var txt in part.Footer.Descendants<Text>()) txt.Text = "";
-                    part.Footer.Save();
+                    if (preserveHeaderFooter)
+                    {
+                        foreach (var header in originalMain.HeaderParts)
+                            main.AddPart(header, originalMain.GetIdOfPart(header));
+                        foreach (var footer in originalMain.FooterParts)
+                            main.AddPart(footer, originalMain.GetIdOfPart(footer));
+                    }
+                    else
+                    {
+                        foreach (var header in section.Elements<HeaderReference>().ToList()) header.Remove();
+                        foreach (var footer in section.Elements<FooterReference>().ToList()) footer.Remove();
+                    }
                 }
             }
-            main.Document.Save();
-        }
-        else
-        {
-            using var doc = WordprocessingDocument.Create(target, WordprocessingDocumentType.Document, true);
-            var main = doc.AddMainDocumentPart();
-            main.Document = new Document(new Body());
-            CreateStyles(main);
-            AddContent(main.Document.Body!, content, title, main);
+            else CreateStyles(main);
+
+            AddContent(main.Document.Body!, content, title, tableStyle, main);
+            if (section is not null) main.Document.Body!.Append(section);
             main.Document.Save();
         }
         return target.ToArray();
     }
 
-    private static void AddContent(Body body, string source, string? title, MainDocumentPart main)
+    private static void AddContent(Body body, string source, string? title, string? tableStyle, MainDocumentPart main)
     {
         if (!string.IsNullOrWhiteSpace(title) && !source.TrimStart().StartsWith(title.Trim(), StringComparison.Ordinal))
-            body.Append(CreateParagraph(title.Trim(), "Title"));
-        var text = source.Replace("\r\n", "\n").Replace('\r', '\n');
-        var lines = text.Split('\n');
-        var firstTemplateTableStyle = main.Document.Body?.Elements<Table>()
-            .Select(t => t.GetFirstChild<TableProperties>()?.TableStyle?.Val?.Value)
-            .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
-        // Main document body may have already been cleared. Tables still use an
-        // editable standard border style if the template did not define one.
+            body.Append(CreateParagraph(title.Trim(), ResolveStyle(main, "Title")));
+
+        var lines = source.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
         for (var i = 0; i < lines.Length; i++)
         {
             var line = lines[i].TrimEnd();
@@ -74,7 +81,7 @@ public sealed class DocxExporter
                 body.Append(new Paragraph());
                 continue;
             }
-            if (line.StartsWith('|') && line.EndsWith('|'))
+            if (line.Trim().StartsWith('|') && line.Trim().EndsWith('|'))
             {
                 var cells = new List<string[]>();
                 while (i < lines.Length && lines[i].Trim().StartsWith('|') && lines[i].Trim().EndsWith('|'))
@@ -84,40 +91,57 @@ public sealed class DocxExporter
                     i++;
                 }
                 i--;
-                if (cells.Count > 0) body.Append(CreateTable(cells, firstTemplateTableStyle));
+                if (cells.Count > 0) body.Append(CreateTable(cells, tableStyle, ResolveStyle(main, "Normal")));
                 continue;
             }
             var heading = Regex.Match(line, @"^(#{1,3})\s+(.+)$");
             if (heading.Success)
             {
-                body.Append(CreateParagraph(heading.Groups[2].Value, "Heading" + heading.Groups[1].Value.Length));
+                var level = heading.Groups[1].Value.Length;
+                body.Append(CreateParagraph(heading.Groups[2].Value, ResolveStyle(main, "Heading" + level)));
                 continue;
             }
             if (Regex.IsMatch(line, @"^[一二三四五六七八九十]+、"))
             {
-                body.Append(CreateParagraph(line, "Heading1"));
+                body.Append(CreateParagraph(line, ResolveStyle(main, "Heading1")));
                 continue;
             }
             if (Regex.IsMatch(line, @"^（[一二三四五六七八九十]+）"))
             {
-                body.Append(CreateParagraph(line, "Heading2"));
+                body.Append(CreateParagraph(line, ResolveStyle(main, "Heading2")));
                 continue;
             }
-            body.Append(CreateParagraph(line.TrimStart(), "Normal"));
+            body.Append(CreateParagraph(line.TrimStart(), ResolveStyle(main, "Normal")));
         }
+    }
+
+    private static string ResolveStyle(MainDocumentPart main, string desired)
+    {
+        var styles = main.StyleDefinitionsPart?.Styles?.Elements<Style>() ?? [];
+        var direct = styles.FirstOrDefault(s => string.Equals(s.StyleId?.Value, desired, StringComparison.OrdinalIgnoreCase));
+        if (direct is not null) return direct.StyleId?.Value ?? desired;
+        var normalized = desired.ToLowerInvariant();
+        var matches = normalized switch
+        {
+            "title" => new[] { "title", "标题" },
+            "heading1" => new[] { "heading 1", "标题 1", "标题1" },
+            "heading2" => new[] { "heading 2", "标题 2", "标题2" },
+            "heading3" => new[] { "heading 3", "标题 3", "标题3" },
+            _ => new[] { "normal", "正文" }
+        };
+        var result = styles.FirstOrDefault(s => matches.Contains(s.StyleName?.Val?.Value?.ToLowerInvariant() ?? ""));
+        return result?.StyleId?.Value ?? desired;
     }
 
     private static Paragraph CreateParagraph(string text, string style)
     {
-        var paragraph = new Paragraph();
-        paragraph.ParagraphProperties = new ParagraphProperties(new ParagraphStyleId { Val = style });
+        var paragraph = new Paragraph(new ParagraphProperties(new ParagraphStyleId { Val = style }));
         paragraph.Append(new Run(new Text(text) { Space = SpaceProcessingModeValues.Preserve }));
         return paragraph;
     }
 
-    private static Table CreateTable(List<string[]> rows, string? style)
+    private static Table CreateTable(List<string[]> rows, string? style, string paragraphStyle)
     {
-        var table = new Table();
         var props = new TableProperties(
             new TableBorders(
                 new TopBorder { Val = BorderValues.Single, Size = 4 },
@@ -125,16 +149,15 @@ public sealed class DocxExporter
                 new LeftBorder { Val = BorderValues.Single, Size = 4 },
                 new RightBorder { Val = BorderValues.Single, Size = 4 },
                 new InsideHorizontalBorder { Val = BorderValues.Single, Size = 4 },
-                new InsideVerticalBorder { Val = BorderValues.Single, Size = 4 }
-            ));
+                new InsideVerticalBorder { Val = BorderValues.Single, Size = 4 }));
         if (!string.IsNullOrWhiteSpace(style)) props.Append(new TableStyle { Val = style });
-        table.Append(props);
+        var table = new Table(props);
         foreach (var cells in rows)
         {
             var row = new TableRow();
             foreach (var cell in cells)
             {
-                var tc = new TableCell(CreateParagraph(cell, "Normal"),
+                var tc = new TableCell(CreateParagraph(cell, paragraphStyle),
                     new TableCellProperties(new TableCellWidth { Type = TableWidthUnitValues.Auto }));
                 row.Append(tc);
             }
