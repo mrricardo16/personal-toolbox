@@ -26,7 +26,7 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Frontend review-rule tests
         shell: pwsh
-        run: node --test .\frontend\tests\annualGuard.test.mjs
+        run: node --test .\frontend\tests\annualGuard.test.mjs .\frontend\tests\writingStrategies.test.mjs .\frontend\tests\evaluationCases.test.mjs
       - name: Backend unit tests
         shell: pwsh
         run: dotnet test .\backend\AiDocumentWriter.Tests\AiDocumentWriter.Tests.csproj -c Release
@@ -39,7 +39,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ai-document-writer-win-x64
-          path: ai-document-writer/dist/AI-Document-Writer-v0.2.0-win-x64.zip
+          path: ai-document-writer/dist/AI-Document-Writer-v0.3.0-win-x64.zip
   linux-server:
     runs-on: ubuntu-latest
     defaults:
@@ -61,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist/linux-smoke
-          unzip -q dist/AI-Document-Writer-v0.2.0-linux-x64.zip -d dist/linux-smoke
+          unzip -q dist/AI-Document-Writer-v0.3.0-linux-x64.zip -d dist/linux-smoke
           chmod +x dist/linux-smoke/AiDocumentWriter
           (cd dist/linux-smoke && ASPNETCORE_URLS=http://127.0.0.1:5080 ./AiDocumentWriter > /tmp/ai-document-writer-server.log 2>&1) &
           server_pid=$!
@@ -75,4 +75,4 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ai-document-writer-linux-x64
-          path: ai-document-writer/dist/AI-Document-Writer-v0.2.0-linux-x64.zip
+          path: ai-document-writer/dist/AI-Document-Writer-v0.3.0-linux-x64.zip

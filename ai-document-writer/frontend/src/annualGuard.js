@@ -6,7 +6,14 @@ export function criticalConflicts(groups) {
         (conflict.resolution !== 'confirmed' || !(conflict.note || '').trim()))
     : [])
 }
-export function approvedGroups(groups, facts) {
+export function approvedGroups(groups, facts, documents = []) {
+  const sourceLookup = Object.fromEntries(documents.map(d => [d.id, d.content]))
+  const contextFor = (fact) => {
+    const content = sourceLookup[fact.sourceId] || ''
+    if (!fact.evidenceMatched || !fact.evidence || !content) return ''
+    const offset = content.indexOf(fact.evidence)
+    return offset < 0 ? '' : content.slice(Math.max(0, offset - 240), Math.min(content.length, offset + fact.evidence.length + 240))
+  }
   const lookup = Object.fromEntries(facts.map(f => [f.id, f]))
   return groups.filter(g => g.included).map(g => ({
     group: g.title, category: g.kind, summary: g.summary,
@@ -14,7 +21,8 @@ export function approvedGroups(groups, facts) {
     evidences: g.memberIds.map(id => lookup[id]).filter(Boolean).map(f => ({
       file: f.sourceFile, period: f.period, project: f.project, title: f.title,
       progress: f.progress, content: f.description, originalQuote: f.evidence,
-      quoteMatched: f.evidenceMatched, numericEvidence: f.numericEvidence
+      quoteMatched: f.evidenceMatched, numericEvidence: f.numericEvidence,
+      sourceExcerpt: contextFor(f)
     })),
     confirmedNotes: (g.conflicts || []).filter(c => c.resolution === 'confirmed')
       .map(c => ({ issue: c.description, userDecision: c.note })),

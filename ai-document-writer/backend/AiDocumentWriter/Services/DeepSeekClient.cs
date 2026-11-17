@@ -5,7 +5,7 @@ using AiDocumentWriter.Models;
 
 namespace AiDocumentWriter.Services;
 
-public sealed class DeepSeekClient(HttpClient http, IConfiguration configuration, LocalKeyStore keyStore)
+public sealed class DeepSeekClient(HttpClient http, IConfiguration configuration, LocalKeyStore keyStore, SkillRegistry? skills = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
@@ -22,7 +22,8 @@ public sealed class DeepSeekClient(HttpClient http, IConfiguration configuration
         if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("当前密钥来源尚未配置 API Key");
         if (string.IsNullOrWhiteSpace(request.UserPrompt) || string.IsNullOrWhiteSpace(request.SystemPrompt))
             throw new ArgumentException("系统指令和用户指令不能为空");
-        if (request.UserPrompt.Length > 100_000 || request.SystemPrompt.Length > 30_000)
+        var finalSystemPrompt = (skills ?? new SkillRegistry()).Compose(request.SystemPrompt, request.WritingSkillId, request.EnhancementSkillId);
+        if (request.UserPrompt.Length > 100_000 || finalSystemPrompt.Length > 30_000)
             throw new ArgumentException("材料过长；当前版本单次请求限制为 100000 字符。多文档分段分析将在 P2 支持");
 
         var model = string.IsNullOrWhiteSpace(request.Model)
@@ -37,7 +38,7 @@ public sealed class DeepSeekClient(HttpClient http, IConfiguration configuration
             ["model"] = model,
             ["messages"] = new[]
             {
-                new { role = "system", content = request.SystemPrompt },
+                new { role = "system", content = finalSystemPrompt },
                 new { role = "user", content = request.UserPrompt }
             },
             ["temperature"] = 0.2,

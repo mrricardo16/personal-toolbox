@@ -1,7 +1,7 @@
 param(
     [ValidateSet('win-x64', 'win-arm64', 'linux-x64')]
     [string]$Target = 'win-x64',
-    [string]$Version = '0.2.0',
+    [string]$Version = '0.3.0',
     [ValidateSet('Auto', 'Desktop', 'Server')]
     [string]$Mode = 'Auto'
 )

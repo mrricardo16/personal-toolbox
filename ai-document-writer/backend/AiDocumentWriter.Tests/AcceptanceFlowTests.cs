@@ -141,6 +141,31 @@ public sealed class AcceptanceFlowTests
         Assert.False(status.GetProperty("canManageKey").GetBoolean());
     }
 
+
+    [Fact]
+    public async Task SkillCatalogAndSelectedRevisionRunThroughHttp()
+    {
+        using var factory = new AcceptanceWebFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Writer-Client", "ai-document-writer");
+        using var listResponse = await client.GetAsync("/api/skills");
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        using var list = JsonDocument.Parse(await listResponse.Content.ReadAsStringAsync());
+        Assert.Equal(7, list.RootElement.GetProperty("skills").GetArrayLength());
+
+        const string original = "第一段：保留。\n第二段：需要优化。\n第三段：保留。";
+        var start = original.IndexOf("第二段", StringComparison.Ordinal);
+        var end = start + "第二段：需要优化。".Length;
+        using var revision = await client.PostAsJsonAsync("/api/writing/revise",
+            new RevisionRequest(FakeChat(), original, "具体化第二段",
+                "selection", start, end, "", "第一段：保留。"));
+        Assert.Equal(HttpStatusCode.OK, revision.StatusCode);
+        var result = await revision.Content.ReadFromJsonAsync<RevisionResult>();
+        Assert.NotNull(result);
+        Assert.Equal("第一段：保留。\n第二段：优化后。\n第三段：保留。", result.CandidateText);
+        Assert.Equal(original, result.PreviousText);
+    }
+
     private static ChatRequest FakeChat() =>
         new("deepseek-flash", "test", "test", "temporary", "fake-key-for-tests", "disabled", "high");
 
@@ -233,6 +258,10 @@ public sealed class AcceptanceFlowTests
                     }
                 };
                 answer = JsonSerializer.Serialize(new { groups });
+            }
+            else if (user.Contains("【本轮需要修改的文字】", StringComparison.Ordinal))
+            {
+                answer = "第二段：优化后。";
             }
             else
             {

@@ -75,11 +75,11 @@
 
 本仓库始终只保留一个 TRPG 产品入口：[trpg-dm-assistant/outputs/trpg-dm-assistant.html](trpg-dm-assistant/outputs/trpg-dm-assistant.html)。它由模块化源码稳定构建，始终指向最新版。
 
-### AI 文档助手（新版 V2，发行包 0.2.0）
+### AI 文档助手（V2.2 协作改稿，发行包 0.3.0）
 
 路径：[新版项目目录](ai-document-writer/) · [原版单文件](ai-document-writer/index.html)
 
-新版是 Vue3 + ASP.NET Core (.NET 10) 工程，提供常规写作、DOCX 多文件参考、年度/多月工作总结、跨月归并和冲突核验、Word 模板 DOCX 导出，以及 JSON/页面 API Key 配置。
+新版是 Vue3 + ASP.NET Core (.NET 10) 工程，提供常规写作、DOCX 多文件参考、年度/多月工作总结、跨月归并和冲突核验、Word 模板 DOCX 导出，以及 JSON/页面 API Key 配置。V0.3.0 新增经审核的中文写作 Skill、AI 定向改稿、版本对比及 A/B 测试入口。
 
 - Windows x64：自包含 ZIP，解压后双击 EXE 自动打开本机网页，无需另装 .NET 或 Node.js。
 - Linux x64：自包含服务器 ZIP，可在部署 HTTPS 和认证后通过网页使用。

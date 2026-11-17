@@ -47,3 +47,22 @@ test('style-only DOCX is excluded from annual facts but both-role and manual fac
   assert.equal(result[0].id, 'F2')
   assert.equal(result[2].content, '补充验收情况')
 })
+
+test('annual writing keeps nearby source context only from approved fact files', () => {
+  const fullSource = '业务背景：需要进行设备检查。3月完成设备巡检20次，另发现1项待处理问题。'
+  const facts = [{
+    id:'F1-1', sourceId:'F1', sourceFile:'3月.docx', period:'2026-03',
+    project:'设备巡检', title:'巡检', progress:'已完成',
+    description:'完成巡检20次', evidence:'3月完成设备巡检20次',
+    evidenceMatched:true, numericEvidence:'20次'
+  }]
+  const groups = [{
+    included:true, title:'设备巡检', kind:'independent', summary:'完成巡检',
+    metrics:'20次', memberIds:['F1-1'], conflicts:[]
+  }]
+  const docs = [{ id:'F1', content:fullSource }, { id:'STYLE', content:'2025年完成500次巡检' }]
+  const result = approvedGroups(groups, facts, docs)
+  const excerpt = result[0].evidences[0].sourceExcerpt
+  assert.match(excerpt, /另发现1项待处理问题/)
+  assert.ok(!excerpt.includes('2025年完成500次巡检'))
+})

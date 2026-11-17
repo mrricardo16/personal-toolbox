@@ -20,7 +20,9 @@ const props = defineProps({
   strictFacts: { type: Boolean, default: true },
   autoReview: { type: Boolean, default: true },
   allowGeneralSuggestions: { type: Boolean, default: false },
-  stylePrompt: { type: String, default: '' }
+  stylePrompt: { type: String, default: '' },
+  writingStrategy: { type: String, default: 'skills' },
+  enhanceWriting: { type: Boolean, default: false }
 })
 const emit = defineEmits(['generated'])
 const stage = ref('idle')
@@ -30,6 +32,8 @@ const facts = ref([])
 const groups = ref([])
 const autoGenerate = ref(true)
 const showDetails = ref(false)
+const outline = ref('')
+const confirmOutline = ref(false)
 const totalTokens = ref(0)
 function addUsage(usage) { if (Number.isFinite(usage?.total_tokens)) totalTokens.value += usage.total_tokens }
 const busy = ref(false)
@@ -70,6 +74,7 @@ function reset() {
   error.value = ''
   progress.value = ''
   totalTokens.value = 0
+  outline.value = ''
 }
 watch(
   () => JSON.stringify([
@@ -92,6 +97,7 @@ async function startAnalysis() {
   error.value = ''
   groups.value = []
   facts.value = []
+  outline.value = ''
   stepIndex.value = 0
   stepTotal.value = sourceDocs.value.length
   try {
@@ -128,7 +134,7 @@ async function startAnalysis() {
   }
 }
 function approvedMaterials() {
-  return approvedGroups(groups.value, facts.value)
+  return approvedGroups(groups.value, facts.value, sourceDocs.value)
 }
 async function generateInternal() {
   if (blocking.value.length) {
@@ -141,6 +147,22 @@ async function generateInternal() {
   if (data.length > 85000) { error.value = '整合结果超过单次请求限制，请减少工作事项'; return }
   const styleExamples = props.files.filter(f => f.role !== 'facts')
     .map(f => '【风格参考：' + f.name + '】\n' + f.content.slice(0, 3000)).join('\n\n').slice(0, 6500)
+  if (props.writingStrategy === 'skills' && !outline.value.trim()) {
+    stage.value = 'outline'
+    progress.value = '正在依据已核验事实规划篇章结构……'
+    const plan = await call('/api/llm/chat', {
+      ...chatSettings(),
+      writingSkillId: 'draft-summary',
+      systemPrompt: '你是企业工作总结的结构规划编辑。只根据事实台账输出可编辑的章节提纲。每个章节指出主要事实 ID、叙述重点与必要的原文细节；不要虚构事实，不要代写正文。',
+      userPrompt: '【任务】\n' + props.taskRequirement + '\n【事实台账】\n' + data
+    })
+    addUsage(plan.usage)
+    outline.value = plan.content.slice(0, 9000).trim()
+    if (confirmOutline.value) {
+      progress.value = '写作提纲已生成，请检查并修改后点击“按当前台账与提纲生成”'
+      return
+    }
+  }
   const system = [
     '你是严谨的企业年度/多月工作总结助手。只依据已核验台账写作。',
     '跨月阶段进展应当形成时间线，不能把每月比例累加。',
@@ -150,7 +172,7 @@ async function generateInternal() {
     '若存在未解决的一般性疑点，文末标记【需核实】而不是得出确定性结论。',
     '不得虚构数据、项目、政策、责任主体、成果或原因。',
     '直接输出完整文稿，遵守用户要求的结构、月份与篇幅。',
-    props.stylePrompt.slice(0, 14000)
+    props.writingStrategy === 'legacy' ? props.stylePrompt.slice(0, 14000) : '启用文种专用 Skill，依据原始事实细节自然写作，减少空泛套话。'
   ].join('\n')
   const user = [
     '【标题】', props.docTitle || '工作总结',
@@ -163,13 +185,16 @@ async function generateInternal() {
     '【严格事实模式】', props.strictFacts ? '启用' : '关闭（仍不得虚构事实）',
     '【允许一般性建议】', props.allowGeneralSuggestions ? '仅明确标记为建议时允许' : '不允许',
     '【已归并的事项及来源】', data,
+    '【提纲（不得构造新事实）】', props.writingStrategy === 'skills' ? outline.value : '由文种 Prompt 决定',
     '【仅供语言与章节结构参考】', styleExamples || '无'
   ].join('\n\n')
   try {
     stage.value = 'generate'
     progress.value = '正在根据确认的台账生成总结……'
     const first = await call('/api/llm/chat', {
-      ...chatSettings(), systemPrompt: system, userPrompt: user
+      ...chatSettings(), systemPrompt: system, userPrompt: user,
+      writingSkillId: props.writingStrategy === 'skills' ? 'draft-summary' : null,
+      enhancementSkillId: props.writingStrategy === 'skills' && props.enhanceWriting ? 'improve-style' : null
     })
     addUsage(first.usage)
     emit('generated', { content: attachPendingQuestions(first.content, groups.value), message: '初稿已生成，可复制或下载' })
@@ -178,14 +203,15 @@ async function generateInternal() {
         progress.value = '初稿完成，正在进行忠实审校……'
         const reviewed = await call('/api/llm/chat', {
           ...chatSettings(),
-          systemPrompt: '你是事实审校员。修正语言及逻辑表达，不得创造新事实，未确认事项标记【需核实】。',
+          writingSkillId: props.writingStrategy === 'skills' ? 'review-facts' : null,
+          systemPrompt: '你是事实审校员。只修正必要的事实和语病，保留已有篇章风格与具体细节；未确认事项标记【需核实】。',
           userPrompt: '【核验依据】\n' + data + '\n【初稿】\n' + first.content
         })
         addUsage(reviewed.usage)
         if (reviewed.content?.trim()) emit('generated', { content: attachPendingQuestions(reviewed.content, groups.value), message: '年度总结审校完成' })
       } catch (e) {
         if (e.name === 'AbortError') throw e
-        emit('generated', { content: attachPendingQuestions(first.content, groups.value), message: '审校失败，已保留初稿：' + e.message })
+        progress.value = '审校失败，已保留初稿：' + e.message
       }
     }
     stage.value = 'done'
@@ -202,6 +228,10 @@ async function generateApproved() {
   busy.value = true
   error.value = ''
   try { await generateInternal() }
+  catch (e) {
+    stage.value = 'review'
+    error.value = e.name === 'AbortError' ? '已取消，原稿保持不变' : '生成失败：' + e.message
+  }
   finally { busy.value = false; controller = null }
 }
 </script>
@@ -210,7 +240,11 @@ async function generateApproved() {
   <section class="panel annual-workspace">
     <h2>五、多月总结分析工作台</h2>
     <p class="hint">逐篇提取可追溯事实 → 归并事项及去重 → 检查冲突 → 生成总结。仅上传文件并不会自动视为内容准确。</p>
-    <p class="hint">当前预计至少 {{ estimatedExtractionCalls }} 次分片提取请求，另有归并、生成和审校请求。API 调用可能产生费用。</p>
+    <p class="hint">当前预计至少 {{ estimatedExtractionCalls }} 次分片提取请求，另有归并、生成和可选审校请求；Skill 模式会多一次提纲规划调用。API 调用可能产生费用。</p>
+    <label v-if="writingStrategy === 'skills'"><input type="checkbox" v-model="confirmOutline" />生成提纲后先暂停，供我检查和修改再写正文</label>
+    <label v-if="outline && writingStrategy === 'skills'">当前写作提纲（可编辑）
+      <textarea v-model="outline" rows="7" placeholder="这里是由已确认事实构建的写作提纲" />
+    </label>
     <div class="toolbar">
       <label class="auto-toggle"><input type="checkbox" v-model="autoGenerate" />无关键冲突时自动生成</label>
       <button class="primary" :disabled="busy" @click="startAnalysis">重新分析全部事实材料</button>
@@ -267,7 +301,7 @@ async function generateApproved() {
         </div>
       </div>
       <div class="toolbar">
-        <button class="primary" :disabled="busy || blocking.length > 0 || confirmedCount === 0" @click="generateApproved">根据当前台账生成总结</button>
+        <button class="primary" :disabled="busy || blocking.length > 0 || confirmedCount === 0" @click="generateApproved">按当前台账与提纲生成总结</button>
         <span v-if="blocking.length">尚有 {{ blocking.length }} 项关键冲突，暂不能生成</span>
       </div>
       <p class="hint">人工修改的归并说明、统计指标和冲突处理依据会传入最终写作；请核查其真实性。一般疑问未确认时必须在终稿中注明需核实。</p>
