@@ -381,8 +381,8 @@ function onAnnualGenerated(payload) {
   <main class="shell">
     <header class="header">
       <div>
-        <h1>AI 文档助手 <small>V2.1 · 多文档与年度总结</small></h1>
-        <p>保留原有写作技能与两阶段审校，新增后端配置与 DOCX 参考材料。</p>
+        <h1>AI 文档助手 <small>V2.2 · Skill 协作改稿</small></h1>
+        <p>原版 Prompt 可回退，支持经审核的 Skill、定向改稿与稿件版本比较。</p>
       </div>
       <a href="/legacy.html" target="_blank" rel="noopener">打开原版页面</a>
     </header>
@@ -433,6 +433,21 @@ function onAnnualGenerated(payload) {
           <select v-model="lengthLevel"><option>简洁</option><option>标准</option><option>详细</option></select>
         </label>
       </div>
+      <div class="grid">
+        <label>写作引擎
+          <select v-model="writingStrategy">
+            <option value="skills">本地写作 Skill（实验）</option>
+            <option value="legacy">经典 Prompt（兼容模式）</option>
+          </select>
+        </label>
+        <label>语言优化
+          <select v-model="enhanceWriting" :disabled="writingStrategy !== 'skills'">
+            <option :value="false">不加载额外优化 Skill</option>
+            <option :value="true">加载中文表达优化 Skill</option>
+          </select>
+        </label>
+      </div>
+      <p class="hint">Skill 按文种选择性加载，不会执行第三方脚本；经典模式保留旧 Prompt。当前内置 {{ availableSkills.length }} 项审核过的本地 Skill，效果尚待真实材料对照。</p>
       <label>系统指令（可编辑）<textarea v-model="prompt" rows="7" /></label>
       <p class="hint">规则直接从原版 index.html 的 13 种文档技能提取，避免迁移时丢失原 Prompt 内容。</p>
     </section>
@@ -473,7 +488,7 @@ function onAnnualGenerated(payload) {
       <div class="checks">
         <label><input v-model="strictFacts" type="checkbox"/>严格事实模式</label>
         <label><input v-model="appendReview" type="checkbox"/>附待补充与核验事项</label>
-        <label><input v-model="autoReview" type="checkbox"/>生成后自动忠实审校</label>
+        <label><input v-model="autoReview" type="checkbox"/>生成后追加审校稿（不覆盖初稿）</label>
         <label><input v-model="allowGeneralSuggestions" type="checkbox"/>允许标注为建议的一般性补充</label>
       </div>
     </section>
@@ -498,6 +513,8 @@ function onAnnualGenerated(payload) {
       :auto-review="autoReview"
       :allow-general-suggestions="allowGeneralSuggestions"
       :style-prompt="prompt"
+      :writing-strategy="writingStrategy"
+      :enhance-writing="enhanceWriting"
       @generated="onAnnualGenerated"
     />
     <section class="panel">
@@ -516,18 +533,34 @@ function onAnnualGenerated(payload) {
     <section class="panel">
       <h2>{{ mode === 'annual' ? '七' : '六' }}、生成结果（可直接编辑）</h2>
       <div class="toolbar">
-        <button class="primary" :disabled="busy || uploadBusy || mode !== 'general'" @click="generate">生成文档</button>
+        <button class="primary" :disabled="busy || uploadBusy || mode !== 'general'" @click="generate">生成新稿</button>
+        <button :disabled="busy || uploadBusy || mode !== 'general'" @click="compareDrafts">A/B 对照经典与 Skill（2次调用）</button>
         <button :disabled="!busy" @click="cancel">停止</button>
         <button @click="copyResult">复制</button>
         <button @click="download('md')">下载 Markdown</button>
         <button @click="download('txt')">下载 TXT</button>
         <button @click="download('docx')">下载 Word DOCX</button>
-        <button @click="result = ''; status = ''; audit = ''">清空</button>
+        <button @click="clearCurrent">清空当前正文</button>
       </div>
       <p class="status" role="status">{{ status }} <span v-if="tokenUsage">（本次已报告 {{ tokenUsage }} Token）</span></p>
       <p v-if="audit" class="audit">{{ audit }}</p>
-      <textarea class="result" v-model="result" rows="18" placeholder="生成结果会出现在这里，也可以直接编辑后导出"/>
+      <textarea class="result" v-model="result" rows="18" placeholder="生成结果会出现在这里，也可以选中部分内容要求 AI 修改" @select="captureSelection" @mouseup="captureSelection" @keyup="captureSelection"/>
     </section>
+    <RevisionWorkspace
+      :content="result"
+      :versions="versions"
+      :selection="editorSelection"
+      :model="model"
+      :thinking-type="thinkingType"
+      :reasoning-effort="reasoningEffort"
+      :key-source="keySource"
+      :key-input="keyInput"
+      :protected-terms="protectedTerms"
+      :fact-context="getMaterials().factText"
+      @accept="receiveRevision"
+      @save="({ label, content }) => recordVersion(label, content)"
+      @restore="restoreVersion"
+    />
     <footer>本工具会将参与写作的材料发送至配置的模型 API。请勿上传涉密或未经授权对外传输的资料。</footer>
   </main>
 </template>

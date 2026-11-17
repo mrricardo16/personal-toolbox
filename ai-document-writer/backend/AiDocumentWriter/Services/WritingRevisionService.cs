@@ -40,7 +40,7 @@ public sealed class WritingRevisionService(DeepSeekClient client)
             如果要求局部修改，只输出选中文本的替换内容；如果要求全文修改，只输出全文。
             不解释修改过程，不使用代码围栏，不添加“以下是修订后文稿”等包装文字。
             """;
-        var user = string.Join("\n\n", [
+        var user = string.Join("\n\n", new string[] {
             "【修改范围】", isSelection ? "局部选中文本" : "全文",
             "【用户的修改意见】", request.Instruction.Trim(),
             "【本轮需要修改的文字】", selected,
@@ -49,7 +49,7 @@ public sealed class WritingRevisionService(DeepSeekClient client)
                 string.IsNullOrWhiteSpace(request.FactContext) ? "无额外材料" : request.FactContext,
             "【必须原样保留的内容】",
                 string.IsNullOrWhiteSpace(request.ProtectedTerms) ? "当前稿件中的业务专有名词与原有事实" : request.ProtectedTerms
-        ]);
+        });
         var chat = request.Chat with
         {
             SystemPrompt = system,
@@ -62,7 +62,7 @@ public sealed class WritingRevisionService(DeepSeekClient client)
         var replacement = response.Content.Trim();
         if (string.IsNullOrWhiteSpace(replacement)) throw new InvalidOperationException("模型没有返回修改内容");
         var candidate = isSelection
-            ? string.Concat(current.AsSpan(0, start), replacement, current.AsSpan(end))
+            ? current[..start] + replacement + current[end..]
             : replacement;
 
         var protectedItems = (request.ProtectedTerms ?? "")
