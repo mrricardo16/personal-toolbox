@@ -40,6 +40,14 @@ if ($Target.StartsWith('win')) {
 
       $settings = Invoke-RestMethod -Uri "$address/api/settings/status" -TimeoutSec 5
       if ($null -eq $settings.serverKeyConfigured) { throw '配置状态 API 响应无效' }
+      $writerHeaders = @{ 'X-Writer-Client' = 'ai-document-writer' }
+      $testPayload = '{"apiKey":"CI-test-placeholder-do-not-use"}'
+      Invoke-RestMethod -Uri "$address/api/settings/key" -Method Post -Headers $writerHeaders -ContentType 'application/json' -Body $testPayload -TimeoutSec 5 | Out-Null
+      $savedStatus = Invoke-RestMethod -Uri "$address/api/settings/status" -TimeoutSec 5
+      if (-not $savedStatus.savedKeyConfigured) { throw '本机 API Key 持久化检查失败' }
+      Invoke-RestMethod -Uri "$address/api/settings/key" -Method Delete -Headers $writerHeaders -TimeoutSec 5 | Out-Null
+      $clearedStatus = Invoke-RestMethod -Uri "$address/api/settings/status" -TimeoutSec 5
+      if ($clearedStatus.savedKeyConfigured) { throw '本机 API Key 清理检查失败' }
       $boundary = '----DocxSmokeTest' + [Guid]::NewGuid().ToString('N')
       $crlf = [string][char]13 + [char]10
       $formBody = @(
