@@ -93,3 +93,9 @@ PDF、OCR、复杂图文混排、多人账号/租户隔离、云端历史文档�
 - [ ] 执行 `evaluation/cases.json` 中 20 组虚构案例；记录硬约束通过率与人工盲评结果，不能只看 Star 数或生成流畅程度。
 
 具体量化办法见 [WRITING_EVAL.md](WRITING_EVAL.md)。这些人工质量检查目前**未完成**。
+
+### V0.3.0 自动化补充
+
+- PR [#30](https://github.com/mrricardo16/personal-toolbox/pull/30) 已合并，新增 Skill Registry、定向修订 API、候选稿/版本比较与 20 组虚构写作对照素材。
+- [V0.3.0 PR CI #44041270217](https://github.com/mrricardo16/personal-toolbox/actions/runs/44041270217) 的 Windows/Linux 构建及测试成功；合并后 [main CI #44041581658](https://github.com/mrricardo16/personal-toolbox/actions/runs/44041581658) 以实时状态为准。
+- 实际中文写作质量的 A/B 人工盲评仍未执行，参考 [WRITING_EVAL.md](WRITING_EVAL.md)。
