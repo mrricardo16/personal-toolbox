@@ -107,7 +107,9 @@ public class DocumentTests
     public void TemplateKeepsPageSetupButDropsUnapprovedHeaders()
     {
         var initial = new DocxExporter().Export("原来的工作资料", "旧标题", null, false);
-        var template = new MemoryStream(initial);
+        var template = new MemoryStream();
+        template.Write(initial, 0, initial.Length);
+        template.Position = 0;
         using (var source = WordprocessingDocument.Open(template, true))
         {
             var main = source.MainDocumentPart!;
