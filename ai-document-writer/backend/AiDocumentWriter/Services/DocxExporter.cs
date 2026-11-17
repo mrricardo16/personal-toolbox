@@ -69,7 +69,8 @@ public sealed class DocxExporter
 
     private static void AddContent(Body body, string source, string? title, string? tableStyle, MainDocumentPart main)
     {
-        if (!string.IsNullOrWhiteSpace(title) && !source.TrimStart().StartsWith(title.Trim(), StringComparison.Ordinal))
+        var firstLine = source.TrimStart().Split('\n', 2)[0].Trim().TrimStart('#').Trim();
+        if (!string.IsNullOrWhiteSpace(title) && !string.Equals(firstLine, title.Trim(), StringComparison.Ordinal))
             body.Append(CreateParagraph(title.Trim(), ResolveStyle(main, "Title")));
 
         var lines = source.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');

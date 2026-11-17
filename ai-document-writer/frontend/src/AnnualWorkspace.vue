@@ -69,7 +69,16 @@ function reset() {
   progress.value = ''
   totalTokens.value = 0
 }
-watch(() => props.files.length, reset)
+watch(
+  () => JSON.stringify([
+    props.files.map(f => [f.id, f.role, f.month, f.content.length]),
+    props.sourceMaterial, props.taskRequirement
+  ]),
+  () => {
+    if (busy.value) controller?.abort()
+    else if (stage.value !== 'idle') reset()
+  }
+)
 async function startAnalysis() {
   if (busy.value) return
   if (!sourceDocs.value.length) { error.value = '请上传至少一份事实材料，或填写手动事实材料'; return }

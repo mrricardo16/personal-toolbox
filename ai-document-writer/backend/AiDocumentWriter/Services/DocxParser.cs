@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using AiDocumentWriter.Models;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
@@ -20,6 +21,7 @@ public sealed class DocxParser
             throw new ArgumentException("文件不是有效的 DOCX 压缩包");
         stream.Position = 0;
         using var doc = WordprocessingDocument.Open(stream, false);
+        var styles = doc.MainDocumentPart?.StyleDefinitionsPart?.Styles;
         var body = doc.MainDocumentPart?.Document?.Body
             ?? throw new ArgumentException("DOCX 文件缺少正文");
         var text = new StringBuilder();
@@ -39,8 +41,13 @@ public sealed class DocxParser
                 var line = string.Concat(paragraph.Descendants<Text>().Select(t => t.Text));
                 if (string.IsNullOrWhiteSpace(line)) continue;
                 var style = paragraph.ParagraphProperties?.ParagraphStyleId?.Val?.Value;
-                var prefix = style?.StartsWith("Heading", StringComparison.OrdinalIgnoreCase) == true
-                    ? "# " : "";
+                var styleName = styles?.Elements<Style>()
+                    .FirstOrDefault(s => string.Equals(s.StyleId?.Value, style, StringComparison.Ordinal))
+                    ?.StyleName?.Val?.Value ?? style ?? "";
+                var heading = Regex.Match(styleName, @"(?:heading\s*|标题\s*)([1-9])", RegexOptions.IgnoreCase);
+                var prefix = heading.Success
+                    ? new string('#', Math.Clamp(int.Parse(heading.Groups[1].Value), 1, 3)) + " "
+                    : styleName is "Title" or "标题" ? "# " : "";
                 AppendLine(prefix + line);
             }
             else if (block is Table table)

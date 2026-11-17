@@ -92,6 +92,46 @@ public class DocumentTests
             g.Conflicts.Any(c => c.Severity == "critical"));
     }
 
+
+    [Fact]
+    public void WordExportDoesNotDuplicateExistingMarkdownTitle()
+    {
+        var bytes = new DocxExporter().Export("# 年度总结\n正文内容", "年度总结", null, false);
+        using var document = WordprocessingDocument.Open(new MemoryStream(bytes), false);
+        var count = document.MainDocumentPart!.Document.Body!.Elements<Paragraph>()
+            .Count(p => p.InnerText == "年度总结");
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public void TemplateKeepsPageSetupButDropsUnapprovedHeaders()
+    {
+        var initial = new DocxExporter().Export("原来的工作资料", "旧标题", null, false);
+        var template = new MemoryStream(initial);
+        using (var source = WordprocessingDocument.Open(template, true))
+        {
+            var main = source.MainDocumentPart!;
+            var header = main.AddNewPart<HeaderPart>();
+            header.Header = new Header(new Paragraph(new Run(new Text("2025年旧页眉"))));
+            header.Header.Save();
+            var section = new SectionProperties(new PageSize { Width = 11906U, Height = 16838U });
+            section.PrependChild(new HeaderReference
+            {
+                Type = HeaderFooterValues.Default,
+                Id = main.GetIdOfPart(header)
+            });
+            main.Document.Body!.Append(section);
+            main.Document.Save();
+        }
+        var generated = new DocxExporter().Export(
+            "2026年度新工作资料", "新标题", new MemoryStream(template.ToArray()), false);
+        using var result = WordprocessingDocument.Open(new MemoryStream(generated), false);
+        Assert.Empty(result.MainDocumentPart!.HeaderParts);
+        Assert.Equal(11906U, result.MainDocumentPart.Document.Body!
+            .Elements<SectionProperties>().Single().GetFirstChild<PageSize>()!.Width!.Value);
+        Assert.DoesNotContain("原来的工作资料", result.MainDocumentPart.Document.Body.InnerText);
+    }
+
     private static ChatRequest FakeChat() =>
         new("fake-model", "system", "user", "server", null, "disabled", "high");
 
