@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { criticalConflicts, approvedGroups, attachPendingQuestions } from './annualGuard.js'
+import { criticalConflicts, approvedGroups, attachPendingQuestions, buildAnnualSourceDocuments } from './annualGuard.js'
 
 const props = defineProps({
   files: { type: Array, required: true },
@@ -37,13 +37,7 @@ const stepIndex = ref(0)
 const stepTotal = ref(0)
 let controller = null
 
-const sourceDocs = computed(() => {
-  const docs = props.files.filter(f => f.role !== 'style')
-    .map(f => ({ id: 'F' + f.id, fileName: f.name, month: f.month || '', content: f.content }))
-  if (props.sourceMaterial.trim())
-    docs.push({ id: 'manual', fileName: '手动输入的事实材料', month: '', content: props.sourceMaterial.trim() })
-  return docs
-})
+const sourceDocs = computed(() => buildAnnualSourceDocuments(props.files, props.sourceMaterial))
 const estimatedExtractionCalls = computed(() => sourceDocs.value.reduce(
   (sum, file) => sum + Math.ceil(file.content.length / 18000), 0
 ))

@@ -18,6 +18,10 @@ namespace AiDocumentWriter.Tests;
 /// Full HTTP workflow test using six synthetic DOCX reports and a deterministic
 /// in-process fake model. No external AI service, API key, or billing is involved.
 /// </summary>
+[CollectionDefinition("AcceptanceAppHost", DisableParallelization = true)]
+public sealed class AcceptanceAppHostCollection { }
+
+[Collection("AcceptanceAppHost")]
 public sealed class AcceptanceFlowTests
 {
     private static readonly (string Month, string Content)[] Samples =
@@ -142,6 +146,22 @@ public sealed class AcceptanceFlowTests
 
     private sealed class AcceptanceWebFactory : WebApplicationFactory<Program>
     {
+        private readonly string? _previousHostingMode;
+
+        public AcceptanceWebFactory()
+        {
+            // The production program reads AIWRITER_ config before building the
+            // host, so a ConfigureWebHost override alone is too late.
+            _previousHostingMode = Environment.GetEnvironmentVariable("AIWRITER_Hosting__Mode");
+            Environment.SetEnvironmentVariable("AIWRITER_Hosting__Mode", "Server");
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            base.Dispose(disposing);
+            Environment.SetEnvironmentVariable("AIWRITER_Hosting__Mode", _previousHostingMode);
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseContentRoot(AppContext.BaseDirectory);

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { criticalConflicts, approvedGroups, attachPendingQuestions } from '../src/annualGuard.js'
+import { criticalConflicts, approvedGroups, attachPendingQuestions, buildAnnualSourceDocuments } from '../src/annualGuard.js'
 
 test('critical conflicts block without an explanation', () => {
   const item = { included: true, conflicts: [{ severity: 'critical', resolution: 'confirmed', note: '' }] }
@@ -33,4 +33,17 @@ test('normal unresolved conflicts are always appended to the generated document'
   assert.match(output, /待核实事项/)
   assert.match(output, /统计口径不一致/)
   assert.equal(attachPendingQuestions('正文', [{ included: false, conflicts: groups[0].conflicts }]), '正文')
+})
+
+test('style-only DOCX is excluded from annual facts but both-role and manual facts remain', () => {
+  const materials = [
+    { id: 1, name: '往年总结.docx', month: '', content: '往年已取得100项成果', role: 'style' },
+    { id: 2, name: '一月.docx', month: '2026-01', content: '完成系统设计', role: 'facts' },
+    { id: 3, name: '二月.docx', month: '2026-02', content: '完成系统测试', role: 'both' }
+  ]
+  const result = buildAnnualSourceDocuments(materials, '补充验收情况')
+  assert.deepEqual(result.map(x => x.fileName), ['一月.docx', '二月.docx', '手动输入的事实材料'])
+  assert.ok(!JSON.stringify(result).includes('往年已取得100项成果'))
+  assert.equal(result[0].id, 'F2')
+  assert.equal(result[2].content, '补充验收情况')
 })
