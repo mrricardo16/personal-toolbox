@@ -1,6 +1,6 @@
 param(
   [string]$Target = 'win-x64',
-  [string]$Version = '0.2.0',
+  [string]$Version = '0.3.0',
   [switch]$SmokeTest
 )
 $ErrorActionPreference = 'Stop'
@@ -11,7 +11,7 @@ if (-not (Test-Path $archive)) { throw "压缩包不存在：$archive" }
 $temp = Join-Path $root 'dist/package-check'
 if (Test-Path $temp) { Remove-Item -Recurse -Force $temp }
 Expand-Archive -Path $archive -DestinationPath $temp
-foreach ($file in @('wwwroot/index.html','wwwroot/legacy.html','appsettings.json','config/appsettings.local.json','README.md')) {
+foreach ($file in @('wwwroot/index.html','wwwroot/legacy.html','appsettings.json','config/appsettings.local.json','README.md','skills/draft-summary/SKILL.md','skills/revise-targeted/SKILL.md')) {
   if (-not (Test-Path (Join-Path $temp $file))) { throw "压缩包缺失：$file" }
 }
 if ($Target.StartsWith('win')) {
@@ -37,6 +37,8 @@ if ($Target.StartsWith('win')) {
       if (-not $address) { throw '启动后未发现监听地址' }
       $health = Invoke-RestMethod -Uri "$address/api/health" -TimeoutSec 5
       if ($health.status -ne 'ok') { throw '健康检查失败' }
+      $catalog = Invoke-RestMethod -Uri "$address/api/skills" -TimeoutSec 5
+      if ($catalog.skills.Count -ne 7) { throw 'Skill 目录加载异常' }
       # Browser-origin isolation on the desktop loopback listener.
       $http = [System.Net.Http.HttpClient]::new()
       try {
