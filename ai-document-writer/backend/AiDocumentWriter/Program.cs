@@ -7,7 +7,11 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory
+});
 builder.Configuration.AddJsonFile("config/appsettings.local.json", optional: true, reloadOnChange: true);
 builder.Configuration.AddEnvironmentVariables(prefix: "AIWRITER_");
 
@@ -123,7 +127,7 @@ app.MapPost("/api/documents/parse", async (HttpRequest request, DocxParser parse
         var docs = files.Select(parser.Parse).ToArray();
         return Results.Ok(new { documents = docs });
     }
-    catch (Exception e) when (e is ArgumentException or InvalidDataException or System.IO.Packaging.PackageException
+    catch (Exception e) when (e is ArgumentException or InvalidDataException or System.IO.FileFormatException or IOException
         or DocumentFormat.OpenXml.Packaging.OpenXmlPackageException)
     {
         return Results.BadRequest(new { error = "DOCX 读取失败：" + e.Message });
