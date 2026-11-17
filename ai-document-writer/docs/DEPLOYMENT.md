@@ -1,15 +1,15 @@
 # AI 文档助手｜打包、配置与部署
 
-> 2026-11-17；发行包版本 **0.2.0**。支持 Windows 便携运行与 Linux/Windows Web 服务器运行。两者共用 Vue3 + ASP.NET Core 代码；仅托管前端静态文件不能使用模型调用与 DOCX 服务。
+> 2026-11-17；发行包版本 **0.3.0**。支持 Windows 便携运行与 Linux/Windows Web 服务器运行。两者共用 Vue3 + ASP.NET Core 代码；仅托管前端静态文件不能使用模型调用与 DOCX 服务。
 
 ## 1. 下载已经构建的发行包
 
-最近核实成功的 GitHub Actions：[AI Document Writer build #44027389276](https://github.com/mrricardo16/personal-toolbox/actions/runs/44027389276)。在页面 **Artifacts** 中：
+最近核实成功的 GitHub Actions：[AI Document Writer build #44027389276](https://github.com/mrricardo16/personal-toolbox/actions/workflows/ai-document-writer-ci.yml)。在页面 **Artifacts** 中：
 
 | Artifact | 对应压缩包 | 用途 |
 | --- | --- | --- |
-| `ai-document-writer-win-x64` | `AI-Document-Writer-v0.2.0-win-x64.zip` | Windows x64 双击本机使用 |
-| `ai-document-writer-linux-x64` | `AI-Document-Writer-v0.2.0-linux-x64.zip` | Linux x64 运行 Web 服务 |
+| `ai-document-writer-win-x64` | `AI-Document-Writer-v0.3.0-win-x64.zip` | Windows x64 双击本机使用 |
+| `ai-document-writer-linux-x64` | `AI-Document-Writer-v0.3.0-linux-x64.zip` | Linux x64 运行 Web 服务 |
 
 GitHub 下载的是外层归档，**先解压外层，再解压脚本生成的发行 ZIP**。Artifacts 有过期时间，过期后可在 Actions 重新执行工作流或自行构建。
 
@@ -71,7 +71,7 @@ $env:AIWRITER_Hosting__Mode = "Server"
 .\scripts\build.ps1 -Target win-x64
 ```
 
-输出位置：`dist/AI-Document-Writer-v0.2.0-win-x64.zip`。
+输出位置：`dist/AI-Document-Writer-v0.3.0-win-x64.zip`。
 
 该脚本会安装前端依赖、从旧版提取文档技能规则、构建 Vue、复制旧 `index.html` 为 `legacy.html`、执行 .NET 自包含发布、写入不含 Key 的默认配置并压缩。若发现后端仓库配置中存在真实 Key，构建会拒绝继续。
 
@@ -89,7 +89,7 @@ $env:AIWRITER_Hosting__Mode = "Server"
 .\scripts\build.ps1 -Target linux-x64 -Mode Server
 ```
 
-生成：`dist/AI-Document-Writer-v0.2.0-linux-x64.zip`。在 Linux 服务器解压后，进入发布目录：
+生成：`dist/AI-Document-Writer-v0.3.0-linux-x64.zip`。在 Linux 服务器解压后，进入发布目录：
 
 ```bash
 chmod +x ./AiDocumentWriter
@@ -134,3 +134,12 @@ npm run dev
 - [进度与交付评估](STATUS.md)
 - [自动和真实业务验收](ACCEPTANCE.md)
 - [开发路线](ROADMAP.md)
+
+
+## 9. 内置 Skill 文件与稿件历史
+
+V0.3.0 会在 Windows/Linux 发行包中复制 `skills/*/SKILL.md`。若这些文件丢失，Skill 模式无法正常工作，构建脚本和 Windows 冒烟测试会核对关键文件存在；经典模式不会加载这些规则。
+
+稿件历史仅存在于当前浏览器会话内存，不与 API Key 一起保存，也不会自动上传至后端数据库。请在关闭页面前使用“导出版本记录 JSON”保存历史。该文件包含完整文稿内容，应自行保管并避免传到未经授权的云服务。
+
+见 [写作 Skill 指南](WRITING_SKILLS.md)。

@@ -26,7 +26,7 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Frontend review-rule tests
         shell: pwsh
-        run: node --test .\frontend\tests\annualGuard.test.mjs .\frontend\tests\writingStrategies.test.mjs
+        run: node --test .\frontend\tests\annualGuard.test.mjs .\frontend\tests\writingStrategies.test.mjs .\frontend\tests\evaluationCases.test.mjs
       - name: Backend unit tests
         shell: pwsh
         run: dotnet test .\backend\AiDocumentWriter.Tests\AiDocumentWriter.Tests.csproj -c Release

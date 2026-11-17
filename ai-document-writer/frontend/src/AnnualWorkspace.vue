@@ -211,7 +211,7 @@ async function generateInternal() {
         if (reviewed.content?.trim()) emit('generated', { content: attachPendingQuestions(reviewed.content, groups.value), message: '年度总结审校完成' })
       } catch (e) {
         if (e.name === 'AbortError') throw e
-        emit('generated', { content: attachPendingQuestions(first.content, groups.value), message: '审校失败，已保留初稿：' + e.message })
+        progress.value = '审校失败，已保留初稿：' + e.message
       }
     }
     stage.value = 'done'
@@ -228,6 +228,10 @@ async function generateApproved() {
   busy.value = true
   error.value = ''
   try { await generateInternal() }
+  catch (e) {
+    stage.value = 'review'
+    error.value = e.name === 'AbortError' ? '已取消，原稿保持不变' : '生成失败：' + e.message
+  }
   finally { busy.value = false; controller = null }
 }
 </script>

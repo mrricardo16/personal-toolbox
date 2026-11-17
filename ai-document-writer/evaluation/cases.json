@@ -1,0 +1,263 @@
+{
+  "schemaVersion": 1,
+  "description": "自编写的合成写作对照样本；不含真实个人或公司数据。对照真实生成需用户自己的 API Key。",
+  "cases": [
+    {
+      "id": "S01",
+      "skill": "summary",
+      "source": "2026年1月完成WMS接口联调，2月开始现场测试，3月仍有2个故障未关闭。",
+      "task": "总结第一季度项目进度。",
+      "mustContain": [
+        "WMS",
+        "2个故障"
+      ],
+      "mustNotContain": [
+        "全部验收通过"
+      ]
+    },
+    {
+      "id": "S02",
+      "skill": "summary",
+      "source": "1月完成巡检20次，2月完成巡检25次，3月完成巡检30次，均为单月独立次数。",
+      "task": "归纳季度巡检。",
+      "mustContain": [
+        "75次"
+      ],
+      "mustNotContain": [
+        "巡检225次"
+      ]
+    },
+    {
+      "id": "S03",
+      "skill": "summary",
+      "source": "1月完成率60%，2月为80%，3月为90%；3月项目尚未验收。",
+      "task": "写项目阶段总结。",
+      "mustContain": [
+        "90%",
+        "尚未验收"
+      ],
+      "mustNotContain": [
+        "230%",
+        "验收完成"
+      ]
+    },
+    {
+      "id": "S04",
+      "skill": "summary",
+      "source": "4月完成3个系统模块开发，5月的周报重复提及这3个模块，没有新增模块。",
+      "task": "总结4—5月成果。",
+      "mustContain": [
+        "3个"
+      ],
+      "mustNotContain": [
+        "6个"
+      ]
+    },
+    {
+      "id": "S05",
+      "skill": "summary",
+      "source": "材料仅给出3月培训已开展，未提供人数、课时、满意度。",
+      "task": "写月度培训总结。",
+      "mustContain": [
+        "培训"
+      ],
+      "mustNotContain": [
+        "100人",
+        "满意度98%"
+      ]
+    },
+    {
+      "id": "S06",
+      "skill": "summary",
+      "source": "AGV调度系统新路线已开发，现场还未联机测试。",
+      "task": "写阶段工作成果和下一步。",
+      "mustContain": [
+        "未联机测试"
+      ],
+      "mustNotContain": [
+        "现场稳定运行"
+      ]
+    },
+    {
+      "id": "R01",
+      "skill": "report",
+      "source": "SQL Server迁移发现两个无效列名，已经补齐字段；后续地图加载仍报坐标字段错误。",
+      "task": "编写问题进展报告。",
+      "mustContain": [
+        "坐标字段",
+        "仍"
+      ],
+      "mustNotContain": [
+        "所有故障清零"
+      ]
+    },
+    {
+      "id": "R02",
+      "skill": "report",
+      "source": "设备A在09:00出现异常，09:35恢复，根因仍在排查。",
+      "task": "编写故障处理报告。",
+      "mustContain": [
+        "09:00",
+        "09:35"
+      ],
+      "mustNotContain": [
+        "根因明确"
+      ]
+    },
+    {
+      "id": "R03",
+      "skill": "report",
+      "source": "测试覆盖45条用例，其中3项需人工复核，未给出总用例数量。",
+      "task": "形成测试阶段报告。",
+      "mustContain": [
+        "45",
+        "3"
+      ],
+      "mustNotContain": [
+        "覆盖率100%"
+      ]
+    },
+    {
+      "id": "R04",
+      "skill": "research",
+      "source": "访谈样本仅有3名同事，关于自动化部署满意度的观点并不一致。",
+      "task": "写调研结论。",
+      "mustContain": [
+        "3名",
+        "观点"
+      ],
+      "mustNotContain": [
+        "全部人员认可"
+      ]
+    },
+    {
+      "id": "R05",
+      "skill": "report",
+      "source": "车辆调度接口返回成功，但任务未启动，平台方原因待回复。",
+      "task": "写问题说明。",
+      "mustContain": [
+        "返回成功",
+        "未启动"
+      ],
+      "mustNotContain": [
+        "问题已解决"
+      ]
+    },
+    {
+      "id": "M01",
+      "skill": "meeting",
+      "source": "会上讨论了增加夜间监控方案，但未形成决议；责任人和日期未确定。",
+      "task": "整理会议纪要。",
+      "mustContain": [
+        "未形成决议"
+      ],
+      "mustNotContain": [
+        "决定实施",
+        "责任人张三"
+      ]
+    },
+    {
+      "id": "M02",
+      "skill": "meeting",
+      "source": "会议决定由测试组本周复核权限配置；具体姓名未明确。",
+      "task": "整理任务纪要。",
+      "mustContain": [
+        "测试组",
+        "本周"
+      ],
+      "mustNotContain": [
+        "张三"
+      ]
+    },
+    {
+      "id": "M03",
+      "skill": "meeting",
+      "source": "王工认为先上线，李工认为应先补齐测试；会议尚未达成一致。",
+      "task": "整理争议事项。",
+      "mustContain": [
+        "王工",
+        "李工"
+      ],
+      "mustNotContain": [
+        "一致同意"
+      ]
+    },
+    {
+      "id": "N01",
+      "skill": "notice",
+      "source": "下周二组织内部工具演示，地点尚未确定，要求各组派1名代表。",
+      "task": "拟内部通知。",
+      "mustContain": [
+        "下周二",
+        "1名"
+      ],
+      "mustNotContain": [
+        "会议室301"
+      ]
+    },
+    {
+      "id": "N02",
+      "skill": "notice",
+      "source": "数据备份窗口是周六22:00至23:00，窗口内暂停后台写入。",
+      "task": "写维护公告。",
+      "mustContain": [
+        "22:00",
+        "23:00"
+      ],
+      "mustNotContain": [
+        "全天停服"
+      ]
+    },
+    {
+      "id": "P01",
+      "skill": "plan",
+      "source": "项目预期分为需求评审、实现、测试、验收四阶段，尚未确定各阶段结束日期。",
+      "task": "形成实施方案。",
+      "mustContain": [
+        "需求评审",
+        "验收"
+      ],
+      "mustNotContain": [
+        "2026年12月全部完成"
+      ]
+    },
+    {
+      "id": "P02",
+      "skill": "plan",
+      "source": "当前3台测试机，拟增加1台供并发测试使用，采购尚未获批。",
+      "task": "形成资源需求说明。",
+      "mustContain": [
+        "3台",
+        "1台"
+      ],
+      "mustNotContain": [
+        "采购已批准"
+      ]
+    },
+    {
+      "id": "E01",
+      "skill": "polish",
+      "source": "原文：系统测试已经做了，但是还有个接口会报错。",
+      "task": "保持原始意思，改成正式工作语言。",
+      "mustContain": [
+        "接口",
+        "报错"
+      ],
+      "mustNotContain": [
+        "全部正常"
+      ]
+    },
+    {
+      "id": "E02",
+      "skill": "polish",
+      "source": "原文：设备问题反反复复，查了几遍，暂时没复现。",
+      "task": "减弱口语，保留不确定状态。",
+      "mustContain": [
+        "未复现"
+      ],
+      "mustNotContain": [
+        "彻底解决"
+      ]
+    }
+  ]
+}
