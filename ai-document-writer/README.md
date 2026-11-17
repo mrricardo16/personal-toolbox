@@ -1,37 +1,42 @@
-# AI 文档助手
+# AI 文档助手 V2
 
-V2 正在独立分支迭代。原版 index.html **保持不变**，仍然可以直接在浏览器打开使用。
+本目录仍保留最初的单文件版本 index.html；V2 使用 Vue3 + ASP.NET Core (.NET 10) 构建。本分支为开发预览版，原版保持不变。
 
-## V2 当前已接入功能
+## 主要功能
 
-- Vue3 + ASP.NET Core（.NET 10）基础架构，由后端调用 DeepSeek
-- 从原版 index.html 自动提取 13 种写作技能及原始 Prompt 规则
-- 事实约束、名词保护、初稿生成、二次审校（失败保留初稿）
-- Markdown、TXT 导出，旧版入口 /legacy.html
-- API Key：后端 JSON、网页临时输入、桌面本机持久化保存
-- DOCX 多文件上传：解析正文和表格，每份文件指定事实或风格用途
-- Windows 自包含 ZIP 构建脚本
+- **常规文档写作**：保留旧版的 13 种文种技能、可编辑 Prompt、事实约束、专有名词核验及失败保留初稿的二次审校。
+- **DOCX 材料管理**：支持多文件上传，提取正文和表格；每篇可标记“事实材料”“仅参考风格”“两者兼用”，并可设置所属月份。
+- **年度/多月总结**：逐篇 AI 提取工作事项和原文证据，合并同一项目的阶段进展，识别重复成果、周期性工作及冲突。可编辑事项台账；关键冲突需要填写处理依据或排除该事项。
+- **Word 排版复用**：下载可编辑 DOCX。可以使用默认排版、自动推荐上传的风格模板或手动选择模板。复用样式、页面配置和常见表格样式。默认不会复制模板里的旧正文、批注、修订记录或页眉页脚文字；可主动选择保留原页眉页脚。
+- **配置**：后端 JSON、网页临时 Key、本地桌面模式的持久化 Key。
+- **下载**：Markdown、TXT、DOCX；支持在页面上直接编辑结果再下载。
 
-当前尚未实现：年度总结结构化归并、关键冲突确认、Word 模板复用和 DOCX 导出。详见 docs/ROADMAP.md。
+### 重要边界
 
-## 便携包构建
+文档提取、语义归并和生成内容仍依赖 LLM，可能漏提、误归并或产生不准确指标。严格的证据来源检查和人工冲突确认可以降低风险，**不能代替事实核验**。
 
-开发电脑安装 .NET 10 SDK、Node.js 22，然后在本项目目录执行：
+目前不支持 PDF/OCR、Excel、复杂图文排版像素级还原、多人账户或在线历史库。多文档输入限制：15 份 DOCX（单份 8MB、总计 60MB）；当前每篇提取限 70000 字符，年度台账最多 250 项。对于超长任务，请拆分材料或分阶段处理。
+
+## Windows 免安装 ZIP
+
+构建机器需 .NET 10 SDK、Node.js 22，然后在本目录执行：
 
     .\scripts\build.bat
 
-生成 dist/AI-Document-Writer-v0.1.0-win-x64.zip，解压后双击 AiDocumentWriter.exe。目标电脑不用额外安装 .NET、Node.js 或 Word。
+将得到 dist/AI-Document-Writer-v0.1.0-win-x64.zip。用户解压后双击 AiDocumentWriter.exe，应用会监听 127.0.0.1 随机端口并打开默认浏览器。用户机器无需安装 .NET、Node.js、Microsoft Word；调用 DeepSeek 仍需网络。
 
-完整源码运行、配置和服务器部署说明参见 docs/DEPLOYMENT.md。
+还可以通过 GitHub Actions 中的 AI Document Writer build 工作流下载已构建的 Windows ZIP。
 
 ## API Key
 
-默认后端配置文件为 backend/AiDocumentWriter/appsettings.json。便携包使用 config/appsettings.local.json 配置 AiProvider.ApiKey；页面也支持临时 Key 和仅限桌面本机模式的加密持久化。
+本机可修改 config/appsettings.local.json（AiProvider.ApiKey），也可在网页选择临时使用或保存至本机。密钥存储在系统用户目录，不加入分发 ZIP。勿把带真实 Key 的配置文件提交到 GitHub 或发给他人。
 
-**请勿向 GitHub 提交真实 API Key。**
+**本项目不得匿名部署到公网**。服务器部署必须在反向代理配置身份认证、HTTPS、流量限制和上传限制；服务器模式禁用页面持久化全局 Key。
 
-## 原版使用方式
+详见：
+- docs/DEPLOYMENT.md — 构建、源码开发和部署
+- docs/ROADMAP.md — 功能边界与验收任务
 
-原有 index.html 仍是单文件工具。浏览器打开后输入 DeepSeek Key，选择文档技能，生成/审校并复制或下载 Markdown/TXT。原版直接从浏览器向 DeepSeek 发送材料。
+## 原版说明
 
-不要上传涉密资料、未经授权对外传输的内部材料。使用 API 的费用由使用者承担。
+原版入口是根目录 index.html；无需后端即可在浏览器直接打开。V2 的便携包中会把它复制为 /legacy.html。原版页面仍由浏览器直接调用 DeepSeek API。

@@ -33,7 +33,7 @@ public sealed class DocxExporter
                 section = originalMain.Document.Body?.Elements<SectionProperties>().FirstOrDefault()
                     ?.CloneNode(true) as SectionProperties;
                 tableStyle = originalMain.Document.Body?.Elements<Table>()
-                    .Select(t => t.TableProperties?.TableStyle?.Val?.Value)
+                    .Select(t => t.GetFirstChild<TableProperties>()?.TableStyle?.Val?.Value)
                     .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x));
 
                 if (originalMain.StyleDefinitionsPart is { } styles) main.AddPart(styles);

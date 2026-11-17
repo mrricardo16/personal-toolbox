@@ -1,56 +1,71 @@
-# AI 文档助手 — 构建与部署
+# AI 文档助手 V2 — 发布与部署
 
-## 1. Windows 便携包（默认交付）
+## A. 一键 Windows 便携包
 
-构建机需要 .NET 10 SDK、Node.js 22、PowerShell 5.1+，并能访问 npm 和 NuGet。
+构建机要求：
+- Windows + PowerShell 5.1 或更高
+- .NET 10 SDK
+- Node.js 22 及 npm
+- 能访问 npm 与 NuGet
 
-在本项目目录执行下面的命令：
+在 ai-document-writer 目录执行：
 
     .\scripts\build.bat
 
-也可以在 PowerShell 中运行：
+或 PowerShell：
 
     .\scripts\build.ps1 -Target win-x64
 
-脚本会安装前端依赖、提取旧版 Prompt 规则、构建 Vue 前端、复制原版 legacy.html、执行自包含 .NET 发布，并在 dist 下生成 ZIP。
+脚本自动安装前端依赖、从原版提取 Prompt、构建 Vue、复制原版为 legacy.html、执行自包含 .NET 发布，并生成 dist/AI-Document-Writer-v0.1.0-win-x64.zip。
 
-目标电脑解压 ZIP 后双击 AiDocumentWriter.exe。应用监听 127.0.0.1 的随机端口并尝试自动打开浏览器。目标电脑无需 Node.js、.NET SDK/Runtime 或 Microsoft Word，但需要现代浏览器和访问 DeepSeek 的网络。
+分发这个 ZIP 即可。目标 Windows x64 电脑解压后双击 AiDocumentWriter.exe，无需安装 .NET、Node、Python 或 Word；需现代浏览器和能连接 DeepSeek API 的网络。
 
-首次使用可在网页中输入 Key 后选择“保存至本机”，也可以直接编辑 config/appsettings.local.json 的 AiProvider.ApiKey。不要把带真实 Key 的配置文件重新分发。
+首次使用：
+1. 程序自动开启本地服务并尝试打开浏览器
+2. 选择后端 JSON、本机持久化或临时输入 Key
+3. 选择常规写作/年度总结模式，填写写作要求并上传 DOCX
+4. 若使用年度总结，先分析材料、核查事项与冲突，再生成结果
+5. 修改文稿后，可下载 Markdown、TXT 或 Word DOCX
 
-网页持久化的 Key 位于当前系统用户应用数据目录，使用 ASP.NET Core Data Protection。保护密钥环也位于该用户目录；本机制不抵御控制系统账户或拥有管理员权限的攻击。
+可运行：
 
-## 2. 源码开发运行
+    .\scripts\verify-package.ps1 -SmokeTest
 
-需要 .NET 10 SDK、Node.js 22。
+验证打包内容及程序启动情况。GitHub Actions 自动执行对应检查，并提供 ZIP 下载。
 
-终端 A（项目根目录）：
+## B. API Key 配置
+
+默认配置在 backend/AiDocumentWriter/appsettings.json，分发包可覆盖 config/appsettings.local.json；其中 AiProvider.ApiKey 可设置个人 Key。**不要把填过真实 Key 的配置文件重新上传 GitHub 或发送给别人。**
+
+桌面模式允许通过页面保存 Key 至用户应用数据目录，ASP.NET Core Data Protection 在 Windows 上使用系统数据保护机制；此方式不能对抗用户账户被控制。服务器模式禁用页面持久化 Key，建议使用环境变量 AIWRITER_AiProvider__ApiKey。
+
+## C. 源码开发运行
+
+在 ai-document-writer 根目录打开两个终端。
+
+后端：
 
     $env:AIWRITER_Hosting__Mode = "Server"
     dotnet run --project .\backend\AiDocumentWriter --urls http://127.0.0.1:5080
 
-终端 B：
+前端：
 
     cd frontend
     npm install
     npm run dev
 
-访问 Vite 提示的前端地址（通常为 http://localhost:5173）。
+访问 Vite 输出的地址。原版仍可直接打开根目录 index.html。
 
-当前仓库没有提交 package-lock.json；首次 npm install 会生成锁文件。正式稳定发布前应固定并提交该文件。
+## D. 服务器部署
 
-## 3. 服务器网页部署
+Vue 构建产物由 ASP.NET Core 提供静态文件。将 Hosting.Mode 设置为 Server，并通过 ASPNETCORE_URLS 指定监听地址；可以使用 win-x64 或 linux-x64 自包含发布。
 
-构建 Vue 前端并复制至后端 wwwroot，使用 dotnet publish -r linux-x64 --self-contained true 发布 Linux 服务端（Windows 服务器用 win-x64）。将 Hosting.Mode 设置为 Server，使用 ASPNETCORE_URLS 设置监听地址。
+部署时必须在反向代理层加入 HTTPS、访问认证、上传大小/速率限制；本版本不提供多用户隔离和在线账户系统，**不得把模型付费接口暴露为匿名公网服务**。服务器上不需要 Node.js 或 .NET Runtime（使用自包含发布时）。
 
-通过 Nginx/IIS 等反向代理配置 HTTPS 与访问认证，仅向可信用户开放。当前没有应用内用户登录、租户隔离或 API 配额控制，不能匿名暴露公网。
+## E. 当前边界
 
-Server 模式禁用通过页面持久化全局 API Key。服务器 Key 应通过受限配置文件或环境变量注入；也可以通过网页临时提供当前请求的 Key（必须通过 HTTPS）。环境变量示例：AIWRITER_AiProvider__ApiKey。
-
-## 4. 安全与限制
-
-- 原始 DOCX 在请求内存中解析，不持久化。最多 15 个，单个 8MB，合计 60MB（支持调整配置）。
-- 当前读取正文与表格，不包含 OCR、图片识别及复杂排版复刻。
-- 当前单次模型请求上限 100000 字符；多月总结分段抽取、冲突确认和 Word 模板复用在 P2/P3 开发。
-- 原版入口保留在 /legacy.html；原版仍直接从浏览器访问 DeepSeek API。
-- 生产部署必须在代理层加入身份认证、HTTPS、上传限制及速率限制。
+- 上传至多 15 个 DOCX、每个 8MB、合计 60MB；每篇用于年度分析的文字上限 70000 字符
+- 年度事实台账上限 250 项，单次模型写作限制输入 100000 字符，过长时需要拆分处理
+- Word 排版复用以常见段落、表格、页面设置为目标；复杂浮动图文混排不保证
+- 图片/OCR、PDF、Excel 与多人协作未实现
+- 自动测试不等于真实 DeepSeek 输出与 Word/WPS 人工视觉验收

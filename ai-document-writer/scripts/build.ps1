@@ -22,6 +22,10 @@ Require-Tool 'dotnet' '.NET 10 SDK'
 Require-Tool 'node' 'Node.js 22 LTS'
 Require-Tool 'npm' 'Node.js 内附的 npm'
 
+$backendSettings = (Get-Content (Join-Path $backend 'appsettings.json') -Raw | ConvertFrom-Json)
+if (-not [string]::IsNullOrWhiteSpace($backendSettings.AiProvider.ApiKey)) {
+    throw '拒绝打包：后端 appsettings.json 中包含 API Key。请移入本地 config/appsettings.local.json 或环境变量。'
+}
 New-Item -ItemType Directory -Force -Path $dist | Out-Null
 if (Test-Path $publish) { Remove-Item -Recurse -Force $publish }
 if (Test-Path $webroot) { Remove-Item -Recurse -Force $webroot }
