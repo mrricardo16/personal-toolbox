@@ -8,7 +8,9 @@ public sealed record ChatRequest(
     string? TemporaryApiKey,
     string? ThinkingType,
     string? ReasoningEffort,
-    bool JsonMode = false
+    bool JsonMode = false,
+    string? WritingSkillId = null,
+    string? EnhancementSkillId = null
 );
 
 public sealed record ChatResult(string Content, string FinishReason, System.Text.Json.JsonElement? Usage);

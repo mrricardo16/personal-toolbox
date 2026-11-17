@@ -31,6 +31,8 @@ builder.Services.AddDataProtection()
     .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(LocalKeyStore.DataDirectory, "keyring")));
 builder.Services.AddSingleton<LocalKeyStore>();
 builder.Services.AddSingleton<DocxParser>();
+builder.Services.AddSingleton<SkillRegistry>();
+builder.Services.AddTransient<WritingRevisionService>();
 builder.Services.AddSingleton<DocxExporter>();
 builder.Services.AddTransient<AnnualWorkflow>();
 builder.Services.AddHttpClient<DeepSeekClient>(c => c.Timeout = TimeSpan.FromMinutes(6));
@@ -91,6 +93,7 @@ bool CanSaveKey(HttpContext ctx) =>
     && ctx.Connection.RemoteIpAddress is { } ip && IPAddress.IsLoopback(ip);
 
 app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/skills", (SkillRegistry registry) => Results.Ok(new { skills = registry.List() }));
 app.MapGet("/api/settings/status", (HttpContext ctx, IConfiguration cfg, LocalKeyStore keys) =>
     Results.Ok(new
     {
@@ -145,6 +148,16 @@ app.MapPost("/api/llm/chat", async (ChatRequest request, DeepSeekClient client, 
     {
         return Results.Problem("模型请求失败，请检查服务端配置或网络连接", statusCode: 500);
     }
+});
+
+
+app.MapPost("/api/writing/revise", async (RevisionRequest request, WritingRevisionService service, HttpContext context) =>
+{
+    try { return Results.Ok(await service.ReviseAsync(request, context.RequestAborted)); }
+    catch (ArgumentException e) { return Results.BadRequest(new { error = e.Message }); }
+    catch (OperationCanceledException) { return Results.StatusCode(499); }
+    catch (HttpRequestException e) { return Results.Problem(e.Message, statusCode: 502); }
+    catch { return Results.Problem("修订失败，原稿已保留。请检查 Key、网络或文稿长度", statusCode: 500); }
 });
 
 app.MapPost("/api/documents/parse", async (HttpRequest request, DocxParser parser, IConfiguration cfg) =>

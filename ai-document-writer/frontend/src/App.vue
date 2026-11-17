@@ -2,6 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { baseRules, skillRules } from './legacyRules.generated.js'
 import AnnualWorkspace from './AnnualWorkspace.vue'
+import RevisionWorkspace from './RevisionWorkspace.vue'
+import { createVersion, writingSkillForDocument } from './writingStrategies.js'
 
 const skillLabels = {
   general: '通用正式材料', notice: '通知', report: '工作报告',
@@ -25,7 +27,13 @@ const taskRequirement = ref('')
 const extraInstruction = ref('')
 const strictFacts = ref(true)
 const appendReview = ref(true)
-const autoReview = ref(true)
+const autoReview = ref(false)
+const writingStrategy = ref('skills')
+const enhanceWriting = ref(false)
+const availableSkills = ref([])
+const versions = ref([])
+const editorSelection = ref({ start: 0, end: 0, text: '' })
+let versionSequence = 0
 const allowGeneralSuggestions = ref(false)
 const result = ref('')
 const status = ref('')
@@ -79,6 +87,8 @@ async function loadSettings() {
     savedKeyConfigured.value = info.savedKeyConfigured
     canManageKey.value = info.canManageKey
     keySource.value = info.savedKeyConfigured ? 'saved' : info.serverKeyConfigured ? 'server' : 'temporary'
+    try { availableSkills.value = (await api('/api/skills')).skills || [] }
+    catch { availableSkills.value = [] }
   } catch (error) { status.value = '无法连接后端：' + error.message }
 }
 onMounted(loadSettings)
@@ -188,16 +198,86 @@ function auditTerms(text) {
   const missing = terms.filter(s => !text.includes(s))
   return missing.length ? '名词核验未通过：' + missing.join('、') : '指定保护项原样检查通过'
 }
-async function chat(systemPrompt, userPrompt) {
+async function chat(systemPrompt, userPrompt, writingSkillId = null, enhancementSkillId = null) {
   const response = await api('/api/llm/chat', 'POST', {
     model: model.value, systemPrompt, userPrompt,
     keySource: keySource.value,
     temporaryApiKey: keySource.value === 'temporary' ? keyInput.value.trim() : null,
-    thinkingType: thinkingType.value, reasoningEffort: reasoningEffort.value
+    thinkingType: thinkingType.value, reasoningEffort: reasoningEffort.value,
+    writingSkillId, enhancementSkillId
   }, activeController.signal)
   if (Number.isFinite(response.usage?.total_tokens)) tokenUsage.value += response.usage.total_tokens
   return response
 }
+
+function recordVersion(label, content) {
+  if (!content?.trim()) return
+  const timestamp = new Date().toLocaleString('zh-CN')
+  versions.value = createVersion(versions.value, ++versionSequence, label, content, timestamp)
+  result.value = content
+  audit.value = auditTerms(content)
+}
+function saveWorkingText() {
+  if (result.value.trim() && versions.value.at(-1)?.content !== result.value)
+    recordVersion('生成前的当前稿件', result.value)
+}
+function restoreVersion(version) {
+  if (!version?.content) return
+  saveWorkingText()
+  result.value = version.content
+  audit.value = auditTerms(result.value)
+  status.value = '已恢复历史版本；原始版本记录未删除'
+}
+function captureSelection(event) {
+  const element = event?.target
+  if (!element || typeof element.selectionStart !== 'number') return
+  const start = element.selectionStart, end = element.selectionEnd
+  if (end > start) editorSelection.value = {
+    start, end, text: result.value.slice(start, end)
+  }
+}
+function clearCurrent() {
+  if (result.value && !window.confirm('确定清空当前正文？已有的版本快照仍会保留在页面内。')) return
+  result.value = ''
+  status.value = '当前正文已清空，已存版本仍可恢复'
+  audit.value = ''
+}
+function receiveRevision(payload) {
+  recordVersion(payload.label + '：' + payload.instruction.slice(0, 28), payload.content)
+  status.value = '修改已采纳，可继续提出要求或导出'
+}
+async function compareDrafts() {
+  if (busy.value || mode.value !== 'general') return
+  const { factText } = getMaterials()
+  if (!factText.trim() && !taskRequirement.value.trim()) {
+    status.value = '请先填写事实或写作要求'
+    return
+  }
+  const userPrompt = buildUserPrompt()
+  if (userPrompt.length > 100000) {
+    status.value = '材料过长，无法执行 A/B 对照'
+    return
+  }
+  saveWorkingText()
+  busy.value = true
+  activeController = new AbortController()
+  try {
+    status.value = 'A/B：正在用经典 Prompt 生成版本 A……'
+    const classic = await chat(prompt.value, userPrompt)
+    recordVersion('A · 经典 Prompt', classic.content)
+    status.value = 'A/B：正在用同样材料生成 Skill 版本 B……'
+    const enhanced = await chat(prompt.value, userPrompt, writingSkillForDocument(skill.value),
+      enhanceWriting.value ? 'improve-style' : null)
+    recordVersion('B · Skill 增强', enhanced.content)
+    status.value = 'A/B 两版已保存。可在下方版本记录中切换对比（实际使用了两次模型请求）'
+  } catch (error) {
+    status.value = 'A/B 中断，已成功生成的版本仍保留：' + error.message
+  } finally {
+    busy.value = false
+    activeController = null
+  }
+}
+
 async function generate() {
   if (busy.value) return
   if (mode.value !== 'general') {
@@ -214,22 +294,24 @@ async function generate() {
     status.value = '材料超过当前单次模型请求上限；请减少材料。P2 将支持分段分析'
     return
   }
-  result.value = ''
-  audit.value = ''
+  saveWorkingText()
   tokenUsage.value = 0
   busy.value = true
   activeController = new AbortController()
   try {
     status.value = '正在生成初稿……'
-    const draft = await chat(prompt.value, userPrompt)
-    result.value = draft.content
-    status.value = '初稿已生成，可立即复制或下载'
+    const draft = await chat(prompt.value, userPrompt,
+      writingStrategy.value === 'skills' ? writingSkillForDocument(skill.value) : null,
+      writingStrategy.value === 'skills' && enhanceWriting.value ? 'improve-style' : null)
+    recordVersion(writingStrategy.value === 'skills' ? 'Skill 初稿' : '经典 Prompt 初稿', draft.content)
+    status.value = '初稿已生成并保留为独立版本，可继续修改'
     if (autoReview.value) {
       try {
         status.value = '初稿已生成，正在忠实审校……'
-        const checked = await chat(baseRules + '\n\n当前任务是忠实审校。不得扩大、补造或改写事实。', buildReviewPrompt(draft.content))
-        if (checked.content && checked.content.trim()) result.value = checked.content
-        status.value = '审校完成'
+        const checked = await chat(baseRules + '\n\n当前任务是忠实审校。不得扩大、补造或改写事实。', buildReviewPrompt(draft.content),
+          writingStrategy.value === 'skills' ? 'review-facts' : null)
+        if (checked.content && checked.content.trim()) recordVersion('忠实审校稿', checked.content)
+        status.value = '审校完成；初稿仍保留在版本记录中'
       } catch (error) {
         status.value = '审校未完成，已保留初稿：' + (error.name === 'AbortError' ? '用户取消' : error.message)
       }
@@ -288,8 +370,8 @@ async function exportDocx() {
   } catch (e) { status.value = 'Word 导出失败：' + e.message }
 }
 function onAnnualGenerated(payload) {
-  result.value = payload.content
-  audit.value = auditTerms(result.value)
+  saveWorkingText()
+  recordVersion(payload.message?.includes('审校') ? '年度总结·审校稿' : '年度总结·初稿', payload.content)
   status.value = payload.message
 }
 
