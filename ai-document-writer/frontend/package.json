@@ -1,0 +1,20 @@
+{
+  "name": "ai-document-writer-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/extract-legacy-prompts.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/extract-legacy-prompts.mjs",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "3.5.18"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.1",
+    "vite": "7.1.6"
+  }
+}
