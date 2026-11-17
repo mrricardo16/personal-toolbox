@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { criticalConflicts, approvedGroups } from './annualGuard.js'
+import { criticalConflicts, approvedGroups, attachPendingQuestions } from './annualGuard.js'
 
 const props = defineProps({
   files: { type: Array, required: true },
@@ -173,7 +173,7 @@ async function generateInternal() {
       ...chatSettings(), systemPrompt: system, userPrompt: user
     })
     addUsage(first.usage)
-    emit('generated', { content: first.content, message: '初稿已生成，可复制或下载' })
+    emit('generated', { content: attachPendingQuestions(first.content, groups.value), message: '初稿已生成，可复制或下载' })
     if (props.autoReview) {
       try {
         progress.value = '初稿完成，正在进行忠实审校……'
@@ -183,10 +183,10 @@ async function generateInternal() {
           userPrompt: '【核验依据】\n' + data + '\n【初稿】\n' + first.content
         })
         addUsage(reviewed.usage)
-        if (reviewed.content?.trim()) emit('generated', { content: reviewed.content, message: '年度总结审校完成' })
+        if (reviewed.content?.trim()) emit('generated', { content: attachPendingQuestions(reviewed.content, groups.value), message: '年度总结审校完成' })
       } catch (e) {
         if (e.name === 'AbortError') throw e
-        emit('generated', { content: first.content, message: '审校失败，已保留初稿：' + e.message })
+        emit('generated', { content: attachPendingQuestions(first.content, groups.value), message: '审校失败，已保留初稿：' + e.message })
       }
     }
     stage.value = 'done'

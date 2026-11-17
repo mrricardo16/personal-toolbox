@@ -22,3 +22,14 @@ export function approvedGroups(groups, facts) {
       c.severity !== 'critical' && c.resolution !== 'confirmed').map(c => c.description)
   }))
 }
+
+export function attachPendingQuestions(content, groups) {
+  const pending = (groups || []).filter(g => g.included)
+    .flatMap(g => g.conflicts || [])
+    .filter(c => c.severity !== 'critical' && c.resolution !== 'confirmed')
+    .map(c => c.description?.trim()).filter(Boolean)
+  if (!pending.length) return content
+  const unique = [...new Set(pending)]
+  return (content || '').trimEnd() + '\n\n【待核实事项（系统提示）】\n'
+    + unique.map((question, index) => (index + 1) + '. ' + question).join('\n')
+}
