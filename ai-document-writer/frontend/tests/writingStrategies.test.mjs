@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { writingSkillForDocument, createVersion, selectedTextMatches } from '../src/writingStrategies.js'
+import { writingSkillForDocument, createVersion, selectedTextMatches, writingOutputIssue } from '../src/writingStrategies.js'
 test('document type maps to one draft skill', () => {
   assert.equal(writingSkillForDocument('summary'), 'draft-summary')
   assert.equal(writingSkillForDocument('meeting'), 'draft-meeting')
@@ -22,4 +22,12 @@ test('selection range uses exact UTF-16 offsets', () => {
   const start = text.indexOf('第二段')
   assert.ok(selectedTextMatches(text, { start, end: text.length, text: '第二段内容。' }))
   assert.ok(!selectedTextMatches(text + '新增', { start, end: text.length, text: '其它内容' }))
+})
+
+test('detects copied writing directives and style-only historical claims', () => {
+  const instructions = { extra: '请用三个章节说明当前情况并避免重复' }
+  const style = '去年完成设备巡检累计300次。'
+  assert.match(writingOutputIssue(instructions.extra, instructions, ''), /写作指令/)
+  assert.match(writingOutputIssue(style, instructions, '今年巡检20次', style), /风格样本数据/)
+  assert.equal(writingOutputIssue(style, instructions, style, style), '')
 })

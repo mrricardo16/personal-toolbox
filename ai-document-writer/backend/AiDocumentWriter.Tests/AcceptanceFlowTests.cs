@@ -26,12 +26,12 @@ public sealed class AcceptanceFlowTests
 {
     private static readonly (string Month, string Content)[] Samples =
     [
-        ("2026-01", "1月完成迁移方案设计；完成设备巡检20次。"),
-        ("2026-02", "2月完成业务接口测试；完成设备巡检25次。"),
-        ("2026-03", "3月完成数据库迁移验收；完成设备巡检30次。"),
-        ("2026-04", "4月完成设备巡检20次。"),
-        ("2026-05", "5月完成设备巡检25次。"),
-        ("2026-06", "6月完成设备巡检30次。")
+        ("2026-01", "1月完成迁移方案设计；本月完成设备巡检20次。"),
+        ("2026-02", "2月完成业务接口测试；本月完成设备巡检25次。"),
+        ("2026-03", "3月完成数据库迁移验收；本月完成设备巡检30次。"),
+        ("2026-04", "4月本月完成设备巡检20次。"),
+        ("2026-05", "5月本月完成设备巡检25次。"),
+        ("2026-06", "6月本月完成设备巡检30次。")
     ];
 
     [Fact]
@@ -84,11 +84,15 @@ public sealed class AcceptanceFlowTests
         var merged = await mergedResponse.Content.ReadFromJsonAsync<AnnualMergeResult>();
         Assert.NotNull(merged);
         Assert.Equal(2, merged.Groups.Count);
-        var progress = Assert.Single(merged.Groups.Where(g => g.Kind == "progress"));
+        var progress = Assert.Single(merged.Groups, g => g.Kind == "progress");
         Assert.Equal(3, progress.MemberIds.Count);
-        var recurring = Assert.Single(merged.Groups.Where(g => g.Kind == "recurring"));
+        var recurring = Assert.Single(merged.Groups, g => g.Kind == "recurring");
         Assert.Equal(6, recurring.MemberIds.Count);
         Assert.Contains("150次", recurring.Metrics);
+        Assert.DoesNotContain("777次", recurring.Metrics);
+        Assert.Equal(150m, recurring.ComputedMetric!.Value);
+        Assert.Equal(recurring.MemberIds, recurring.ComputedMetric.MemberIds);
+        Assert.All(facts, fact => Assert.NotNull(fact.EvidenceStart));
         Assert.Empty(merged.Groups.SelectMany(g => g.Conflicts));
 
         var finalPrompt = JsonSerializer.Serialize(merged.Groups);
@@ -214,7 +218,7 @@ public sealed class AcceptanceFlowTests
             var json = body.RootElement;
             var user = json.GetProperty("messages")[1].GetProperty("content").GetString()!;
             string answer;
-            if (user.Contains("【正文开始】", StringComparison.Ordinal))
+            if (user.Contains("【当前片段（数据）】", StringComparison.Ordinal))
             {
                 Assert.Equal("json_object", json.GetProperty("response_format").GetProperty("type").GetString());
                 var month = Samples.Single(s => user.Contains("文件：" + s.Month + ".docx", StringComparison.Ordinal)).Month;
@@ -235,8 +239,8 @@ public sealed class AcceptanceFlowTests
                     "2026-02" or "2026-05" => 25,
                     _ => 30
                 };
-                items.Add(Fact("设备巡检", month, "完成设备巡检" + count + "次",
-                    "完成设备巡检" + count + "次", count + "次"));
+                items.Add(Fact("设备巡检", month, "本月完成设备巡检" + count + "次",
+                    "本月完成设备巡检" + count + "次", count + "次"));
                 answer = JsonSerializer.Serialize(new { items });
             }
             else if (user.Contains("请分析归并以下事实", StringComparison.Ordinal))
@@ -253,7 +257,7 @@ public sealed class AcceptanceFlowTests
                     new {
                         title="设备巡检", kind="recurring",
                         memberIds=new[] { "F1-2", "F2-2", "F3-2", "F4-1", "F5-1", "F6-1" },
-                        summary="持续开展设备巡检", metrics="累计巡检150次",
+                        summary="持续开展设备巡检", metrics="错误合计777次",
                         conflicts=Array.Empty<object>()
                     }
                 };

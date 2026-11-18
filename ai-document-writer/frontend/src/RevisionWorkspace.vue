@@ -20,6 +20,7 @@ const scope = ref('full')
 const improveStyle = ref(false)
 const candidate = ref('')
 const sourceSnapshot = ref('')
+const candidateRequest = ref(null)
 const busy = ref(false)
 const error = ref('')
 const message = ref('')
@@ -27,7 +28,11 @@ const compareId = ref('')
 let controller = null
 
 const selectionValid = computed(() => selectedTextMatches(props.content, props.selection))
-const stale = computed(() => !!candidate.value && props.content !== sourceSnapshot.value)
+const stale = computed(() => !!candidate.value && (
+  props.content !== sourceSnapshot.value ||
+  props.factContext !== candidateRequest.value?.factContext ||
+  props.protectedTerms !== candidateRequest.value?.protectedTerms
+))
 const comparable = computed(() => props.versions.find(v => String(v.id) === String(compareId.value)))
 const changedPreview = computed(() => {
   if (!candidate.value || !sourceSnapshot.value) return null
@@ -54,6 +59,10 @@ async function revise() {
   }
   controller = new AbortController()
   const original = props.content
+  const request = {
+    instruction: instruction.value.trim(), scope: scope.value,
+    factContext: props.factContext, protectedTerms: props.protectedTerms
+  }
   busy.value = true
   candidate.value = ''
   try {
@@ -67,8 +76,8 @@ async function revise() {
           temporaryApiKey: props.keySource === 'temporary' ? props.keyInput.trim() : null,
           thinkingType: props.thinkingType, reasoningEffort: props.reasoningEffort
         },
-        currentText: original, instruction: instruction.value.trim(),
-        scope: scope.value,
+        currentText: original, instruction: request.instruction,
+        scope: request.scope,
         selectionStart: scope.value === 'selection' ? props.selection.start : null,
         selectionEnd: scope.value === 'selection' ? props.selection.end : null,
         factContext: props.factContext.slice(0, 18000),
@@ -79,6 +88,7 @@ async function revise() {
     const payload = await response.json().catch(() => ({}))
     if (!response.ok) throw new Error(payload.error || payload.detail || payload.title || 'HTTP ' + response.status)
     sourceSnapshot.value = original
+    candidateRequest.value = request
     candidate.value = payload.candidateText
     message.value = '修订候选稿已生成' +
       (Number.isFinite(payload.usage?.total_tokens) ? '，消耗 ' + payload.usage.total_tokens + ' Token' : '') +
@@ -91,8 +101,9 @@ function accept() {
   if (busy.value || !candidate.value || stale.value) return
   emit('accept', {
     content: candidate.value,
-    label: scope.value === 'selection' ? '局部修订' : '全文修订',
-    instruction: instruction.value.trim()
+    previousText: sourceSnapshot.value,
+    label: candidateRequest.value.scope === 'selection' ? '局部修订' : '全文修订',
+    instruction: candidateRequest.value.instruction
   })
   candidate.value = ''
   message.value = '已采纳为新版本'

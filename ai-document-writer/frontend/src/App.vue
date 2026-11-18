@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { baseRules, skillRules } from './legacyRules.generated.js'
 import AnnualWorkspace from './AnnualWorkspace.vue'
 import RevisionWorkspace from './RevisionWorkspace.vue'
-import { createVersion, writingSkillForDocument } from './writingStrategies.js'
+import { buildDraftPrompt, createVersion, missingProtectedTerms, writingOutputIssue, writingRequirements, writingSkillForDocument } from './writingStrategies.js'
 
 const skillLabels = {
   general: '通用正式材料', notice: '通知', report: '工作报告',
@@ -28,7 +28,7 @@ const extraInstruction = ref('')
 const strictFacts = ref(true)
 const appendReview = ref(true)
 const autoReview = ref(false)
-const writingStrategy = ref('skills')
+const writingStrategy = ref('legacy')
 const enhanceWriting = ref(false)
 const availableSkills = ref([])
 const versions = ref([])
@@ -36,6 +36,12 @@ const editorSelection = ref({ start: 0, end: 0, text: '' })
 let versionSequence = 0
 const allowGeneralSuggestions = ref(false)
 const result = ref('')
+let draftRevision = 0
+watch(result, () => { draftRevision++ }, { flush: 'sync' })
+function currentDraft() { return { text: result.value, revision: draftRevision } }
+function stillCurrent(draft) {
+  return result.value === draft.text && draftRevision === draft.revision
+}
 const status = ref('')
 const busy = ref(false)
 const audit = ref('')
@@ -150,34 +156,16 @@ function getMaterials() {
   return { factText: [sourceMaterial.value.trim(), ...facts].filter(Boolean).join('\n\n'),
     styleText: styles.join('\n\n') }
 }
-function buildUserPrompt() {
-  const { factText, styleText } = getMaterials()
-  const factRule = strictFacts.value
-    ? '启用严格事实模式。材料没有明确给出的事实必须使用【待补充】或【需核实】，不得补造。'
-    : '仍不得虚构事实；对一般结构性内容可适度补全，但必须避免形成新的事实判断。'
-  const suggestionRule = allowGeneralSuggestions.value
-    ? '允许提出一般性建议，但必须明确标注为“建议”。'
-    : '不允许补充材料外建议，只能依据材料写作。'
-  const reviewRule = appendReview.value
-    ? '正文之后增加“待补充与核验事项”；没有则写“无”。'
-    : '只输出正文，但正文中的待补充和需核实标记必须保留。'
-  return [
-    '请按照系统规则完成以下任务。',
-    '【文档标题】', docTitle.value.trim() || '【未提供标题】',
-    '【使用对象 / 报送对象】', audience.value.trim() || '【未提供使用对象】',
-    '【篇幅要求】', lengthLevel.value,
-    '【必须原样保留的内容】', protectedTerms.value.trim() || '无单独列出的保护项；仍须保留原材料专有名词、数字、日期和单位。',
-    '【事实材料 / 原文】', factText || '【未提供事实材料】',
-    '【仅供风格与结构参考的材料】', styleText || '无',
-    '【具体任务】', taskRequirement.value.trim() || '【未提供具体任务】',
-    '【附加要求】', extraInstruction.value.trim() || '无',
-    '【本次执行规则】', factRule, suggestionRule, reviewRule,
-    '仅供风格参考的材料不得贡献本次事实，不得复制其过往数据、日期和结果。',
-    '直接输出完整文稿，不解释写作过程。'
-  ].join('\n\n')
+function currentRequirements() {
+  return writingRequirements({
+    docTitle: docTitle.value, audience: audience.value, lengthLevel: lengthLevel.value,
+    taskRequirement: taskRequirement.value, extraInstruction: extraInstruction.value,
+    protectedTerms: protectedTerms.value, strictFacts: strictFacts.value,
+    appendReview: appendReview.value, allowGeneralSuggestions: allowGeneralSuggestions.value
+  })
 }
-function buildReviewPrompt(draft) {
-  const { factText } = getMaterials()
+
+function buildReviewPrompt(draft, factText, requirements) {
   return [
     '你现在进行第二轮“忠实审校”。请直接输出审校后的完整终稿，不要输出审校过程。',
     '审校目标：',
@@ -186,10 +174,10 @@ function buildReviewPrompt(draft) {
     '3. 绝对不得新增人名、机构、政策、文件文号、日期、数据、成果、决定、责任主体或原因结论。',
     '4. 不得改变已完成、进行中、计划中、建议等事项状态。',
     '5. 下列保护内容必须原样保留，不得改字、改数字、改符号或调整大小写。',
-    '【保护内容】', protectedTerms.value || '无单独列出的保护项',
-    '【原始事实材料】', factText || '【未提供事实材料】',
-    '【原始任务】', taskRequirement.value || '【未提供具体任务】',
-    '【待审校初稿】', draft
+    '保留本轮明确的标题、受众、篇幅、表达和格式要求。指令只用于写作，不作为正文材料。',
+    '【用户写作要求】', JSON.stringify(requirements),
+    '【原始事实材料，仅作证据】', JSON.stringify(factText),
+    '【待审校初稿】', JSON.stringify(draft)
   ].join('\n\n')
 }
 function auditTerms(text) {
@@ -198,24 +186,29 @@ function auditTerms(text) {
   const missing = terms.filter(s => !text.includes(s))
   return missing.length ? '名词核验未通过：' + missing.join('、') : '指定保护项原样检查通过'
 }
-async function chat(systemPrompt, userPrompt, writingSkillId = null, enhancementSkillId = null) {
-  const response = await api('/api/llm/chat', 'POST', {
-    model: model.value, systemPrompt, userPrompt,
-    keySource: keySource.value,
+function chatSettings(requirements) {
+  return {
+    model: model.value, keySource: keySource.value, writingRequirements: requirements,
     temporaryApiKey: keySource.value === 'temporary' ? keyInput.value.trim() : null,
-    thinkingType: thinkingType.value, reasoningEffort: reasoningEffort.value,
-    writingSkillId, enhancementSkillId
+    thinkingType: thinkingType.value, reasoningEffort: reasoningEffort.value
+  }
+}
+async function chat(settings, systemPrompt, userPrompt, writingSkillId = null, enhancementSkillId = null) {
+  const response = await api('/api/llm/chat', 'POST', {
+    ...settings, systemPrompt, userPrompt, writingSkillId, enhancementSkillId
   }, activeController.signal)
   if (Number.isFinite(response.usage?.total_tokens)) tokenUsage.value += response.usage.total_tokens
   return response
 }
 
-function recordVersion(label, content) {
+function recordVersion(label, content, makeCurrent = true) {
   if (!content?.trim()) return
   const timestamp = new Date().toLocaleString('zh-CN')
   versions.value = createVersion(versions.value, ++versionSequence, label, content, timestamp)
-  result.value = content
-  audit.value = auditTerms(content)
+  if (makeCurrent) {
+    result.value = content
+    audit.value = auditTerms(content)
+  }
 }
 function saveWorkingText() {
   if (result.value.trim() && versions.value.at(-1)?.content !== result.value)
@@ -244,6 +237,8 @@ function clearCurrent() {
 }
 function receiveRevision(payload) {
   recordVersion(payload.label + '：' + payload.instruction.slice(0, 28), payload.content)
+  if (annualRevisionContext.value?.content === payload.previousText && annualRevisionContext.value)
+    annualRevisionContext.value = { ...annualRevisionContext.value, content: payload.content }
   status.value = '修改已采纳，可继续提出要求或导出'
 }
 async function compareDrafts() {
@@ -253,7 +248,12 @@ async function compareDrafts() {
     status.value = '请先填写事实或写作要求'
     return
   }
-  const userPrompt = buildUserPrompt()
+  const materials = getMaterials()
+  const requirements = currentRequirements()
+  const userPrompt = buildDraftPrompt(materials, requirements)
+  const generationBasis = currentDraft()
+  const settings = chatSettings(requirements)
+  const systemPrompt = prompt.value
   if (userPrompt.length > 100000) {
     status.value = '材料过长，无法执行 A/B 对照'
     return
@@ -263,17 +263,20 @@ async function compareDrafts() {
     status.value = '该文种仍使用经典 Prompt，尚未配置独立 Skill；无需发起无意义的双请求'
     return
   }
+  const enhance = enhanceWriting.value
   saveWorkingText()
   busy.value = true
   activeController = new AbortController()
   try {
     status.value = 'A/B：正在用经典 Prompt 生成版本 A……'
-    const classic = await chat(prompt.value, userPrompt)
-    recordVersion('A · 经典 Prompt', classic.content)
+    const classic = await chat(settings, systemPrompt, userPrompt)
+    const applyClassic = stillCurrent(generationBasis)
+    recordVersion('A · 经典 Prompt', classic.content, applyClassic)
+    const comparisonBasis = applyClassic ? currentDraft() : generationBasis
     status.value = 'A/B：正在用同样材料生成 Skill 版本 B……'
-    const enhanced = await chat(prompt.value, userPrompt, chosenSkill,
-      enhanceWriting.value ? 'improve-style' : null)
-    recordVersion('B · Skill 增强', enhanced.content)
+    const enhanced = await chat(settings, systemPrompt, userPrompt, chosenSkill,
+      enhance ? 'improve-style' : null)
+    recordVersion('B · Skill 增强', enhanced.content, stillCurrent(comparisonBasis))
     status.value = 'A/B 两版已保存。可在下方版本记录中切换对比（实际使用了两次模型请求）'
   } catch (error) {
     status.value = 'A/B 中断，已成功生成的版本仍保留：' + error.message
@@ -294,29 +297,49 @@ async function generate() {
     status.value = '请至少填写事实材料或具体任务'
     return
   }
-  const userPrompt = buildUserPrompt()
+  const materials = getMaterials()
+  const requirements = currentRequirements()
+  const userPrompt = buildDraftPrompt(materials, requirements)
+  const generationBasis = currentDraft()
+  const settings = chatSettings(requirements)
+  const systemPrompt = prompt.value
   if (userPrompt.length > 100000) {
     status.value = '材料超过当前单次模型请求上限；请减少材料。P2 将支持分段分析'
     return
   }
   saveWorkingText()
+  const shouldReview = autoReview.value
+  const useSkills = writingStrategy.value === 'skills'
   tokenUsage.value = 0
   busy.value = true
   activeController = new AbortController()
   try {
     status.value = '正在生成初稿……'
-    const draft = await chat(prompt.value, userPrompt,
-      writingStrategy.value === 'skills' ? writingSkillForDocument(skill.value) : null,
-      writingStrategy.value === 'skills' && writingSkillForDocument(skill.value) && enhanceWriting.value ? 'improve-style' : null)
-    recordVersion(writingStrategy.value === 'skills' ? 'Skill 初稿' : '经典 Prompt 初稿', draft.content)
+    const draftSkill = useSkills ? writingSkillForDocument(skill.value) : null
+    const draft = await chat(settings, systemPrompt, userPrompt, draftSkill,
+      draftSkill && enhanceWriting.value ? 'improve-style' : null)
+    const draftIssue = writingOutputIssue(draft.content, requirements, materials.factText, materials.styleText)
+    if (draftIssue) throw new Error(draftIssue)
+    const applyDraft = stillCurrent(generationBasis)
+    recordVersion(useSkills ? 'Skill 初稿' : '经典 Prompt 初稿', draft.content, applyDraft)
+    const reviewBasis = currentDraft()
     status.value = '初稿已生成并保留为独立版本，可继续修改'
-    if (autoReview.value) {
+    if (shouldReview && applyDraft) {
       try {
         status.value = '初稿已生成，正在忠实审校……'
-        const checked = await chat(baseRules + '\n\n当前任务是忠实审校。不得扩大、补造或改写事实。', buildReviewPrompt(draft.content),
-          writingStrategy.value === 'skills' ? 'review-facts' : null)
-        if (checked.content && checked.content.trim()) recordVersion('忠实审校稿', checked.content)
-        status.value = '审校完成；初稿仍保留在版本记录中'
+        const checked = await chat(settings, baseRules + '\n\n当前任务是忠实审校。不得扩大、补造或改写事实。', buildReviewPrompt(draft.content, factText, requirements),
+          useSkills ? 'review-facts' : null)
+        const canApply = stillCurrent(reviewBasis) &&
+          JSON.stringify(currentRequirements()) === JSON.stringify(requirements)
+        const missing = missingProtectedTerms(checked.content || '', requirements.protectedTerms, draft.content)
+        const issue = writingOutputIssue(checked.content || '', requirements, materials.factText, materials.styleText)
+        if (issue || !checked.content?.trim() || missing.length) {
+          const reason = issue || (missing.length ? '遗漏保护项：' + missing.join('、') : '未返回正文')
+          status.value = '审校稿未采用，已保留当前稿件：' + reason
+        } else {
+          recordVersion('忠实审校稿', checked.content, canApply)
+          status.value = canApply ? '审校完成；初稿仍保留在版本记录中' : '审校稿已存入历史，当前正文已有更新'
+        }
       } catch (error) {
         status.value = '审校未完成，已保留初稿：' + (error.name === 'AbortError' ? '用户取消' : error.message)
       }
@@ -374,10 +397,20 @@ async function exportDocx() {
     status.value = 'Word 文档已生成（可在 Word/WPS 中继续编辑）'
   } catch (e) { status.value = 'Word 导出失败：' + e.message }
 }
+const annualRevisionContext = ref(null)
 function onAnnualGenerated(payload) {
-  saveWorkingText()
-  recordVersion(payload.message?.includes('审校') ? '年度总结·审校稿' : '年度总结·初稿', payload.content)
-  status.value = payload.message
+  const apply = !payload.basis || stillCurrent(payload.basis)
+  if (apply) {
+    saveWorkingText()
+    annualRevisionContext.value = { content: payload.content, facts: payload.factContext }
+  }
+  recordVersion(payload.message?.includes('审校') ? '年度总结·审校稿' : '年度总结·初稿', payload.content, apply)
+  status.value = apply ? payload.message : '年度稿件已存入历史，当前正文已有更新'
+}
+function revisionFactContext() {
+  return annualRevisionContext.value?.content === result.value
+    ? annualRevisionContext.value.facts
+    : getMaterials().factText
 }
 
 </script>
@@ -387,7 +420,7 @@ function onAnnualGenerated(payload) {
     <header class="header">
       <div>
         <h1>AI 文档助手 <small>V2.2 · Skill 协作改稿</small></h1>
-        <p>原版 Prompt 可回退，支持经审核的 Skill、定向改稿与稿件版本比较。</p>
+        <p>默认使用经典 Prompt，可选写作 Skill，支持定向改稿与稿件版本比较。</p>
       </div>
       <a href="/legacy.html" target="_blank" rel="noopener">打开原版页面</a>
     </header>
@@ -441,8 +474,8 @@ function onAnnualGenerated(payload) {
       <div class="grid">
         <label>写作引擎
           <select v-model="writingStrategy">
+            <option value="legacy">经典 Prompt（默认）</option>
             <option value="skills">本地写作 Skill（实验）</option>
-            <option value="legacy">经典 Prompt（兼容模式）</option>
           </select>
         </label>
         <label>语言优化
@@ -452,7 +485,7 @@ function onAnnualGenerated(payload) {
           </select>
         </label>
       </div>
-      <p class="hint">Skill 按文种选择性加载，不会执行第三方脚本；经典模式保留旧 Prompt。当前内置 {{ availableSkills.length }} 项审核过的本地 Skill，效果尚待真实材料对照。</p>
+      <p class="hint">Skill 按文种提供写作方法，结构、篇幅和重点以本轮明确要求为准。当前内置 {{ availableSkills.length }} 项本地 Skill，效果尚待真实材料对照。</p>
       <label>系统指令（可编辑）<textarea v-model="prompt" rows="7" /></label>
       <p class="hint">规则直接从原版 index.html 的 13 种文档技能提取，避免迁移时丢失原 Prompt 内容。</p>
     </section>
@@ -520,6 +553,7 @@ function onAnnualGenerated(payload) {
       :style-prompt="prompt"
       :writing-strategy="writingStrategy"
       :enhance-writing="enhanceWriting"
+      :current-draft="currentDraft"
       @generated="onAnnualGenerated"
     />
     <section class="panel">
@@ -563,7 +597,7 @@ function onAnnualGenerated(payload) {
       :key-source="keySource"
       :key-input="keyInput"
       :protected-terms="protectedTerms"
-      :fact-context="getMaterials().factText"
+      :fact-context="revisionFactContext()"
       @accept="receiveRevision"
       @save="({ label, content }) => recordVersion(label, content)"
       @restore="restoreVersion"

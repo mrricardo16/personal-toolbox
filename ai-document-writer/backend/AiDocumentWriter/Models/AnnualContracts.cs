@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace AiDocumentWriter.Models;
 
 public sealed record AnnualInputDocument(string Id, string FileName, string? Month, string Content);
-public sealed record AnnualExtractRequest(AnnualInputDocument Document, ChatRequest Chat);
+public sealed record AnnualExtractRequest(AnnualInputDocument Document, ChatRequest Chat, string? Requirement = null);
 public sealed record AnnualExtractResult(List<AnnualFact> Items, int UnmatchedEvidenceCount, JsonElement? Usage);
 public sealed record AnnualMergeRequest(List<AnnualFact> Facts, string? Requirement, ChatRequest Chat);
 public sealed record AnnualMergeResult(List<AnnualGroup> Groups, JsonElement? Usage);
@@ -19,6 +19,8 @@ public sealed class AnnualFact
     public string NumericEvidence { get; set; } = "";
     public string SourceFile { get; set; } = "";
     public string SourceId { get; set; } = "";
+    public int? EvidenceStart { get; set; }
+    public string DeclaredMonth { get; set; } = "";
     public string Evidence { get; set; } = "";
     public bool EvidenceMatched { get; set; }
 }
@@ -28,6 +30,8 @@ public sealed class AnnualConflict
     public string Description { get; set; } = "";
     public string Resolution { get; set; } = "pending";
 }
+public sealed record AnnualMetric(string Name, decimal Value, string Unit, string Basis, IReadOnlyList<string> MemberIds);
+
 public sealed class AnnualGroup
 {
     public string Id { get; set; } = "";
@@ -36,6 +40,7 @@ public sealed class AnnualGroup
     public List<string> MemberIds { get; set; } = [];
     public string Summary { get; set; } = "";
     public string Metrics { get; set; } = "";
+    public AnnualMetric? ComputedMetric { get; set; }
     public List<AnnualConflict> Conflicts { get; set; } = [];
     public bool Included { get; set; } = true;
 }

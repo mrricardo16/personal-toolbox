@@ -18,6 +18,19 @@ A/B 测试不是免费操作；模型每次生成具有随机性，不能仅用�
 
 每条测试包含 `mustContain` 和 `mustNotContain`，只用于**硬约束预检**，绝不能代替人工的结构、自然度和文风评价。
 
+## 命令行复跑
+
+在新版服务运行于本机时，在项目目录执行。先在前端目录运行一次 npm run build，以生成原版规则模块。脚本默认只打印计划调用数。
+
+```powershell
+node evaluation/run-writing-ab.mjs --case S01 --case R01 --repetitions 2
+node evaluation/run-writing-ab.mjs --url http://127.0.0.1:5080 --case S01 --case R01 --repetitions 2 --run --output .\ab-20261118
+```
+
+`--url` 应填写实际的本机服务地址。`--run` 会产生真实模型调用费用并写入一个新目录。使用服务端配置的 Key，或提前在进程环境中设置 `AIWRITER_EVAL_API_KEY` 供单次会话使用。结果 JSON 中不包含 Key。没有独立 Skill 的文种会列入 `skipped`。
+
+经典 Prompt 和 Skill 使用同样的模型、参数、写作要求和事实材料，关闭自动审校。仅将匿名样本 JSON 发给盲评人，评分完成后用 `blind-key.json` 还原分组。硬约束字符串结果供人工复查。旧 HTML 须用同样输入及模型独立运行，可作为额外对照。
+
 ## 人工评分（每篇 100 分）
 
 | 指标 | 权重 | 评价办法 |

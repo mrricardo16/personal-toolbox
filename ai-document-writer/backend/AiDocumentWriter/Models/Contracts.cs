@@ -10,7 +10,20 @@ public sealed record ChatRequest(
     string? ReasoningEffort,
     bool JsonMode = false,
     string? WritingSkillId = null,
-    string? EnhancementSkillId = null
+    string? EnhancementSkillId = null,
+    WritingRequirements? WritingRequirements = null
+);
+
+public sealed record WritingRequirements(
+    string? Title = null,
+    string? Audience = null,
+    string? Length = null,
+    string? Task = null,
+    string? Extra = null,
+    string? ProtectedTerms = null,
+    bool? StrictFacts = null,
+    bool? AppendReview = null,
+    bool? AllowGeneralSuggestions = null
 );
 
 public sealed record ChatResult(string Content, string FinishReason, System.Text.Json.JsonElement? Usage);
