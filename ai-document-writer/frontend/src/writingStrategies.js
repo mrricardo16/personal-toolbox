@@ -49,7 +49,7 @@ export function buildDraftPrompt({ factText, styleText }, requirements) {
 // Block direct copying of distinguished input sections and unsupported historical
 // quantities copied from a style sample. Semantic source review remains separate.
 export function writingOutputIssue(content, requirements, factText, styleText = '') {
-  if (/^\s*【(?:用户写作要求|本次执行规则|用作证据的事实|仅供(?:风格|语言)与(?:结构|章节结构)参考)(?:[（】])/m.test(content)) {
+  if (/^\s*【(?:用户写作要求|用户明确写作约束|本次执行规则|用作证据的事实|仅供(?:风格|语言)与(?:结构|章节结构)参考)(?:[（】])/m.test(content)) {
     return '包含内部提示标记'
   }
   const directives = [requirements.task, requirements.extra]

@@ -63,7 +63,7 @@ if (options.run) {
           const response = await fetch(endpoint, {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Writer-Client': 'ai-document-writer' },
             redirect: 'error', signal: AbortSignal.timeout(400_000),
-            body: JSON.stringify({ ...settings, systemPrompt, userPrompt,
+            body: JSON.stringify({ ...settings, systemPrompt, userPrompt, writingRequirements: requirements,
               writingSkillId: arm === 'skills' ? writingSkillForDocument(fixture.skill) : null })
           })
           if (!response.ok) throw new Error('模型请求失败，HTTP ' + response.status)

@@ -19,7 +19,7 @@ public sealed class WritingRevisionService(DeepSeekClient client)
         @"(?<![0-9.,])[0-9]+(?:,[0-9]{3})*(?:\.[0-9]+)?\s*(?:个百分点|%|％|万元|亿元|元|人次|次|项|件|台|份|批|单|笔|套|家|年|月|日)(?![0-9])",
         RegexOptions.CultureInvariant);
     private static readonly Regex PromptHeaders = new(
-        @"^\s*(?:【修改范围】|【用户的修改意见】|【本轮需要修改的文字】|【可作为事实依据的材料|【周边上下文)",
+        @"^\s*(?:【用户明确写作约束】|【修改范围】|【用户的修改意见】|【本轮需要修改的文字】|【可作为事实依据的材料|【周边上下文)",
         RegexOptions.Multiline | RegexOptions.CultureInvariant);
 
     public async Task<RevisionResult> ReviseAsync(RevisionRequest request, CancellationToken ct)
@@ -71,6 +71,7 @@ public sealed class WritingRevisionService(DeepSeekClient client)
             UserPrompt = user,
             JsonMode = false,
             WritingSkillId = "revise-targeted",
+            WritingRequirements = new WritingRequirements(Task: request.Instruction.Trim(), ProtectedTerms: request.ProtectedTerms),
             EnhancementSkillId = request.ImproveStyle ? "improve-style" : null
         };
         var response = await client.ChatAsync(chat, ct);

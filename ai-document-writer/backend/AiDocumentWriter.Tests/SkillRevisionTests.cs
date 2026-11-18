@@ -26,6 +26,50 @@ public class SkillRevisionTests
     }
 
     [Fact]
+    public void ExplicitWritingRequirementsWinOverDraftAndEnhancementSkills()
+    {
+        var catalog = new SkillRegistry();
+        var composed = catalog.Compose("基础指令", "draft-summary", "improve-style");
+        Assert.Contains("工作总结写作", composed);
+        Assert.Contains("中文写作表达优化", composed);
+        Assert.Contains("本轮用户明确写作要求是最高优先级的任务约束", composed);
+        Assert.Contains("与任何 Skill 的建议冲突时，以用户本轮要求为准", composed);
+        Assert.Contains("要求按月组织就按月组织；要求不按月组织就不得套用月度章节", composed);
+        Assert.Contains("要求简洁就压缩；要求详细就在事实支持下展开", composed);
+        Assert.Contains("要求突出某项就优先呈现该项", composed);
+        Assert.Contains("事实真实性、安全、逐字保护项和当前步骤的输出契约", composed);
+    }
+
+    [Theory]
+    [InlineData("按月组织，突出巡检", "简洁")]
+    [InlineData("按专题组织，不按月组织，突出验收", "详细")]
+    public async Task SkillChatKeepsExplicitTaskAndStylePreferencesInTheUserMessage(string task, string length)
+    {
+        var client = ClientWithModelOutput("模拟结果", payload =>
+        {
+            using var json = JsonDocument.Parse(payload);
+            var messages = json.RootElement.GetProperty("messages");
+            var system = messages[0].GetProperty("content").GetString();
+            var user = messages[1].GetProperty("content").GetString();
+            Assert.Contains("与任何 Skill 的建议冲突时，以用户本轮要求为准", system);
+            Assert.DoesNotContain(task, system);
+            Assert.StartsWith("【用户明确写作约束】", user);
+            Assert.Contains(task, user);
+            Assert.Contains(length, user);
+            Assert.Contains("保留指定重点并使用中性书面语", user);
+            Assert.Contains("输入事实", user);
+        });
+
+        await client.ChatAsync(FakeChat() with
+        {
+            UserPrompt = "输入事实",
+            WritingSkillId = "draft-summary",
+            EnhancementSkillId = "improve-style",
+            WritingRequirements = new WritingRequirements(Length: length, Task: task, Extra: "保留指定重点并使用中性书面语")
+        }, default);
+    }
+
+    [Fact]
     public async Task SelectedRevisionKeepsUnselectedTextByteForByte()
     {
         var text = "第一段：2026年完成方案设计。\n第二段：描述比较空泛。\n第三段：保留这句原文。";
@@ -65,15 +109,16 @@ public class SkillRevisionTests
     private static ChatRequest FakeChat() =>
         new("test-model", "system", "user", "temporary", "test-placeholder", "disabled", "high");
 
-    private static WritingRevisionService WithModelOutput(string output)
+    private static WritingRevisionService WithModelOutput(string output) => new(ClientWithModelOutput(output));
+
+    private static DeepSeekClient ClientWithModelOutput(string output, Action<string>? inspect = null)
     {
         var cfg = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["AiProvider:BaseUrl"] = "https://example.invalid"
         }).Build();
         var keys = new LocalKeyStore(DataProtectionProvider.Create("AiDocumentWriter.SkillTests"));
-        var client = new DeepSeekClient(new HttpClient(new StubHandler(output)), cfg, keys, new SkillRegistry());
-        return new WritingRevisionService(client);
+        return new DeepSeekClient(new HttpClient(new StubHandler(output, inspect)), cfg, keys, new SkillRegistry());
     }
 
     [Fact]
@@ -86,19 +131,20 @@ public class SkillRevisionTests
         Assert.Contains("99次", failure.Message);
     }
 
-    private sealed class StubHandler(string text) : HttpMessageHandler
+    private sealed class StubHandler(string text, Action<string>? inspect) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
+            if (inspect is not null) inspect(await request.Content!.ReadAsStringAsync(ct));
             var json = JsonSerializer.Serialize(new
             {
                 choices = new[] { new { message = new { content = text }, finish_reason = "stop" } },
                 usage = new { total_tokens = 31 }
             });
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            return new HttpResponseMessage(HttpStatusCode.OK)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
-            });
+            };
         }
     }
 }

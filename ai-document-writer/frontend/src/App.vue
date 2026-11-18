@@ -28,7 +28,7 @@ const extraInstruction = ref('')
 const strictFacts = ref(true)
 const appendReview = ref(true)
 const autoReview = ref(false)
-const writingStrategy = ref('skills')
+const writingStrategy = ref('legacy')
 const enhanceWriting = ref(false)
 const availableSkills = ref([])
 const versions = ref([])
@@ -186,9 +186,9 @@ function auditTerms(text) {
   const missing = terms.filter(s => !text.includes(s))
   return missing.length ? '名词核验未通过：' + missing.join('、') : '指定保护项原样检查通过'
 }
-function chatSettings() {
+function chatSettings(requirements) {
   return {
-    model: model.value, keySource: keySource.value,
+    model: model.value, keySource: keySource.value, writingRequirements: requirements,
     temporaryApiKey: keySource.value === 'temporary' ? keyInput.value.trim() : null,
     thinkingType: thinkingType.value, reasoningEffort: reasoningEffort.value
   }
@@ -252,7 +252,7 @@ async function compareDrafts() {
   const requirements = currentRequirements()
   const userPrompt = buildDraftPrompt(materials, requirements)
   const generationBasis = currentDraft()
-  const settings = chatSettings()
+  const settings = chatSettings(requirements)
   const systemPrompt = prompt.value
   if (userPrompt.length > 100000) {
     status.value = '材料过长，无法执行 A/B 对照'
@@ -301,7 +301,7 @@ async function generate() {
   const requirements = currentRequirements()
   const userPrompt = buildDraftPrompt(materials, requirements)
   const generationBasis = currentDraft()
-  const settings = chatSettings()
+  const settings = chatSettings(requirements)
   const systemPrompt = prompt.value
   if (userPrompt.length > 100000) {
     status.value = '材料超过当前单次模型请求上限；请减少材料。P2 将支持分段分析'
@@ -420,7 +420,7 @@ function revisionFactContext() {
     <header class="header">
       <div>
         <h1>AI 文档助手 <small>V2.2 · Skill 协作改稿</small></h1>
-        <p>原版 Prompt 可回退，支持经审核的 Skill、定向改稿与稿件版本比较。</p>
+        <p>默认使用经典 Prompt，可选写作 Skill，支持定向改稿与稿件版本比较。</p>
       </div>
       <a href="/legacy.html" target="_blank" rel="noopener">打开原版页面</a>
     </header>
@@ -474,8 +474,8 @@ function revisionFactContext() {
       <div class="grid">
         <label>写作引擎
           <select v-model="writingStrategy">
+            <option value="legacy">经典 Prompt（默认）</option>
             <option value="skills">本地写作 Skill（实验）</option>
-            <option value="legacy">经典 Prompt（兼容模式）</option>
           </select>
         </label>
         <label>语言优化
@@ -485,7 +485,7 @@ function revisionFactContext() {
           </select>
         </label>
       </div>
-      <p class="hint">Skill 按文种选择性加载，不会执行第三方脚本；经典模式保留旧 Prompt。当前内置 {{ availableSkills.length }} 项审核过的本地 Skill，效果尚待真实材料对照。</p>
+      <p class="hint">Skill 按文种提供写作方法，结构、篇幅和重点以本轮明确要求为准。当前内置 {{ availableSkills.length }} 项本地 Skill，效果尚待真实材料对照。</p>
       <label>系统指令（可编辑）<textarea v-model="prompt" rows="7" /></label>
       <p class="hint">规则直接从原版 index.html 的 13 种文档技能提取，避免迁移时丢失原 Prompt 内容。</p>
     </section>

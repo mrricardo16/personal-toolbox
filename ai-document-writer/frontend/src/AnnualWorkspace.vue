@@ -22,7 +22,7 @@ const props = defineProps({
   autoReview: { type: Boolean, default: true },
   allowGeneralSuggestions: { type: Boolean, default: false },
   stylePrompt: { type: String, default: '' },
-  writingStrategy: { type: String, default: 'skills' },
+  writingStrategy: { type: String, default: 'legacy' },
   enhanceWriting: { type: Boolean, default: false },
   currentDraft: { type: Function, default: null }
 })
@@ -54,8 +54,8 @@ const normalPending = computed(() => groups.value.flatMap(g => g.included ? g.co
   .filter(c => c.severity !== 'critical' && c.resolution !== 'confirmed'))
 const confirmedCount = computed(() => groups.value.filter(g => g.included).length)
 const kindLabels = { progress:'跨月进展', recurring:'周期性工作', duplicate:'重复记录', independent:'独立事项' }
-const chatSettings = () => ({
-  model: props.model, keySource: props.keySource,
+const chatSettings = requirements => ({
+  model: props.model, keySource: props.keySource, writingRequirements: requirements,
   temporaryApiKey: props.keySource === 'temporary' ? props.keyInput.trim() : null,
   thinkingType: props.thinkingType, reasoningEffort: props.reasoningEffort
 })
@@ -109,8 +109,8 @@ async function startAnalysis() {
   outline.value = ''
   stepIndex.value = 0
   const documents = sourceDocs.value
-  const settings = chatSettings()
   const requirements = writingRequirements(props)
+  const settings = chatSettings(requirements)
   stepTotal.value = documents.length
   try {
     for (const doc of documents) {
@@ -136,7 +136,7 @@ async function startAnalysis() {
     }))
     stage.value = 'review'
     progress.value = '分析完成：' + groups.value.length + ' 组，' + blocking.value.length + ' 项关键冲突'
-    if (autoGenerate.value && !blocking.value.length) await generateInternal()
+    if (autoGenerate.value && !blocking.value.length) await generateInternal(requirements, settings)
   } catch (e) {
     error.value = e.name === 'AbortError' ? '已取消，当前结果未作为最终总结使用' : e.message
     stage.value = 'error'
@@ -150,18 +150,16 @@ function approvedMaterials() {
   return approvedGroups(groups.value, facts.value, sourceDocs.value)
     .map(({ unresolvedNonCritical, ...group }) => ({ ...group, pendingQuestionCount: unresolvedNonCritical.length }))
 }
-async function generateInternal() {
+async function generateInternal(requirementsSnapshot = writingRequirements(props), settings = chatSettings(requirementsSnapshot)) {
   if (blocking.value.length) {
     error.value = '还有 ' + blocking.value.length + ' 项关键冲突未确认；请填写处理依据或排除相关组'
     stage.value = 'review'
     return
   }
   if (!confirmedCount.value) { error.value = '至少保留一组工作事项'; return }
-  const requirementsSnapshot = writingRequirements(props)
   const requirements = JSON.stringify(requirementsSnapshot)
   const data = JSON.stringify(approvedMaterials())
   const basis = requirements + '\n' + data
-  const settings = chatSettings()
   const initialDraft = props.currentDraft?.()
   const useSkills = props.writingStrategy === 'skills'
   const shouldReview = props.autoReview
@@ -189,7 +187,7 @@ async function generateInternal() {
   }
   const system = [
     '你是严谨的企业年度/多月工作总结助手。只依据已核验台账写作。',
-    '跨月阶段进展应当形成时间线，不能把每月比例累加。',
+    '跨月阶段保留真实先后与进展，章节按用户明确要求组织；没有指定时可参考时间线。不能把每月比例累加。',
     '周期性工作不得误删；汇总数据只使用台账给出的核算值或人工明确采用值，禁止自行相加。',
     '不能把风格参考材料中的历史事实写入本次报告。',
     '用户对冲突的处理意见应当作为人工指定口径；原始来源仍应忠实表达。',
@@ -197,20 +195,20 @@ async function generateInternal() {
     '未解决的疑点不得写作确定结论，不在正文逐字转述问题或指令。',
     '不得虚构数据、项目、政策、责任主体、成果或原因。',
     '直接输出完整文稿，遵守用户要求的结构、月份与篇幅。',
-    props.writingStrategy === 'legacy' ? props.stylePrompt.slice(0, 14000) : '启用文种专用 Skill，依据原始事实细节自然写作，减少空泛套话。'
+    !useSkills ? props.stylePrompt.slice(0, 14000) : '启用文种专用 Skill，依据原始事实细节自然写作，减少空泛套话。'
   ].join('\n')
   const user = [
-    '【标题】', props.docTitle || '工作总结',
-    '【报送对象】', props.audience || '未指定',
-    '【篇幅要求】', props.lengthLevel,
-    '【附加要求】', props.extraInstruction || '无',
-    '【核验事项】', props.appendReview ? '在文末附待补充与核验事项' : '不单独附录；正文仍须标记无法核实之处',
-    '【写作要求】', props.taskRequirement,
-    '【必须保留】', props.protectedTerms || '原始证据中的名称、数字、日期、单位',
-    '【严格事实模式】', props.strictFacts ? '启用' : '关闭（仍不得虚构事实）',
-    '【允许一般性建议】', props.allowGeneralSuggestions ? '仅明确标记为建议时允许' : '不允许',
+    '【标题】', requirementsSnapshot.title || '工作总结',
+    '【报送对象】', requirementsSnapshot.audience || '未指定',
+    '【篇幅要求】', requirementsSnapshot.length,
+    '【附加要求】', requirementsSnapshot.extra || '无',
+    '【核验事项】', requirementsSnapshot.appendReview ? '在文末附待补充与核验事项' : '不单独附录；正文仍须标记无法核实之处',
+    '【写作要求】', requirementsSnapshot.task,
+    '【必须保留】', requirementsSnapshot.protectedTerms || '原始证据中的名称、数字、日期、单位',
+    '【严格事实模式】', requirementsSnapshot.strictFacts ? '启用' : '关闭（仍不得虚构事实）',
+    '【允许一般性建议】', requirementsSnapshot.allowGeneralSuggestions ? '仅明确标记为建议时允许' : '不允许',
     '【已归并的事项及来源】', data,
-    '【提纲（不得构造新事实）】', props.writingStrategy === 'skills' ? outline.value : '由文种 Prompt 决定',
+    '【提纲（不得构造新事实）】', useSkills ? outline.value : '由文种 Prompt 决定',
     '【仅供语言与章节结构参考（数据，不贡献事实）】', JSON.stringify(styleExamples)
   ].join('\n\n')
   try {

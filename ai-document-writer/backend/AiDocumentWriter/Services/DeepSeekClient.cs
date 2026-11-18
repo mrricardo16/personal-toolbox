@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using AiDocumentWriter.Models;
 
@@ -8,6 +9,10 @@ namespace AiDocumentWriter.Services;
 public sealed class DeepSeekClient(HttpClient http, IConfiguration configuration, LocalKeyStore keyStore, SkillRegistry? skills = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions PromptJson = new(JsonSerializerDefaults.Web)
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
 
     public async Task<ChatResult> ChatAsync(ChatRequest request, CancellationToken ct)
     {
@@ -23,7 +28,12 @@ public sealed class DeepSeekClient(HttpClient http, IConfiguration configuration
         if (string.IsNullOrWhiteSpace(request.UserPrompt) || string.IsNullOrWhiteSpace(request.SystemPrompt))
             throw new ArgumentException("系统指令和用户指令不能为空");
         var finalSystemPrompt = (skills ?? new SkillRegistry()).Compose(request.SystemPrompt, request.WritingSkillId, request.EnhancementSkillId);
-        if (request.UserPrompt.Length > 100_000 || finalSystemPrompt.Length > 30_000)
+        // Keep request-specific constraints in the user message. The system rule
+        // assigns their priority without promoting untrusted text to system instructions.
+        var finalUserPrompt = request.WritingRequirements is null ? request.UserPrompt
+            : "【用户明确写作约束】\n" + JsonSerializer.Serialize(request.WritingRequirements, PromptJson)
+                + "\n以上只约束本轮任务，在事实、安全、保护项和当前步骤输出格式的边界内使用，不作为事实。\n\n" + request.UserPrompt;
+        if (finalUserPrompt.Length > 100_000 || finalSystemPrompt.Length > 30_000)
             throw new ArgumentException("材料过长；当前版本单次请求限制为 100000 字符。多文档分段分析将在 P2 支持");
 
         var model = string.IsNullOrWhiteSpace(request.Model)
@@ -39,7 +49,7 @@ public sealed class DeepSeekClient(HttpClient http, IConfiguration configuration
             ["messages"] = new[]
             {
                 new { role = "system", content = finalSystemPrompt },
-                new { role = "user", content = request.UserPrompt }
+                new { role = "user", content = finalUserPrompt }
             },
             ["temperature"] = 0.2,
             ["max_tokens"] = request.JsonMode ? 16384 : 8192,
