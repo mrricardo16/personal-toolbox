@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { criticalConflicts, approvedGroups, attachPendingQuestions, buildAnnualSourceDocuments } from '../src/annualGuard.js'
+import { criticalConflicts, approvedGroups, buildAnnualSourceDocuments } from '../src/annualGuard.js'
 
 test('critical conflicts block without an explanation', () => {
   const item = { included: true, conflicts: [{ severity: 'critical', resolution: 'confirmed', note: '' }] }
@@ -24,15 +24,6 @@ test('normal unresolved concerns remain visible in approved materials', () => {
   assert.equal(results.length,1)
   assert.equal(results[0].evidences[0].originalQuote,'巡检二十次')
   assert.deepEqual(results[0].unresolvedNonCritical,['累计口径尚未确认'])
-})
-
-test('normal unresolved conflicts are always appended to the generated document', () => {
-  const groups = [{ included: true, conflicts: [{ severity:'normal', resolution:'pending',
-    description:'统计口径不一致，需要人工确认' }] }]
-  const output = attachPendingQuestions('年度工作总结', groups)
-  assert.match(output, /待核实事项/)
-  assert.match(output, /统计口径不一致/)
-  assert.equal(attachPendingQuestions('正文', [{ included: false, conflicts: groups[0].conflicts }]), '正文')
 })
 
 test('style-only DOCX is excluded from annual facts but both-role and manual facts remain', () => {

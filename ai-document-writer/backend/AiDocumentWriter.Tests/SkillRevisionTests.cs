@@ -76,6 +76,16 @@ public class SkillRevisionTests
         return new WritingRevisionService(client);
     }
 
+    [Fact]
+    public async Task RevisionRejectsQuantifiedClaimWithoutSource()
+    {
+        var service = WithModelOutput("本月完成巡检99次。");
+        var request = new RevisionRequest(FakeChat(),
+            "本月完成巡检5次。", "改善表达", "full", null, null, "本月完成巡检5次。", null);
+        var failure = await Assert.ThrowsAsync<ArgumentException>(() => service.ReviseAsync(request, CancellationToken.None));
+        Assert.Contains("99次", failure.Message);
+    }
+
     private sealed class StubHandler(string text) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)

@@ -11,17 +11,19 @@ export function approvedGroups(groups, facts, documents = []) {
   const contextFor = (fact) => {
     const content = sourceLookup[fact.sourceId] || ''
     if (!fact.evidenceMatched || !fact.evidence || !content) return ''
-    const offset = content.indexOf(fact.evidence)
+    const offset = Number.isInteger(fact.evidenceStart) && content.startsWith(fact.evidence, fact.evidenceStart)
+      ? fact.evidenceStart : content.indexOf(fact.evidence)
     return offset < 0 ? '' : content.slice(Math.max(0, offset - 240), Math.min(content.length, offset + fact.evidence.length + 240))
   }
   const lookup = Object.fromEntries(facts.map(f => [f.id, f]))
   return groups.filter(g => g.included).map(g => ({
     group: g.title, category: g.kind, summary: g.summary,
-    metrics: g.metrics,
+    metrics: g.metrics, computedMetric: g.computedMetric || null,
     evidences: g.memberIds.map(id => lookup[id]).filter(Boolean).map(f => ({
-      file: f.sourceFile, period: f.period, project: f.project, title: f.title,
+      id: f.id, file: f.sourceFile, period: f.period, project: f.project, title: f.title,
+      evidenceStart: f.evidenceStart,
       progress: f.progress, content: f.description, originalQuote: f.evidence,
-      quoteMatched: f.evidenceMatched, numericEvidence: f.numericEvidence,
+      quoteMatched: f.evidenceMatched,
       sourceExcerpt: contextFor(f)
     })),
     confirmedNotes: (g.conflicts || []).filter(c => c.resolution === 'confirmed')
@@ -29,17 +31,6 @@ export function approvedGroups(groups, facts, documents = []) {
     unresolvedNonCritical: (g.conflicts || []).filter(c =>
       c.severity !== 'critical' && c.resolution !== 'confirmed').map(c => c.description)
   }))
-}
-
-export function attachPendingQuestions(content, groups) {
-  const pending = (groups || []).filter(g => g.included)
-    .flatMap(g => g.conflicts || [])
-    .filter(c => c.severity !== 'critical' && c.resolution !== 'confirmed')
-    .map(c => c.description?.trim()).filter(Boolean)
-  if (!pending.length) return content
-  const unique = [...new Set(pending)]
-  return (content || '').trimEnd() + '\n\n【待核实事项（系统提示）】\n'
-    + unique.map((question, index) => (index + 1) + '. ' + question).join('\n')
 }
 
 export function buildAnnualSourceDocuments(files, manualMaterial = '') {

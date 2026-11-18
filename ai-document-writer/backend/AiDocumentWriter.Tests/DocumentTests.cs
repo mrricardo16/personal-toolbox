@@ -209,6 +209,51 @@ public class DocumentTests
         return new AnnualWorkflow(client);
     }
 
+    [Fact]
+    public async Task AnnualMergeDoesNotPromoteModelTotalsForMixedOrRepeatedPeriods()
+    {
+        const string response = """
+            {"groups":[{"title":"设备巡检","kind":"recurring","memberIds":["F1","F2","F3"],
+            "summary":"巡检","metrics":"合计777次","conflicts":[]}]}
+            """;
+        var facts = new[] {
+            MonthlyFact("F1", "2026-01", "本月完成设备巡检20次"),
+            MonthlyFact("F2", "2026-01", "本月完成设备巡检20次"),
+            MonthlyFact("F3", "2026-02", "截至本月累计完成设备巡检45次")
+        };
+        var result = await WorkflowForResponse(response).MergeAsync(
+            new AnnualMergeRequest([.. facts], null, new ChatRequest(null, null, null, "server", null, null, null)), default);
+        var group = Assert.Single(result.Groups);
+        Assert.Empty(group.Metrics);
+        Assert.Contains(group.Conflicts, conflict => conflict.Severity == "critical");
+    }
+
+    [Fact]
+    public async Task AnnualMergeConnectsIndependentMilestonesForTheSameExactProject()
+    {
+        var january = MonthlyFact("F1", "2026-01", "完成WMS迁移方案设计");
+        var february = MonthlyFact("F2", "2026-02", "完成WMS迁移接口测试");
+        foreach (var fact in new[] { january, february })
+        {
+            fact.Project = "WMS迁移";
+            fact.Description = fact.Evidence;
+            fact.NumericEvidence = "";
+        }
+        var result = await WorkflowForResponse("""{"groups":[]}""")
+            .MergeAsync(new AnnualMergeRequest([february, january], null, FakeChat()), default);
+        var timeline = Assert.Single(result.Groups);
+        Assert.Equal("progress", timeline.Kind);
+        Assert.Equal(["F1", "F2"], timeline.MemberIds);
+        Assert.Contains("完成WMS迁移方案设计", timeline.Summary);
+        Assert.Contains("完成WMS迁移接口测试", timeline.Summary);
+    }
+
+    private static AnnualFact MonthlyFact(string id, string month, string evidence) => new()
+    {
+        Id = id, Project = "设备巡检", Title = "设备巡检", Period = month, SourceId = id,
+        SourceFile = month + ".docx", Evidence = evidence, EvidenceMatched = true, NumericEvidence = evidence
+    };
+
     private sealed class FakeHandler(string content) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)

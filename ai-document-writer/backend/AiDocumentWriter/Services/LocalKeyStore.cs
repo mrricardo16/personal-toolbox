@@ -10,9 +10,17 @@ namespace AiDocumentWriter.Services;
 /// </summary>
 public sealed class LocalKeyStore
 {
-    public static string DataDirectory { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "AiDocumentWriter");
+    public static string DataDirectory { get; } = ResolveDataDirectory();
+
+    private static string ResolveDataDirectory()
+    {
+        var configuredPath = Environment.GetEnvironmentVariable("AIWRITER_LOCAL_DATA_DIRECTORY");
+        if (string.IsNullOrWhiteSpace(configuredPath))
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "AiDocumentWriter");
+        if (!Path.IsPathFullyQualified(configuredPath))
+            throw new InvalidOperationException("AIWRITER_LOCAL_DATA_DIRECTORY 必须是绝对路径");
+        return Path.GetFullPath(configuredPath);
+    }
 
     private readonly IDataProtector _protector;
     private readonly string _path = Path.Combine(DataDirectory, "apikey.protected");

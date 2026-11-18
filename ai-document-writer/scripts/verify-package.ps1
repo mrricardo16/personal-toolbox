@@ -18,9 +18,13 @@ if ($Target.StartsWith('win')) {
   $exe = Join-Path $temp 'AiDocumentWriter.exe'
   if (-not (Test-Path $exe)) { throw '压缩包缺失 AiDocumentWriter.exe' }
   if ($SmokeTest) {
-    $env:AIWRITER_Hosting__OpenBrowser = 'false'
+    # The smoke test exercises key persistence. Isolate both the protected key and its key ring.
+    $testData = Join-Path $temp 'isolated-local-data'
     $log = Join-Path $temp 'smoke.log'
-    $process = Start-Process -FilePath $exe -PassThru -RedirectStandardOutput $log
+    $process = Start-Process -FilePath $exe -PassThru -RedirectStandardOutput $log -WindowStyle Hidden -Environment @{
+      AIWRITER_Hosting__OpenBrowser = 'false'
+      AIWRITER_LOCAL_DATA_DIRECTORY = $testData
+    }
     try {
       $address = $null
       for ($i = 0; $i -lt 30; $i++) {
@@ -63,11 +67,12 @@ if ($Target.StartsWith('win')) {
 
       $settings = Invoke-RestMethod -Uri "$address/api/settings/status" -TimeoutSec 5
       if ($null -eq $settings.serverKeyConfigured) { throw '配置状态 API 响应无效' }
+      if ($settings.savedKeyConfigured -or !(Test-Path -LiteralPath $testData -PathType Container)) { throw '测试数据目录未隔离' }
       $writerHeaders = @{ 'X-Writer-Client' = 'ai-document-writer' }
       $testPayload = '{"apiKey":"CI-test-placeholder-do-not-use"}'
       Invoke-RestMethod -Uri "$address/api/settings/key" -Method Post -Headers $writerHeaders -ContentType 'application/json' -Body $testPayload -TimeoutSec 5 | Out-Null
       $savedStatus = Invoke-RestMethod -Uri "$address/api/settings/status" -TimeoutSec 5
-      if (-not $savedStatus.savedKeyConfigured) { throw '本机 API Key 持久化检查失败' }
+      if (-not $savedStatus.savedKeyConfigured -or !(Test-Path -LiteralPath (Join-Path $testData 'apikey.protected')) -or !(Test-Path -LiteralPath (Join-Path $testData 'keyring'))) { throw '隔离目录 API Key 持久化检查失败' }
       Invoke-RestMethod -Uri "$address/api/settings/key" -Method Delete -Headers $writerHeaders -TimeoutSec 5 | Out-Null
       $clearedStatus = Invoke-RestMethod -Uri "$address/api/settings/status" -TimeoutSec 5
       if ($clearedStatus.savedKeyConfigured) { throw '本机 API Key 清理检查失败' }
@@ -106,7 +111,6 @@ if ($Target.StartsWith('win')) {
     }
     finally {
       if (-not $process.HasExited) { Stop-Process -Id $process.Id -Force }
-      Remove-Item Env:AIWRITER_Hosting__OpenBrowser -ErrorAction SilentlyContinue
     }
   }
 }
